@@ -1,0 +1,4 @@
+% Cenario 29b - A telemetria do processo chega depois: foi a aplicacao da loja. Confirma-se a SQL injection -> exposicao
+%   de dados; o compromisso provavel do cenario 29 fica superado por ela (nao se isola a maquina por causa disto).
+
+:- novo_facto(evento_processo(ev_ab2,java_loja)).

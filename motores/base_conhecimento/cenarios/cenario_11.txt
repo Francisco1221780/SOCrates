@@ -1,0 +1,6 @@
+% Cenario 11 - C2 sem ligacao ao ataque: trafego de saida de app_srv_01 para um C2 catalogado, 50 min depois do
+%   Log4Shell (cenario 8), que deixou a exploracao como possivel. Nao se sabe que processo fez o trafego: os dois sinais
+%   coincidem no ativo e no tempo, mas nada os liga -> compromisso provavel, sem isolar.
+
+:- novo_facto(trafego_saida(ev_k1,app_srv_01,c2_203_0_113_9)).
+:- novo_facto(tempo(ev_k1,7000)).

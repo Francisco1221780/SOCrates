@@ -1,0 +1,7 @@
+% Cenario 24b - Shell num servidor sem CGI: 30 s depois do mesmo ataque aparece uma shell lancada pelo httpd em web_srv_09.
+%   A execucao de comandos esta excluida pela configuracao registada, mas uma shell logo a seguir ao ataque e a evidencia
+%   que esse impacto deixaria: o inventario pode estar errado -> compromisso provavel, confirmar no host.
+
+:- novo_facto(evento_host(ev_z3,web_srv_09,shell_iniciada)).
+:- novo_facto(evento_processo(ev_z3,httpd)).
+:- novo_facto(tempo(ev_z3,11630)).

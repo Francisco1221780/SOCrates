@@ -1,0 +1,5 @@
+% Cenario 19b (resposta: nao sei) - o analista responde a pergunta sobre a resposta volumosa do cenario 19 (app_srv_03).
+%   Nao consegue verificar -> suspeita: o servidor fica em vigilancia e o ticket de inspecao manual continua aberto.
+%   Usa-se UM dos ficheiros cenario_19b_*.txt, nao os tres. Depende do cenario 19.
+
+:- novo_facto(resposta_analista(app_srv_03,ev_w1,resposta_volumosa_servico,nao_sei)).

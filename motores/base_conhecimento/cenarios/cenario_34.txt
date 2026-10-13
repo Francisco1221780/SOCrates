@@ -1,0 +1,7 @@
+% Cenario 34 - Shell num servidor que nao podia ser explorado: o httpd de web_srv_03 lanca uma shell. O unico ataque a
+%   este servidor (cenario 4) foi uma tentativa sem impacto, porque a correcao ja estava aplicada: nao ha nenhum impacto
+%   possivel de que esta shell possa ser evidencia -> o sistema nao conclui nada (controlo negativo).
+
+:- novo_facto(evento_host(ev_ok5,web_srv_03,shell_iniciada)).
+:- novo_facto(evento_processo(ev_ok5,httpd)).
+:- novo_facto(tempo(ev_ok5,16800)).

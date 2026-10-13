@@ -1,0 +1,5 @@
+% Cenario 7b (resposta: sim) - o analista responde a pergunta sobre a shell do cenario 7 (web_srv_04).
+%   Ha uma shell lancada pelo servico -> compromisso confirmado: isolar a maquina. O ticket de inspecao manual fecha.
+%   Usa-se UM dos ficheiros cenario_07b_*.txt, nao os tres. Depende do cenario 7.
+
+:- novo_facto(resposta_analista(web_srv_04,ev_e1,shell_servico,sim)).

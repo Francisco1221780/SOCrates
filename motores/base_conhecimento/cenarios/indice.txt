@@ -1,0 +1,74 @@
+% CENARIOS - Analista virtual de SOC (CyberRangers), versao 5.1
+% Cada ficheiro desta pasta e um cenario: a telemetria que chega ao sistema nesse momento (alertas, eventos dos hosts,
+% logins, trafego) ou uma resposta do analista. O estado inicial esta em soc_factos.txt; os cenarios acrescentam-lhe factos.
+%
+% COMO SE USA
+%   1. carregar o estado inicial:        consult('soc_factos.txt').
+%   2. correr o motor ate nao haver conclusoes novas (trata os dados fixos);
+%   3. para cada cenario, por ordem:     consult('cenarios/cenario_02.txt').   e correr o motor outra vez.
+% Cada linha de um cenario acrescenta um facto com o proximo numero livre (novo_facto). Carregar o mesmo cenario duas
+% vezes nao repete os factos.
+% Este ficheiro e so uma lista para as pessoas: nao tem factos e nao e preciso carrega-lo.
+%
+% O QUE HA NOS FACTOS DOS CENARIOS
+%   Cada evento tem um identificador (ev_...) e a hora em segundos: tempo(Ev, Segundos).
+%   Nos eventos do host, evento_processo(Ev, Processo) diz que processo os originou (ex.: o httpd lancou a shell).
+%   Os IPs (192.0.2.x, 198.51.100.x, 203.0.113.x) sao enderecos reservados para documentacao, nao sao reais.
+%
+% ORDEM
+% Os cenarios contam uma historia seguida e alguns dependem de anteriores (o 3 precisa do 2, o 11 do 8, o 26 do 2...).
+% Correm-se por esta ordem. Para experimentar um cenario sozinho, carregam-se antes os de que ele depende.
+%
+%   Telemetria:
+%     cenario_01.txt    tentativa sem impacto (versao corrigida)
+%     cenario_02.txt    execucao remota confirmada; ataque dirigido de uma origem reincidente
+%     cenario_03.txt    movimento lateral a partir de uma maquina comprometida
+%     cenario_04.txt    correcao aplicada sem mudar a versao (backport)
+%     cenario_05.txt    ruido: o ativo nao tem o programa atacado
+%     cenario_06.txt    versao desconhecida
+%     cenario_07.txt    sensor do host em baixo: pergunta ao analista
+%     cenario_08.txt    Log4Shell com evidencia tardia
+%     cenario_09.txt    SQL injection confirmada: exposicao de dados
+%     cenario_10.txt    reconhecimento
+%     cenario_10b.txt   acesso depois do reconhecimento
+%     cenario_10c.txt   C2 depois de um acesso suspeito
+%     cenario_11.txt    C2 sem ligacao conhecida ao ataque
+%     cenario_11b.txt   a ligacao aparece: C2 feito pelo programa atacado
+%     cenario_12.txt    shell de outro programa: impacto ambiguo
+%     cenario_13.txt    inventario incompleto
+%     cenario_14.txt    C2 nao corroborado
+%     cenario_15.txt    ramo corrigido a parte
+%     cenario_16.txt    duas instalacoes do mesmo programa
+%     cenario_17.txt    C2 com evidencia fraca
+%     cenario_18.txt    movimento lateral a partir de uma maquina nao comprometida
+%     cenario_19.txt    sensor em baixo numa SQL injection
+%     cenario_20.txt    evidencia sem telemetria de processo
+%     cenario_20b.txt   a telemetria do processo chega depois
+%     cenario_21.txt    catalogo sem intervalos de versoes
+%     cenario_22.txt    porto de destino conhecido
+%     cenario_23.txt    processo nao classificado
+%     cenario_24.txt    CGI desligado: execucao remota excluida
+%     cenario_24b.txt   shell num servidor sem CGI
+%     cenario_25.txt    configuracao desconhecida
+%     cenario_25b.txt   a configuracao chega depois
+%     cenario_26.txt    C2 numa maquina ja comprometida
+%     cenario_27.txt    versao num formato desconhecido
+%     cenario_28.txt    movimento lateral horas depois do compromisso
+%     cenario_29.txt    SQL injection sem telemetria de processo
+%     cenario_29b.txt   a telemetria do processo chega depois (em alternativa ao 29c)
+%
+%   Atividade normal (controlos negativos: o sistema nao deve concluir nada). Nao dependem uns dos outros e podem
+%   carregar-se em qualquer altura, tambem entre dois cenarios de ataque. O 34 so faz sentido depois do 4.
+%     cenario_30.txt    shell de um administrador numa maquina que nao foi atacada
+%     cenario_31.txt    trafego de saida para um endereco que nao e um C2 conhecido
+%     cenario_32.txt    sondagem abaixo dos limiares do reconhecimento
+%     cenario_33.txt    login que a politica permite
+%     cenario_34.txt    shell num servidor que so teve uma tentativa sem impacto
+%
+%   Respostas do analista (carregam-se depois do cenario a que respondem):
+%     cenario_07b_sim.txt, cenario_07b_nao.txt, cenario_07b_nao_sei.txt     resposta a pergunta do cenario 7 (so UM)
+%     cenario_19b_sim.txt, cenario_19b_nao.txt, cenario_19b_nao_sei.txt     resposta a pergunta do cenario 19 (so UM)
+%     cenario_03b.txt   o analista confirma o compromisso do cenario 3: propagacao
+%     cenario_10d.txt   o analista descarta o compromisso provavel do cenario 10c
+%     cenario_17b.txt   o analista ainda nao conseguiu verificar o cenario 17
+%     cenario_29c.txt   o analista confirma o cenario 29 (em alternativa ao 29b)
