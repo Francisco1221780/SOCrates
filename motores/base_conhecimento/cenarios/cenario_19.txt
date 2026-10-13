@@ -1,0 +1,8 @@
+% Cenario 19 - Agente offline numa SQL injection: app_srv_03 (loja 1.1.0, vulneravel) com o agente de host em baixo.
+%   A evidencia que este impacto deixaria e uma resposta volumosa, nao uma shell: e por isso que se pergunta ao analista.
+
+:- novo_facto(estado_sensor(app_srv_03,agente_host,offline)).
+:- novo_facto(alerta_ids(ev_w1,app_srv_03,sig_sqli_union)).
+:- novo_facto(origem(ev_w1,ip_203_0_113_140)).
+:- novo_facto(origem_zona(ev_w1,internet)).
+:- novo_facto(tempo(ev_w1,10600)).

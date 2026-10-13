@@ -1,0 +1,5 @@
+% Cenario 19b (resposta: nao) - o analista responde a pergunta sobre a resposta volumosa do cenario 19 (app_srv_03).
+%   As respostas tem o tamanho normal -> tentativa sem impacto. O ticket de inspecao manual fecha.
+%   Usa-se UM dos ficheiros cenario_19b_*.txt, nao os tres. Depende do cenario 19.
+
+:- novo_facto(resposta_analista(app_srv_03,ev_w1,resposta_volumosa_servico,nao)).

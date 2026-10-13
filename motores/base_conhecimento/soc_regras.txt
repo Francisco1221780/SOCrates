@@ -1,0 +1,585 @@
+% REGRAS - Analista virtual de SOC (CyberRangers), versao 5.1
+% Cada regra le-se "SE todas as condicoes forem verdadeiras ENTAO conclui-se ...".
+% Os nomes com maiuscula (Alvo, Ev, Vuln...) sao variaveis: a regra vale para qualquer ativo, evento ou vulnerabilidade.
+% "nao X" quer dizer que X nao esta registado.
+% As regras de detecao abrem incidentes; a gravidade, a prioridade e o ticket de cada incidente sao decididos num so sitio (grupo M).
+% As conclusoes nunca se apagam: quando um incidente e substituido por outro ou fica resolvido, isso fica registado (grupo L)
+% e o ticket e dado como fechado (grupo M).
+% As janelas de tempo estao nos factos (janela), para o perito as poder afinar.
+% As regras estao numeradas seguidas (R1 a R75), pela ordem em que aparecem.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% A. O ATIVO ESTA AFETADO POR UMA VULNERABILIDADE?
+% Cruza o software instalado em cada ativo (SBOM) com o catalogo de vulnerabilidades.
+% Uma vulnerabilidade pode afetar varios intervalos de versoes (ex.: um ramo antigo corrigido a parte).
+% Conclui-se para cada instalacao (Inst), nao para o ativo: o mesmo ativo pode ter duas instalacoes do mesmo programa.
+
+% R1: a instalacao tem uma versao dentro de um intervalo afetado e sem correcao aplicada -> instalacao vulneravel
+regra 1
+	se [componente(Inst,_,Nome) e vuln_afeta(Vuln,Nome) e versao(Inst,V) e intervalo_afetado(Vuln,Min,Max) e versao_cmp(V,>=,Min) e versao_cmp(V,=<,Max) e nao corrigido_backport(Inst,Vuln)]
+	entao [cria_facto(vulneravel(Inst,Vuln))].
+
+% R2: a versao da instalacao nao esta em nenhum dos intervalos afetados -> instalacao nao afetada
+%     (so se o catalogo tiver pelo menos um intervalo para a vulnerabilidade: sem intervalos, nao se sabe; ver R9)
+regra 2
+	se [componente(Inst,_,Nome) e vuln_afeta(Vuln,Nome) e versao(Inst,V) e fora_dos_intervalos(V,Vuln)]
+	entao [cria_facto(nao_afetado(Inst,Vuln))].
+
+% R3: a correcao foi aplicada sem mudar o numero da versao (backport) -> instalacao nao afetada
+regra 3
+	se [componente(Inst,_,Nome) e vuln_afeta(Vuln,Nome) e corrigido_backport(Inst,Vuln)]
+	entao [cria_facto(nao_afetado(Inst,Vuln))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% B. O ATACANTE CONSEGUE CHEGAR A VULNERABILIDADE?
+% O alerta do IDS traz uma assinatura de ataque, que aponta para uma vulnerabilidade de um programa.
+% O porto pertence ao servico: o programa vulneravel tem de estar a escutar num porto e protocolo abertos para a zona do atacante.
+% Se o alerta disser o porto e o protocolo de destino (destino(Ev, Porto, Protocolo)), so conta o servico nesse porto;
+% se nao disser, conta qualquer servico do programa aberto para essa zona.
+% O vetor fica ligado a instalacao que escuta nesse porto; e essa instalacao que se compara com o catalogo.
+
+% R4: uma instalacao do programa atacado escuta no porto atacado, aberto para a zona de onde vem o ataque -> vetor aberto ate essa instalacao
+regra 4
+	se [alerta_ids(Ev,Alvo,Sig) e assinatura_vuln(Sig,Vuln) e vuln_vetor(Vuln,rede) e vuln_afeta(Vuln,Nome) e servico(Inst,Alvo,Nome,Porto,Proto) e porto_compativel(Ev,Porto,Proto) e origem_zona(Ev,Zona) e exposto(Alvo,Porto,Proto,Zona)]
+	entao [cria_facto(vetor_aberto(Ev,Alvo,Inst,Vuln))].
+
+% R5: nenhum servico do programa esta acessivel a partir dessa zona (no porto atacado, se for conhecido), e os inventarios
+%     de rede e de software estao completos -> tentativa sem impacto (vetor fechado)
+regra 5
+	se [alerta_ids(Ev,Alvo,Sig) e assinatura_vuln(Sig,Vuln) e vuln_afeta(Vuln,Nome) e origem_zona(Ev,Zona) e sem_servico_acessivel(Ev,Alvo,Nome,Zona) e cobertura(Alvo,rede,completa) e cobertura(Alvo,sbom,completa)]
+	entao [cria_facto(tentativa_sem_impacto(Ev,Alvo,vetor_fechado))].
+
+% R6: vetor aberto ate uma instalacao vulneravel -> exploracao possivel
+regra 6
+	se [vetor_aberto(Ev,Alvo,Inst,Vuln) e vulneravel(Inst,Vuln)]
+	entao [cria_facto(exploracao_possivel(Ev,Alvo,Vuln))].
+
+% R7: vetor aberto ate uma instalacao de que nao se sabe a versao -> exploracao incerta e incidente "versao por confirmar"
+regra 7
+	se [vetor_aberto(Ev,Alvo,Inst,Vuln) e nao versao(Inst,_)]
+	entao [cria_facto(exploracao_incerta(Ev,Alvo,Vuln)),
+	       cria_facto(incidente(inc(versao_por_confirmar,Ev),versao_por_confirmar,Alvo,[Alvo]))].
+
+% R8: vetor aberto, mas a versao registada nao esta num formato reconhecido (ex.: "2.4.49-ubuntu1") -> igual a R7
+regra 8
+	se [vetor_aberto(Ev,Alvo,Inst,Vuln) e versao(Inst,V) e versao_invalida(V)]
+	entao [cria_facto(exploracao_incerta(Ev,Alvo,Vuln)),
+	       cria_facto(incidente(inc(versao_por_confirmar,Ev),versao_por_confirmar,Alvo,[Alvo]))].
+
+% R9: vetor aberto ate uma instalacao, mas o catalogo ainda nao tem nenhum intervalo de versoes para a vulnerabilidade
+%      -> exploracao incerta e incidente "catalogo incompleto" (sem intervalos nao se conclui nem "vulneravel" nem "nao afetado")
+regra 9
+	se [vetor_aberto(Ev,Alvo,Inst,Vuln) e nao intervalo_afetado(Vuln,_,_) e nao corrigido_backport(Inst,Vuln)]
+	entao [cria_facto(exploracao_incerta(Ev,Alvo,Vuln)),
+	       cria_facto(incidente(inc(catalogo_incompleto,Ev),catalogo_incompleto,Alvo,[Alvo]))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% C. TENTATIVA SEM IMPACTO (nao e falso positivo: o ataque foi real, so nao podia resultar)
+% Fica registada e a origem passa a ser vigiada. Uma tentativa sem impacto, sozinha, nao bloqueia o IP:
+% so se bloqueia uma origem que volte a atacar depois de ja estar marcada (R13).
+
+% R10: vetor aberto ate uma instalacao nao afetada -> tentativa sem impacto (versao corrigida)
+regra 10
+	se [vetor_aberto(Ev,Alvo,Inst,Vuln) e nao_afetado(Inst,Vuln)]
+	entao [cria_facto(tentativa_sem_impacto(Ev,Alvo,versao_corrigida))].
+
+% R11: o ativo nao tem o programa atacado e o seu inventario de software esta completo -> tentativa sem impacto (componente ausente)
+regra 11
+	se [alerta_ids(Ev,Alvo,Sig) e assinatura_vuln(Sig,Vuln) e vuln_afeta(Vuln,Nome) e nao componente(_,Alvo,Nome) e cobertura(Alvo,sbom,completa)]
+	entao [cria_facto(tentativa_sem_impacto(Ev,Alvo,componente_ausente))].
+
+% R12: qualquer tentativa sem impacto -> a origem fica marcada como hostil (fica registado que evento a marcou)
+%      e abre-se o incidente "tentativa sem impacto"
+regra 12
+	se [tentativa_sem_impacto(Ev,Alvo,_) e origem(Ev,Ip)]
+	entao [cria_facto(origem_hostil(Ip,Ev)),
+	       cria_facto(incidente(inc(tentativa_sem_impacto,Ev),tentativa_sem_impacto,Alvo,[Alvo]))].
+
+% R13: exploracao possivel vinda de uma origem que JA tinha sido marcada como hostil por um evento ANTERIOR (reincidente)
+%      -> ataque dirigido e bloqueio do IP
+%      (o bloqueio e uma contencao preventiva e reversivel; nao prova que o ativo esteja comprometido)
+regra 13
+	se [exploracao_possivel(Ev,Alvo,_) e origem(Ev,Ip) e origem_hostil(Ip,EvAnterior) e anterior(EvAnterior,Ev)]
+	entao [cria_facto(ataque_dirigido(Ev,Alvo)),
+	       cria_facto(acao(Alvo,bloquear_ip(Ip)))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% D. NA DUVIDA, NAO SE CONCLUI "SEM IMPACTO"
+% Quando o inventario do ativo esta incompleto, a falta de um servico ou de um programa nao prova nada.
+
+% R14: nenhum servico do programa registado como acessivel, mas o inventario de rede do ativo nao esta completo
+%      -> exploracao incerta e incidente "inventario de rede incompleto"
+regra 14
+	se [alerta_ids(Ev,Alvo,Sig) e assinatura_vuln(Sig,Vuln) e vuln_afeta(Vuln,Nome) e origem_zona(Ev,Zona) e sem_servico_acessivel(Ev,Alvo,Nome,Zona) e nao cobertura(Alvo,rede,completa)]
+	entao [cria_facto(exploracao_incerta(Ev,Alvo,Vuln)),
+	       cria_facto(incidente(inc(inventario_rede_incompleto,Ev),inventario_rede_incompleto,Alvo,[Alvo]))].
+
+% R15: nenhum servico do programa registado como acessivel (o programa pode nem estar registado), mas o inventario de
+%      software do ativo nao esta completo: pode faltar o programa ou o servico dele -> exploracao incerta e incidente "SBOM incompleto"
+regra 15
+	se [alerta_ids(Ev,Alvo,Sig) e assinatura_vuln(Sig,Vuln) e vuln_afeta(Vuln,Nome) e origem_zona(Ev,Zona) e sem_servico_acessivel(Ev,Alvo,Nome,Zona) e nao cobertura(Alvo,sbom,completa)]
+	entao [cria_facto(exploracao_incerta(Ev,Alvo,Vuln)),
+	       cria_facto(incidente(inc(sbom_incompleto,Ev),sbom_incompleto,Alvo,[Alvo]))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% E. QUE IMPACTOS PODE O ATAQUE TER NESTA INSTALACAO?
+% Uma vulnerabilidade pode ter mais do que um impacto, e alguns so existem se a instalacao estiver configurada de certa maneira.
+% Ex.: a falha do Apache (cve_2021_41773) so da execucao de comandos se o servidor tiver o CGI ativo. O catalogo diz que impacto exige que condicao (requer_condicao) e o inventario diz
+% como cada instalacao esta configurada (configuracao: sim, nao; se nao houver registo, nao se sabe).
+% So os impactos possiveis e nao excluidos sao investigados a seguir (grupos F e G).
+% Um impacto pode exigir mais do que uma condicao: basta UMA estar em falta para o impacto ficar excluido (R18)
+% e deixar de contar como possivel (R17, R19). Um impacto excluido nunca e investigado.
+
+% R16: instalacao vulneravel ao alcance do ataque, e o impacto nao exige nenhuma condicao -> impacto possivel
+regra 16
+	se [vetor_aberto(Ev,Alvo,Inst,Vuln) e vulneravel(Inst,Vuln) e vuln_impacto(Vuln,Impacto) e nao requer_condicao(Vuln,Impacto,_)]
+	entao [cria_facto(impacto_possivel(Ev,Alvo,Vuln,Impacto))].
+
+% R17: o impacto exige uma condicao e a instalacao tem-na (ex.: CGI ativo), e nenhuma outra condicao desse impacto
+%      esta em falta -> impacto possivel
+regra 17
+	se [vetor_aberto(Ev,Alvo,Inst,Vuln) e vulneravel(Inst,Vuln) e vuln_impacto(Vuln,Impacto) e requer_condicao(Vuln,Impacto,Cond) e configuracao(Inst,Cond,sim) e sem_condicao_em_falta(Inst,Vuln,Impacto)]
+	entao [cria_facto(impacto_possivel(Ev,Alvo,Vuln,Impacto))].
+
+% R18: o impacto exige uma condicao e a instalacao NAO a tem (ex.: CGI desligado) -> esse impacto fica excluido
+%      (os outros impactos da vulnerabilidade continuam possiveis). Um impacto excluido deixa de ser investigado,
+%      mesmo que antes tenha contado como possivel por nao se saber a configuracao (R19).
+regra 18
+	se [vetor_aberto(Ev,Alvo,Inst,Vuln) e vulneravel(Inst,Vuln) e vuln_impacto(Vuln,Impacto) e requer_condicao(Vuln,Impacto,Cond) e configuracao(Inst,Cond,nao)]
+	entao [cria_facto(impacto_excluido(Ev,Alvo,Vuln,Impacto,Cond))].
+
+% R19: o impacto exige uma condicao, nao se sabe se a instalacao a tem, e nenhuma outra condicao desse impacto esta
+%      em falta -> na duvida o impacto conta como possivel, e abre-se o incidente "configuracao por confirmar"
+regra 19
+	se [vetor_aberto(Ev,Alvo,Inst,Vuln) e vulneravel(Inst,Vuln) e vuln_impacto(Vuln,Impacto) e requer_condicao(Vuln,Impacto,Cond) e nao configuracao(Inst,Cond,_) e sem_condicao_em_falta(Inst,Vuln,Impacto)]
+	entao [cria_facto(impacto_possivel(Ev,Alvo,Vuln,Impacto)),
+	       cria_facto(motivo(inc(configuracao_por_confirmar,Ev),condicao_desconhecida(Inst,Cond))),
+	       cria_facto(incidente(inc(configuracao_por_confirmar,Ev),configuracao_por_confirmar,Alvo,[Alvo]))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% F. CONFIRMACAO: O ATAQUE RESULTOU?
+% Cada tipo de impacto deixa uma evidencia no host (ex.: execucao remota -> abre-se uma shell; SQL injection ->
+% o servico da uma resposta anormalmente grande), que tem de aparecer DEPOIS do ataque e DENTRO de uma janela de tempo.
+% Depois pergunta-se QUEM a originou (o processo), e ha tres respostas:
+%   - o programa atacado (ex.: httpd, do Apache)              -> impacto confirmado (R20)
+%   - outro programa conhecido (ex.: sshd, do OpenSSH)       -> impacto ambiguo: inspecionar os processos (R21)
+%   - nao se sabe: o sensor nao disse que processo foi, ou o processo nao esta na tabela processo_componente
+%     (ex.: python3)                                         -> compromisso provavel: confirmar no host (R22)
+% A ligacao ao programa atacado faz-se pelo NOME do processo no mesmo ativo. E uma aproximacao: dois programas que
+% corram no mesmo processo (ex.: a loja e o log4j, ambos em java_loja) nao se distinguem.
+%
+% O QUE SE FAZ COM UM IMPACTO CONFIRMADO DEPENDE DO IMPACTO (classe_impacto, nos factos):
+%   - da ao atacante o CONTROLO da maquina (ex.: execucao remota) -> compromisso confirmado: isolar a maquina (R25, R27)
+%   - expoe DADOS, sem dar o controlo (ex.: SQL injection) -> exposicao de dados: conter e avaliar
+%     o que foi exposto, sem parar o servico (R26)
+%
+% O QUE QUER DIZER "COMPROMISSO CONFIRMADO" NESTA BASE (significado operacional):
+%   houve um ataque que podia dar ao atacante o controlo da maquina, apareceu a evidencia que esse ataque deixaria,
+%   dentro da janela de tempo, e a evidencia esta ligada ao programa atacado (foi o processo dele que a originou) ou foi
+%   vista por um analista. E o nivel de evidencia mais forte que a base consegue ter, e e o que autoriza isolar a maquina.
+%   NAO e uma prova de causalidade: o proprio servico pode ter lancado uma shell legitima nessa janela.
+% "COMPROMISSO PROVAVEL": ha sinais fortes, mas falta a ligacao entre eles. Pede-se para confirmar no host; nao se isola.
+% Estes significados estao tambem nos factos (significado), para a interface os poder mostrar.
+
+% R20: impacto possivel + a evidencia certa no host, dentro da janela, vinda do processo do programa atacado -> impacto confirmado
+regra 20
+	se [impacto_possivel(Ev,Alvo,Vuln,Impacto) e nao impacto_excluido(Ev,Alvo,Vuln,Impacto,_) e evidencia_impacto(Impacto,Tipo,Janela) e evento_host(EvHost,Alvo,Tipo) e depois(EvHost,Ev,Janela) e vuln_afeta(Vuln,Nome) e processo_componente(Nome,Proc) e evento_processo(EvHost,Proc)]
+	entao [cria_facto(impacto_confirmado(Alvo,Ev,Impacto))].
+
+% R21: a evidencia certa aparece dentro da janela, mas vem de um processo que se sabe ser de OUTRO programa
+%      (ex.: shell aberta por um administrador via SSH) -> impacto ambiguo e incidente para inspecionar os processos, sem isolar a maquina
+regra 21
+	se [impacto_possivel(Ev,Alvo,Vuln,Impacto) e nao impacto_excluido(Ev,Alvo,Vuln,Impacto,_) e evidencia_impacto(Impacto,Tipo,Janela) e evento_host(EvHost,Alvo,Tipo) e depois(EvHost,Ev,Janela) e vuln_afeta(Vuln,Nome) e evento_processo(EvHost,Outro) e processo_componente(OutroPrograma,Outro) e nao processo_componente(Nome,Outro)]
+	entao [cria_facto(impacto_ambiguo(Alvo,Ev)),
+	       cria_facto(motivo(inc(impacto_ambiguo,Ev),evidencia_de_outro_programa(EvHost,OutroPrograma))),
+	       cria_facto(incidente(inc(impacto_ambiguo,Ev),impacto_ambiguo,Alvo,[Alvo]))].
+
+% R22: a evidencia certa aparece dentro da janela, mas nao se sabe que programa a originou (sem telemetria de processo,
+%      ou com um processo que nao esta na tabela) -> compromisso provavel: confirmar no host antes de isolar
+regra 22
+	se [impacto_possivel(Ev,Alvo,Vuln,Impacto) e nao impacto_excluido(Ev,Alvo,Vuln,Impacto,_) e evidencia_impacto(Impacto,Tipo,Janela) e evento_host(EvHost,Alvo,Tipo) e depois(EvHost,Ev,Janela) e origem_desconhecida(EvHost)]
+	entao [cria_facto(compromisso_provavel(Alvo,Ev)),
+	       cria_facto(motivo(inc(compromisso_provavel,Ev),origem_da_evidencia_desconhecida(EvHost)))].
+
+% R23: EVIDENCIA TARDIA. A evidencia certa, vinda do processo do programa atacado, aparece FORA da janela curta mas ainda
+%      dentro da janela longa (janela evidencia_tardia), e nao houve outro ataque ao mesmo ativo entretanto
+%      -> compromisso provavel. Um atacante pode deixar um implante e voltar mais tarde, mas com horas de intervalo
+%      ja nao se pode chamar "confirmado": confirma-se no host.
+regra 23
+	se [impacto_possivel(Ev,Alvo,Vuln,Impacto) e nao impacto_excluido(Ev,Alvo,Vuln,Impacto,_) e evidencia_impacto(Impacto,Tipo,Janela) e evento_host(EvHost,Alvo,Tipo) e janela(evidencia_tardia,JanelaLonga) e tardia(EvHost,Ev,Janela,JanelaLonga) e sem_ataque_intermedio(Ev,EvHost,Alvo) e vuln_afeta(Vuln,Nome) e processo_componente(Nome,Proc) e evento_processo(EvHost,Proc)]
+	entao [cria_facto(compromisso_provavel(Alvo,Ev)),
+	       cria_facto(motivo(inc(compromisso_provavel,Ev),evidencia_tardia(EvHost)))].
+
+% R24: EVIDENCIA QUE CONTRADIZ O INVENTARIO. O impacto esta excluido pela configuracao registada (ex.: CGI desligado),
+%      mas a evidencia que esse impacto deixaria aparece no host dentro da janela (ex.: uma shell logo a seguir ao ataque)
+%      -> o inventario pode estar errado: compromisso provavel, confirmar no host
+regra 24
+	se [impacto_excluido(Ev,Alvo,_,Impacto,Cond) e evidencia_impacto(Impacto,Tipo,Janela) e evento_host(EvHost,Alvo,Tipo) e depois(EvHost,Ev,Janela)]
+	entao [cria_facto(compromisso_provavel(Alvo,Ev)),
+	       cria_facto(motivo(inc(compromisso_provavel,Ev),evidencia_de_impacto_excluido(EvHost,Cond)))].
+
+% R25: confirmou-se um impacto que da ao atacante o controlo da maquina -> compromisso confirmado
+regra 25
+	se [impacto_confirmado(Alvo,Ev,Impacto) e classe_impacto(Impacto,controlo)]
+	entao [cria_facto(compromisso_confirmado(Alvo,Ev))].
+
+% R26: confirmou-se um impacto que expoe dados sem dar o controlo da maquina -> incidente "exposicao de dados":
+%      conter e avaliar o que foi exposto. Nao se isola a maquina.
+regra 26
+	se [impacto_confirmado(Alvo,Ev,Impacto) e classe_impacto(Impacto,dados)]
+	entao [cria_facto(exposicao_confirmada(Alvo,Ev)),
+	       cria_facto(motivo(inc(exposicao_de_dados,Ev),impacto_confirmado(Impacto))),
+	       cria_facto(incidente(inc(exposicao_de_dados,Ev),exposicao_de_dados,Alvo,[Alvo]))].
+
+% R27: compromisso confirmado (por qualquer via) -> isolar a maquina e abrir o incidente "compromisso"
+regra 27
+	se [compromisso_confirmado(Alvo,Ev)]
+	entao [cria_facto(acao(Alvo,isolar_maquina)),
+	       cria_facto(incidente(inc(compromisso,Ev),compromisso,Alvo,[Alvo]))].
+
+% R28: o ataque podia resultar e o sensor do host esta a funcionar -> incidente "exploracao possivel": verificar o host
+%      e corrigir a vulnerabilidade. Fica aberto enquanto nao aparecer nada mais forte para o mesmo ataque (ver grupo L).
+%      (com o sensor em baixo abre-se antes o incidente de inspecao manual, R29)
+regra 28
+	se [exploracao_possivel(Ev,Alvo,_) e nao estado_sensor(Alvo,agente_host,offline)]
+	entao [cria_facto(incidente(inc(exploracao_possivel,Ev),exploracao_possivel,Alvo,[Alvo]))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% G. SENSOR DO HOST EM BAIXO: PERGUNTA AO ANALISTA (respostas: sim / nao / nao_sei)
+% Pergunta-se pela evidencia que cada impacto possivel deixaria
+% (ex.: execucao remota -> "ha uma shell lancada pelo servico?"; SQL injection -> "o servico deu uma resposta anormalmente grande?").
+% Um impacto excluido pela configuracao (R18) nao da pergunta.
+% O texto da pergunta e das respostas que o analista ve esta nos factos (pergunta_evidencia, texto_pergunta, opcao_resposta).
+
+% R29: impacto possivel, mas o sensor do host esta offline e o analista ainda nao respondeu -> pergunta ao analista pela
+%      evidencia que esse impacto deixaria, e incidente de inspecao manual
+regra 29
+	se [impacto_possivel(Ev,Alvo,Vuln,Impacto) e nao impacto_excluido(Ev,Alvo,Vuln,Impacto,_) e estado_sensor(Alvo,agente_host,offline) e evidencia_impacto(Impacto,Tipo,_) e pergunta_evidencia(Tipo,Pergunta) e nao resposta_analista(Alvo,Ev,Pergunta,_)]
+	entao [cria_facto(pergunta_analista(Alvo,Ev,Pergunta)),
+	       cria_facto(incidente(inc(inspecao_manual,Ev),inspecao_manual,Alvo,[Alvo]))].
+
+% R30: o analista responde sim a pergunta sobre uma evidencia que um impacto possivel deixaria -> impacto confirmado
+%      (confianca alta: foi uma pessoa a ver a evidencia certa no proprio servidor)
+regra 30
+	se [resposta_analista(Alvo,Ev,Pergunta,sim) e impacto_possivel(Ev,Alvo,Vuln,Impacto) e nao impacto_excluido(Ev,Alvo,Vuln,Impacto,_) e evidencia_impacto(Impacto,Tipo,_) e pergunta_evidencia(Tipo,Pergunta)]
+	entao [cria_facto(impacto_confirmado(Alvo,Ev,Impacto))].
+
+% R31: o analista responde nao a TODAS as perguntas sobre as evidencias que os impactos possiveis deixariam
+%      -> tentativa sem impacto (um "nao" sobre a shell nao exclui outro impacto que a vulnerabilidade possa ter)
+regra 31
+	se [resposta_analista(Alvo,Ev,Pergunta,nao) e pergunta_evidencia(_,Pergunta) e exploracao_possivel(Ev,Alvo,Vuln) e evidencias_negadas(Alvo,Ev,Vuln)]
+	entao [cria_facto(tentativa_sem_impacto(Ev,Alvo,analista_sem_evidencia))].
+
+% R32: o analista responde nao_sei a uma das perguntas sobre as evidencias -> suspeita
+regra 32
+	se [resposta_analista(Alvo,Ev,Pergunta,nao_sei) e pergunta_evidencia(_,Pergunta) e exploracao_possivel(Ev,Alvo,_)]
+	entao [cria_facto(suspeita(Alvo,Ev))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% H. RECONHECIMENTO E ACESSO A SEGUIR
+
+% R33: varrimento de 100 ou mais portos e 5 ou mais logins falhados dentro da janela reconhecimento_falhas
+%      -> suspeita e origem hostil
+regra 33
+	se [reconhecimento(Ev,Alvo,Origem) e avalia(portos_sondados(Ev,>=,100)) e avalia(falhas_login(Ev,>=,5)) e janela(reconhecimento_falhas,Janela) e avalia(falhas_janela(Ev,=<,Janela))]
+	entao [cria_facto(suspeita(Alvo,Ev)),
+	       cria_facto(origem_hostil(Origem,Ev))].
+
+% R34: ativo sob suspeita -> telemetria detalhada, escuta ativa e incidente de vigilancia
+regra 34
+	se [suspeita(Alvo,Ev)]
+	entao [cria_facto(acao(Alvo,telemetria_verbosa)),
+	       cria_facto(acao(Alvo,escuta_ativa)),
+	       cria_facto(incidente(inc(vigilancia,Ev),vigilancia,Alvo,[Alvo]))].
+
+% R35: ativo sob suspeita e login com sucesso da mesma origem dentro da janela login_apos_reconhecimento -> acesso suspeito:
+%      as credenciais podem estar comprometidas, por isso revogam-se e cortam-se as sessoes. Coincidir no tempo e na
+%      origem nao chega para confirmar o compromisso nem para isolar a maquina.
+regra 35
+	se [suspeita(Alvo,Ev) e origem(Ev,Ip) e login_ok(EvLogin,Alvo,Ip,_) e janela(login_apos_reconhecimento,Janela) e depois(EvLogin,Ev,Janela)]
+	entao [cria_facto(acesso_suspeito(Alvo,EvLogin)),
+	       cria_facto(acao(Alvo,revogar_credenciais)),
+	       cria_facto(acao(Alvo,cortar_sessoes)),
+	       cria_facto(incidente(inc(acesso_suspeito,EvLogin),acesso_suspeito,Alvo,[Alvo]))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% I. POLITICAS DE ACESSO E MOVIMENTO LATERAL
+
+% R36: login com sucesso a partir de uma origem que a politica nao autoriza -> violacao de politica
+regra 36
+	se [login_ok(Ev,Destino,Origem,Servico) e nao permitido(Destino,Servico,Origem)]
+	entao [cria_facto(violacao_politica(Ev,Destino,Origem))].
+
+% R37: violacao de politica da DMZ para a rede interna -> movimento lateral, revogar credenciais, cortar sessoes e incidente.
+%      Os ativos impactados sao so o destino: a origem participou no login, mas nao esta provado que esteja comprometida.
+regra 37
+	se [violacao_politica(Ev,Destino,Origem) e zona(Origem,dmz) e zona(Destino,rede_interna)]
+	entao [cria_facto(movimento_lateral(Ev,Destino,Origem)),
+	       cria_facto(acao(Destino,revogar_credenciais)),
+	       cria_facto(acao(Destino,cortar_sessoes)),
+	       cria_facto(incidente(inc(movimento_lateral,Ev),movimento_lateral,Destino,[Destino]))].
+
+% R38: movimento lateral a partir de um ativo com um compromisso confirmado ANTES do login e ainda por recuperar
+%      -> compromisso PROVAVEL do destino.
+%      Uma maquina comprometida continua comprometida ate ser recuperada: a janela (movimento_lateral_apos_compromisso)
+%      e longa e so limita ate onde se procura para tras; quando a maquina e recuperada regista-se recuperado(Ativo, Evento).
+%      Um login vindo de uma maquina comprometida e um sinal forte, mas sozinho nao prova que o destino ficou comprometido:
+%      confirma-se no destino antes de o isolar (as credenciais e as sessoes ja foram cortadas pela R37).
+regra 38
+	se [movimento_lateral(Ev,Destino,Origem) e compromisso_confirmado(Origem,EvOrigem) e janela(movimento_lateral_apos_compromisso,Janela) e depois(Ev,EvOrigem,Janela) e nao recuperado(Origem,EvOrigem)]
+	entao [cria_facto(compromisso_provavel(Destino,Ev)),
+	       cria_facto(motivo(inc(compromisso_provavel,Ev),login_a_partir_de_ativo_comprometido(Origem,EvOrigem)))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% J. COMUNICACAO COM COMANDO E CONTROLO (C2)
+% O trafego para um IP de C2 conhecido, SOZINHO, nao confirma o compromisso: a lista de IoC pode estar desatualizada
+% ou o IP ser partilhado (alojamento partilhado, endereco reaproveitado).
+% Bloqueia-se logo a saida para esse IP. O bloqueio e uma CONTENCAO PREVENTIVA E REVERSIVEL, que nao para o servico;
+% nao e prova de compromisso (isolar a maquina, que para o servico, so se faz com o compromisso confirmado).
+% Haver outro sinal de ataque no mesmo ativo dentro da janela c2_apos_sinal aumenta muito a suspeita, mas nao garante
+% que os dois sinais sejam do mesmo ataque. Por isso:
+%   - se os dois sinais estiverem LIGADOS (o trafego para o C2 foi feito pelo processo do programa que foi atacado)
+%                                                              -> compromisso confirmado (R40)
+%   - se so coincidirem no ativo e no tempo                    -> compromisso provavel: confirmar no host (R41, R42, R43)
+% O incidente de C2 descreve sempre o IoC sozinho; a corroboracao abre outro incidente (compromisso ou compromisso provavel).
+
+% R39: trafego de saida para um C2 conhecido -> bloquear o IP (contencao preventiva) e incidente "comunicacao com C2",
+%      com o motivo "IoC nao corroborado"
+regra 39
+	se [trafego_saida(Ev,Host,Ip) e ioc(Ip,c2)]
+	entao [cria_facto(comunicacao_c2(Ev,Host,Ip)),
+	       cria_facto(acao(Host,bloquear_ip(Ip))),
+	       cria_facto(incidente(inc(comunicacao_c2,Ev),comunicacao_c2,Host,[Host])),
+	       cria_facto(motivo(inc(comunicacao_c2,Ev),ioc_nao_corroborado))].
+
+% R40: C2 + exploracao possivel no mesmo ativo dentro da janela + LIGACAO entre os dois: o trafego para o C2 foi feito
+%      pelo processo do programa que foi atacado -> compromisso confirmado
+regra 40
+	se [comunicacao_c2(Ev,Host,_) e exploracao_possivel(EvAtaque,Host,Vuln) e janela(c2_apos_sinal,Janela) e depois(Ev,EvAtaque,Janela) e vuln_afeta(Vuln,Nome) e processo_componente(Nome,Proc) e evento_processo(Ev,Proc)]
+	entao [cria_facto(compromisso_confirmado(Host,Ev)),
+	       cria_facto(motivo(inc(compromisso,Ev),c2_feito_pelo_programa_atacado(EvAtaque,Nome)))].
+
+% R41: C2 + exploracao possivel no mesmo ativo dentro da janela, mas SEM ligacao conhecida entre os dois (nao se sabe que
+%      processo fez o trafego, ou foi um processo que nao e do programa atacado) -> compromisso provavel
+regra 41
+	se [comunicacao_c2(Ev,Host,_) e exploracao_possivel(EvAtaque,Host,Vuln) e janela(c2_apos_sinal,Janela) e depois(Ev,EvAtaque,Janela) e sem_ligacao_ao_ataque(Ev,Vuln)]
+	entao [cria_facto(compromisso_provavel(Host,Ev)),
+	       cria_facto(motivo(inc(compromisso_provavel,Ev),c2_sem_ligacao_ao_ataque(EvAtaque)))].
+
+% R42: C2 com uma exploracao incerta no mesmo ativo dentro da janela -> compromisso provavel (duas evidencias fracas nao confirmam)
+regra 42
+	se [comunicacao_c2(Ev,Host,_) e exploracao_incerta(EvAtaque,Host,_) e janela(c2_apos_sinal,Janela) e depois(Ev,EvAtaque,Janela)]
+	entao [cria_facto(compromisso_provavel(Host,Ev)),
+	       cria_facto(motivo(inc(compromisso_provavel,Ev),c2_com_exploracao_incerta(EvAtaque)))].
+
+% R43: C2 com um acesso suspeito ao mesmo ativo dentro da janela -> compromisso provavel (coincidem no ativo e no tempo,
+%      mas nada liga o login ao trafego)
+regra 43
+	se [comunicacao_c2(Ev,Host,_) e acesso_suspeito(Host,EvAcesso) e janela(c2_apos_sinal,Janela) e depois(Ev,EvAcesso,Janela)]
+	entao [cria_facto(compromisso_provavel(Host,Ev)),
+	       cria_facto(motivo(inc(compromisso_provavel,Ev),c2_com_acesso_suspeito(EvAcesso)))].
+
+% R44: compromisso provavel (por qualquer via) -> incidente "compromisso provavel": confirmar no host antes de isolar (nao se isola ja)
+regra 44
+	se [compromisso_provavel(Alvo,Ev)]
+	entao [cria_facto(incidente(inc(compromisso_provavel,Ev),compromisso_provavel,Alvo,[Alvo]))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% K. CONFIRMACAO NO HOST DE UM COMPROMISSO PROVAVEL (respostas do analista: sim / nao / nao_sei)
+% O ticket de um compromisso provavel pede a alguem que va ver ao host. Estas regras recebem o resultado.
+% A pergunta e sempre a mesma (compromisso_no_host); o texto esta nos factos.
+
+% R45: compromisso provavel ainda sem resposta -> pergunta ao analista se o compromisso se confirma no host
+regra 45
+	se [compromisso_provavel(Alvo,Ev) e nao resposta_analista(Alvo,Ev,compromisso_no_host,_)]
+	entao [cria_facto(pergunta_analista(Alvo,Ev,compromisso_no_host))].
+
+% R46: o analista confirma no host -> compromisso confirmado (segue a R27: isolar a maquina).
+%      Nao se aplica quando a duvida era so sobre quem originou uma evidencia: esse caso segue pela R48,
+%      porque o que se faz depende do impacto que a evidencia confirma.
+regra 46
+	se [compromisso_provavel(Alvo,Ev) e resposta_analista(Alvo,Ev,compromisso_no_host,sim) e nao motivo(inc(compromisso_provavel,Ev),origem_da_evidencia_desconhecida(_))]
+	entao [cria_facto(compromisso_confirmado(Alvo,Ev)),
+	       cria_facto(motivo(inc(compromisso,Ev),confirmado_no_host_pelo_analista))].
+
+% R47: o analista foi ver e nao ha compromisso -> o incidente "compromisso provavel" fica resolvido (descartado)
+%      (com "nao sei" nada muda: o incidente continua aberto)
+regra 47
+	se [compromisso_provavel(Alvo,Ev) e resposta_analista(Alvo,Ev,compromisso_no_host,nao)]
+	entao [cria_facto(resolvido(inc(compromisso_provavel,Ev),descartado_pelo_analista))].
+
+% R48: o compromisso provavel vinha de uma evidencia de origem desconhecida (R22) e o analista confirma no host que foi
+%      o programa atacado -> impacto confirmado. Segue como qualquer impacto confirmado: compromisso se der o controlo
+%      da maquina (R25), exposicao de dados se so expuser dados (R26)
+regra 48
+	se [resposta_analista(Alvo,Ev,compromisso_no_host,sim) e motivo(inc(compromisso_provavel,Ev),origem_da_evidencia_desconhecida(EvHost)) e evento_host(EvHost,Alvo,Tipo) e evidencia_impacto(Impacto,Tipo,_) e impacto_possivel(Ev,Alvo,_,Impacto)]
+	entao [cria_facto(impacto_confirmado(Alvo,Ev,Impacto))].
+
+% R49: PROPAGACAO. Confirma-se o compromisso de um destino a que se chegou por um login vindo de uma maquina comprometida
+%      -> incidente "propagacao", com os dois ativos impactados (a origem e o destino estao os dois comprometidos)
+regra 49
+	se [compromisso_confirmado(Destino,Ev) e motivo(inc(compromisso_provavel,Ev),login_a_partir_de_ativo_comprometido(Origem,_))]
+	entao [cria_facto(incidente(inc(propagacao,Ev),propagacao,Destino,[Destino,Origem]))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% L. CICLO DE VIDA DOS INCIDENTES
+% As conclusoes nao se apagam. Quando um incidente deixa de ter de ser tratado, fica registado porque:
+%   superado(Incidente, IncidenteQueOSubstitui): apareceu um incidente mais forte para o mesmo caso;
+%   resolvido(Incidente, Motivo): a duvida que o incidente levantava ficou esclarecida.
+% Um sinal novo num ativo que ja tem um compromisso confirmado e sempre um incidente a parte: pode ser um segundo ataque.
+% O ticket desse incidente e dado como fechado no grupo M (R69, R70), e as perguntas que ficaram por responder sao retiradas (R71, R72).
+
+% R50: o mesmo caso ficou primeiro como compromisso provavel e depois foi confirmado (a telemetria do processo chegou
+%      mais tarde, ou o analista confirmou no host) -> o "compromisso provavel" fica superado pelo de compromisso
+regra 50
+	se [compromisso_provavel(Alvo,Ev) e compromisso_confirmado(Alvo,Ev)]
+	entao [cria_facto(superado(inc(compromisso_provavel,Ev),inc(compromisso,Ev)))].
+
+% R51: o compromisso provavel vinha de uma evidencia de origem desconhecida, e depois soube-se que foi o programa atacado
+%      e que o impacto era de exposicao de dados -> o "compromisso provavel" fica superado pela exposicao de dados
+regra 51
+	se [motivo(inc(compromisso_provavel,Ev),origem_da_evidencia_desconhecida(EvHost)) e evento_host(EvHost,Alvo,Tipo) e evidencia_impacto(Impacto,Tipo,_) e impacto_confirmado(Alvo,Ev,Impacto) e classe_impacto(Impacto,dados)]
+	entao [cria_facto(superado(inc(compromisso_provavel,Ev),inc(exposicao_de_dados,Ev)))].
+
+% R52: ha uma propagacao para o mesmo caso -> o incidente de compromisso do destino fica superado pelo de propagacao
+regra 52
+	se [incidente(inc(propagacao,Ev),propagacao,_,_) e incidente(inc(compromisso,Ev),compromisso,_,_)]
+	entao [cria_facto(superado(inc(compromisso,Ev),inc(propagacao,Ev)))].
+
+% R53: para o mesmo evento apareceu um incidente de um tipo mais forte (tabela substitui, nos factos)
+%      -> o incidente mais fraco fica superado (ex.: "exploracao possivel" por um compromisso; "comunicacao com C2"
+%      pelo compromisso que esse trafego confirmou)
+regra 53
+	se [substitui(Tipo,TipoFraco) e incidente(inc(TipoFraco,Ev),TipoFraco,_,_) e incidente(inc(Tipo,Ev),Tipo,_,_)]
+	entao [cria_facto(superado(inc(TipoFraco,Ev),inc(Tipo,Ev)))].
+
+% R54: o compromisso foi confirmado por um C2 ligado a um ataque (R40) -> os incidentes mais fracos abertos para esse
+%      ataque ("exploracao possivel", "compromisso provavel") ficam superados pelo de compromisso
+regra 54
+	se [motivo(inc(compromisso,EvC2),c2_feito_pelo_programa_atacado(EvAtaque,_)) e substitui(compromisso,Tipo) e incidente(inc(Tipo,EvAtaque),Tipo,_,_)]
+	entao [cria_facto(superado(inc(Tipo,EvAtaque),inc(compromisso,EvC2)))].
+
+% R55: havia uma inspecao manual pedida e um impacto foi confirmado -> a inspecao manual fica resolvida
+regra 55
+	se [incidente(inc(inspecao_manual,Ev),inspecao_manual,Alvo,_) e impacto_confirmado(Alvo,Ev,_)]
+	entao [cria_facto(resolvido(inc(inspecao_manual,Ev),evidencia_confirmada))].
+
+% R56: havia uma inspecao manual pedida e o analista nao viu nenhuma das evidencias -> a inspecao manual fica resolvida
+regra 56
+	se [incidente(inc(inspecao_manual,Ev),inspecao_manual,Alvo,_) e tentativa_sem_impacto(Ev,Alvo,analista_sem_evidencia)]
+	entao [cria_facto(resolvido(inc(inspecao_manual,Ev),sem_evidencia))].
+
+% R57: faltava saber uma configuracao e ela foi entretanto registada (sim ou nao) -> "configuracao por confirmar" fica resolvido
+regra 57
+	se [motivo(inc(configuracao_por_confirmar,Ev),condicao_desconhecida(Inst,Cond)) e configuracao(Inst,Cond,_)]
+	entao [cria_facto(resolvido(inc(configuracao_por_confirmar,Ev),configuracao_conhecida))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% M. GRAVIDADE, PRIORIDADE E TICKETS (decididos so aqui, para todos os incidentes)
+% A prioridade de um incidente depende de quatro fatores, todos definidos em tabelas nos factos:
+%   - severidade: quanto mal faz se for verdade (depende do tipo de incidente);
+%   - confianca: quao forte e a evidencia (depende do tipo; quando a mesma situacao pode ter evidencias de forca
+%     diferente, cada uma gera um tipo diferente, como "compromisso" e "compromisso provavel");
+%   - criticidade do ativo: ativo critico ou normal;
+%   - impacto: local (um so ativo impactado) ou alargado (mais do que um ativo impactado).
+%     Conta so os ativos impactados, nao todos os que participaram (a origem de um login nao e impactada so por isso).
+% Severidade + confianca dao a gravidade; gravidade + classe do ativo dao a prioridade de base (matriz de prioridades);
+% um impacto alargado sobe a prioridade um nivel. O ticket junta a resposta prevista para o tipo de incidente.
+
+% R58: ativo com criticidade 8 ou mais -> ativo critico
+regra 58
+	se [avalia(criticidade(Ativo,>=,8))]
+	entao [cria_facto(classe_ativo(Ativo,critico))].
+
+% R59: ativo com criticidade abaixo de 8 -> ativo normal
+regra 59
+	se [avalia(criticidade(Ativo,<,8))]
+	entao [cria_facto(classe_ativo(Ativo,normal))].
+
+% R60: incidente de um tipo com confianca alta -> a gravidade e a severidade do tipo
+regra 60
+	se [incidente(Inc,Tipo,_,_) e severidade(Tipo,S) e confianca(Tipo,alta)]
+	entao [cria_facto(gravidade(Inc,S))].
+
+% R61: incidente de um tipo com confianca baixa -> a gravidade e um nivel abaixo da severidade do tipo
+regra 61
+	se [incidente(Inc,Tipo,_,_) e severidade(Tipo,S) e confianca(Tipo,baixa) e nivel_abaixo(S,G)]
+	entao [cria_facto(gravidade(Inc,G))].
+
+% R62: o incidente envolve um so ativo (a lista de ativos impactados tem um elemento) -> impacto local
+regra 62
+	se [incidente(Inc,_,_,[_])]
+	entao [cria_facto(impacto(Inc,local))].
+
+% R63: o incidente envolve dois ou mais ativos (a lista de ativos impactados tem pelo menos dois elementos) -> impacto alargado
+regra 63
+	se [incidente(Inc,_,_,[_,_|_])]
+	entao [cria_facto(impacto(Inc,alargado))].
+
+% R64: gravidade do incidente + classe do ativo -> prioridade de base, pela matriz de prioridades (p1 = mais urgente)
+regra 64
+	se [incidente(Inc,_,Ativo,_) e gravidade(Inc,G) e classe_ativo(Ativo,C) e matriz_prioridade(G,C,P)]
+	entao [cria_facto(prioridade_base(Inc,P))].
+
+% R65: impacto local -> a prioridade e a de base
+regra 65
+	se [prioridade_base(Inc,P) e impacto(Inc,local)]
+	entao [cria_facto(prioridade(Inc,P))].
+
+% R66: impacto alargado -> a prioridade sobe um nivel em relacao a de base (p1 fica p1)
+regra 66
+	se [prioridade_base(Inc,P0) e impacto(Inc,alargado) e prioridade_acima(P0,P)]
+	entao [cria_facto(prioridade(Inc,P))].
+
+% R67: incidente com prioridade -> ticket com a resposta prevista para o tipo
+%      ticket(Incidente, Ativo, AcaoPedida, Gravidade, Prioridade, AtivosImpactados)
+regra 67
+	se [incidente(Inc,Tipo,Ativo,Impactados) e resposta(Tipo,Acao) e gravidade(Inc,G) e prioridade(Inc,P)]
+	entao [cria_facto(ticket(Inc,Ativo,Acao,G,P,Impactados))].
+
+% R68: incidente de prioridade p1 -> escalar ao nivel 2
+regra 68
+	se [prioridade(Inc,p1) e incidente(Inc,_,Ativo,_)]
+	entao [cria_facto(acao(Ativo,escalar_nivel2))].
+
+% R69: o incidente de um ticket foi superado por outro -> ticket fechado (o trabalho passa para o ticket do outro incidente)
+regra 69
+	se [ticket(Inc,_,_,_,_,_) e superado(Inc,Por)]
+	entao [cria_facto(ticket_fechado(Inc,superado_por(Por)))].
+
+% R70: o incidente de um ticket ficou resolvido -> ticket fechado
+regra 70
+	se [ticket(Inc,_,_,_,_,_) e resolvido(Inc,Motivo)]
+	entao [cria_facto(ticket_fechado(Inc,Motivo))].
+
+% R71: o ticket de um compromisso provavel fechou -> a pergunta de confirmacao no host deixa de fazer sentido e e retirada
+regra 71
+	se [pergunta_analista(Alvo,Ev,compromisso_no_host) e ticket_fechado(inc(compromisso_provavel,Ev),_)]
+	entao [cria_facto(pergunta_retirada(Alvo,Ev,compromisso_no_host))].
+
+% R72: o ticket de uma inspecao manual fechou -> as perguntas sobre as evidencias desse ataque sao retiradas
+regra 72
+	se [pergunta_analista(Alvo,Ev,Pergunta) e pergunta_evidencia(_,Pergunta) e ticket_fechado(inc(inspecao_manual,Ev),_)]
+	entao [cria_facto(pergunta_retirada(Alvo,Ev,Pergunta))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% N. VALIDACAO DO CATALOGO
+% A confirmacao (grupo F) e as perguntas ao analista (grupo G) dependem de cada impacto ter uma evidencia esperada,
+% de cada evidencia ter uma pergunta e de cada impacto ter uma classe (controlo ou dados).
+% Estas regras assinalam as falhas no catalogo, para serem corrigidas.
+% Enquanto houver uma falha de evidencia, a resposta "nao" do analista nao chega para concluir tentativa sem impacto (R31).
+
+% R73: uma vulnerabilidade tem um impacto que nao tem nenhuma evidencia esperada -> falha no catalogo
+regra 73
+	se [vuln_impacto(Vuln,Impacto) e nao evidencia_impacto(Impacto,_,_)]
+	entao [cria_facto(falha_catalogo(Vuln,impacto_sem_evidencia(Impacto)))].
+
+% R74: uma evidencia esperada de um impacto usado nao tem pergunta para o analista -> falha no catalogo
+regra 74
+	se [vuln_impacto(Vuln,Impacto) e evidencia_impacto(Impacto,Tipo,_) e nao pergunta_evidencia(Tipo,_)]
+	entao [cria_facto(falha_catalogo(Vuln,evidencia_sem_pergunta(Tipo)))].
+
+% R75: um impacto usado nao tem classe (controlo ou dados): sem ela, um impacto confirmado nao abre nenhum incidente -> falha no catalogo
+regra 75
+	se [vuln_impacto(Vuln,Impacto) e nao classe_impacto(Impacto,_)]
+	entao [cria_facto(falha_catalogo(Vuln,impacto_sem_classe(Impacto)))].
