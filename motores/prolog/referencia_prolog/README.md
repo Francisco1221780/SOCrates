@@ -4,4 +4,4 @@ Resultado do motor Prolog para cada variante de cenários, um ficheiro por varia
 
 Servem de referência para o Drools e para o comparador. Compara-se pelo conteúdo dos factos, nunca pelos números nem pela ordem de disparo.
 
-Estado: o conteúdo vem da branch `feature/motor-prolog`.
+Estado: resultados do `soc_motor.pl` sobre a base v6 (ver "Resultados de referência" no `README_motor.md`).

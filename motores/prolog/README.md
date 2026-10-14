@@ -19,4 +19,5 @@ Regras do wrapper:
 - UTF-8 nos dois lados e o processo termina sempre com `halt`.
 - A pasta da base chega por argumento, nunca por caminho fixo.
 
-Estado: estrutura criada; o motor vem da branch `feature/motor-prolog` e o wrapper ainda não existe.
+Estado: o motor (`soc_motor.pl`, ainda com o menu no mesmo ficheiro) e os resultados de referência da v6 estão aqui;
+o wrapper ainda não existe.
