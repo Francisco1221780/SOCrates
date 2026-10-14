@@ -1,0 +1,4 @@
+% Cenario 39 - web_srv_01 foi recuperado depois do compromisso do cenario 2: o incidente "compromisso" desse ataque fica
+%   resolvido, e um login vindo de web_srv_01 deixa de contar como vindo de uma maquina comprometida por esse ataque.
+
+:- novo_facto(recuperado(web_srv_01,ev_a1)).

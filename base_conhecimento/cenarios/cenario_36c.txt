@@ -1,0 +1,4 @@
+% Cenario 36c - em vez do 36b: o levantamento mostra que web_srv_04 pode entrar no PostgreSQL. O acesso do cenario 36
+%   era autorizado -> o incidente "politica por confirmar" fica resolvido. Depende do cenario 36.
+
+:- novo_facto(permitido(db_srv_01,postgresql,web_srv_04)).

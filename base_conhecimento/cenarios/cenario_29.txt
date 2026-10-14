@@ -1,0 +1,10 @@
+% Cenario 29 - SQL injection sem telemetria de processo: novo payload contra a loja de app_srv_01 e, 30 s depois, uma
+%   resposta anormalmente grande, sem o sensor dizer que processo a deu. Uma SQL injection so expoe dados
+%   -> exposicao provavel (nao compromisso da maquina): confirmar no host, sem isolar.
+
+:- novo_facto(alerta_ids(ev_ab1,app_srv_01,sig_sqli_union)).
+:- novo_facto(origem(ev_ab1,ip_203_0_113_160)).
+:- novo_facto(origem_zona(ev_ab1,internet)).
+:- novo_facto(tempo(ev_ab1,15200)).
+:- novo_facto(evento_host(ev_ab2,app_srv_01,resposta_volumosa)).
+:- novo_facto(tempo(ev_ab2,15230)).

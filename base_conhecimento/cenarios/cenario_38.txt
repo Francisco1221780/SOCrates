@@ -1,0 +1,10 @@
+% Cenario 38 - Tempo que chega depois: exploit contra web_srv_01 e uma shell do httpd, mas a hora da shell ainda nao
+%   chegou. Sem a hora nao se sabe se a shell e posterior ao ataque e se esta dentro da janela -> nada se confirma ainda.
+%   (web_srv_01 ja tem um compromisso confirmado, cenario 2; este e um ataque novo, tratado a parte.)
+
+:- novo_facto(alerta_ids(ev_af1,web_srv_01,sig_apache_path_traversal)).
+:- novo_facto(origem(ev_af1,ip_198_51_100_60)).
+:- novo_facto(origem_zona(ev_af1,internet)).
+:- novo_facto(tempo(ev_af1,17800)).
+:- novo_facto(evento_host(ev_af2,web_srv_01,shell_iniciada)).
+:- novo_facto(evento_processo(ev_af2,httpd)).

@@ -1,0 +1,4 @@
+% Cenario 3b - o analista confirma o compromisso da BD (cenario 3): compromisso confirmado e, como se chegou la a
+%   partir de uma maquina comprometida, incidente "propagacao" com os dois ativos (impacto alargado).
+
+:- novo_facto(resposta_analista(db_srv_01,ev_i1,compromisso_no_host,sim)).

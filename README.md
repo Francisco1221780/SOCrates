@@ -8,13 +8,13 @@
 ![Jackson](https://img.shields.io/badge/Jackson-2.18.2-5E5E5E)
 ![Tests](https://img.shields.io/badge/tests-JUnit%205-5E5E5E)
 ![OpenAPI](https://img.shields.io/badge/API-OpenAPI%20(springdoc)-85EA2D?logo=swagger&logoColor=black)
-![KB](https://img.shields.io/badge/knowledge%20base-v5.1-informational)
+![KB](https://img.shields.io/badge/knowledge%20base-v6-informational)
 ![Architecture](https://img.shields.io/badge/architecture-two%20engines%2C%20one%20contract-informational)
 ![GitFlow](https://img.shields.io/badge/branching-GitFlow-05122A)
 ![Conventional Commits](https://img.shields.io/badge/commits-Conventional-FE5196?logo=conventionalcommits&logoColor=white)
 
 Analista virtual de SOC: recebe a telemetria de um cenário (alertas, eventos de hosts, logins, tráfego) e
-recomenda incidentes, tickets e perguntas ao analista, aplicando a mesma base de conhecimento (v5.1, 75 regras) em
+recomenda incidentes, tickets e perguntas ao analista, aplicando a mesma base de conhecimento (v6, 92 regras) em
 dois motores de inferência, **SWI-Prolog** e **Drools**, para os poder comparar. Um backend Spring Boot expõe os
 dois atrás do mesmo contrato JSON.
 
@@ -47,9 +47,10 @@ ninguém assumir uma peça que ainda não corre.
 | Peça | Estado |
 | :--- | :--- |
 | Build Maven multi-módulo (`pom.xml` na raiz) | Feito; `.\mvnw.cmd verify` passa |
-| Módulo `motores/drools` com `MotorDrools` | Feito, com uma regra de exemplo; as 75 regras reais por portar |
+| Módulo `motores/drools` com `MotorDrools` | Feito, com uma regra de exemplo; as 92 regras reais por portar |
 | Backend: `MotorInferencia` e `DroolsAdapter` | Feito; sem endpoints REST ainda |
-| Motor Prolog (`soc_motor.pl`) e base v5.1 | Na branch `feature/motor-prolog`, por integrar em `develop` |
+| Base de conhecimento v6 (`base_conhecimento/`) | Feito: factos, 92 regras, 67 ficheiros de cenário e `soc_cenarios.pl` |
+| Motor Prolog (`soc_motor.pl`) | Na branch `feature/motor-prolog`, escrito para a v5.1; por adaptar à v6 e integrar em `develop` |
 | `wrapper.pl`, `PrologAdapter` | Por fazer |
 | Controllers, validação do pedido, UI, comparador | Por fazer |
 | Scripts de geração (`gera_meta.pl`, `gera_json.pl`) | Por fazer |
@@ -86,7 +87,7 @@ flowchart TD
     PA["engine.prolog<br/><i>PrologAdapter (previsto)</i>"]
     MD["motores/drools<br/><i>MotorDrools + regras DRL</i>"]
     MP["motores/prolog<br/><i>wrapper.pl + soc_motor.pl (processo swipl)</i>"]
-    KB["base_conhecimento<br/><i>factos, regras, cenários v5.1</i>"]
+    KB["base_conhecimento<br/><i>factos, regras, cenários v6</i>"]
 
     UI -.-> API
     API --> APP
@@ -133,7 +134,7 @@ Para cada passo o motor injeta os factos, corre até não haver conclusões nova
 
 ```json
 {
-  "versaoKB": "5.1",
+  "versaoKB": "6",
   "passos": [
     {"id": "cenario_07", "factos": [
       {"predicado": "alerta_ids", "args": ["ev_e1", "web_srv_04", "sig_apache_path_traversal"]}
@@ -166,7 +167,7 @@ A comparação entre motores faz-se pelo conteúdo dos factos, nunca pelos núme
 .
 ├── pom.xml                       agregador Maven: motores/drools e backend/cyber
 ├── mvnw, mvnw.cmd, .mvn/         Maven Wrapper (Maven 3.10.0), partilhado por todos os módulos
-├── base_conhecimento/            fonte única da base v5.1: soc_factos/regras/suporte.txt, cenarios/
+├── base_conhecimento/            fonte única da base v6: soc_factos/regras/suporte.txt, cenarios/
 ├── motores/
 │   ├── drools/                   módulo Maven sem Spring: MotorDrools, regras DRL, kmodule.xml, testes
 │   └── prolog/                   motor SWI-Prolog, wrapper, ferramentas, referencia_prolog/
@@ -194,14 +195,15 @@ limita-se a adaptadores. Há quatro blocos.
 - **`motores/prolog`** — o núcleo (`soc_motor.pl`) faz encadeamento direto com metaconhecimento, todas as
   instanciações e ponto fixo. O `wrapper.pl` previsto lê o pedido do `stdin` e escreve um único documento JSON no
   `stdout`.
-- **`base_conhecimento`** — 272 factos fixos, 75 regras e 51 ficheiros de cenário (34 cenários, com variantes); é o que os dois motores
-  têm de reproduzir de forma igual.
+- **`base_conhecimento`** — 314 factos fixos, 92 regras e 67 ficheiros de cenário (39 cenários numerados, com variantes e
+  respostas do analista); é o que os dois motores têm de reproduzir de forma igual.
 - **`backend/cyber`** — `CyberApplication` e os pacotes da tabela de arquitetura; hoje contém a interface
   `MotorInferencia` e o `DroolsAdapter`.
 
-> **O motor Prolog e a base ainda não estão em `develop`.** Vivem na branch `feature/motor-prolog` com os
-> resultados de referência (931 factos, 50 incidentes, 50 tickets para os cenários 1 a 29b), que servem de
-> verdade-terreno para o Drools. Quando essa branch entrar, `base_conhecimento/` sobe da pasta `motores/`.
+> **O motor Prolog ainda não está em `develop`.** Vive na branch `feature/motor-prolog`, escrito para a base
+> v5.1 (75 regras). A v6 pede uma alteração ao motor: reavaliar uma regra quando chega um facto lido por uma
+> condição calculada (`condicao_le/2`, em `soc_suporte.txt`), que o motor atual não tem. Os resultados de
+> referência dessa branch (931 factos, 50 incidentes, 50 tickets) são da v5.1 e têm de ser regenerados.
 
 ---
 
@@ -281,7 +283,7 @@ Não há pipeline de CI configurada; os testes correm só localmente.
 | [`motores/README.md`](motores/README.md) | Um projeto por motor e como cada um corre |
 | [`motores/drools/README.md`](motores/drools/README.md) | Módulo Drools: contrato, regras e testes |
 | [`motores/prolog/README.md`](motores/prolog/README.md) | Lado Prolog: núcleo, menu, wrapper e regras do wrapper |
-| [`base_conhecimento/README.md`](base_conhecimento/README.md) | A base v5.1 e as regras de a manter |
+| [`base_conhecimento/README.md`](base_conhecimento/README.md) | A base v6 e as regras de a manter |
 | [`backend/cyber/src/main/java/cyberrangers/cyber/engine/prolog/README.md`](backend/cyber/src/main/java/cyberrangers/cyber/engine/prolog/README.md) | Critérios que o `PrologAdapter` tem de cumprir (processo, UTF-8, timeout) |
 | [`docs/README.md`](docs/README.md) | Documentação e decisões de arquitetura previstas |
 

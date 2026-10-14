@@ -1,0 +1,8 @@
+% Cenario 10 - Reconhecimento: varredura e logins falhados contra web_srv_02 -> suspeita e origem em vigilancia.
+
+:- novo_facto(reconhecimento(ev_j1,web_srv_02,ip_192_0_2_77)).
+:- novo_facto(portos_sondados(ev_j1,450)).
+:- novo_facto(falhas_login(ev_j1,12)).
+:- novo_facto(falhas_janela(ev_j1,180)).
+:- novo_facto(origem(ev_j1,ip_192_0_2_77)).
+:- novo_facto(tempo(ev_j1,6000)).

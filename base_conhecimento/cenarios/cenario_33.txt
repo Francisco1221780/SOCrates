@@ -1,0 +1,5 @@
+% Cenario 33 - Atividade normal: um administrador entra por SSH na base de dados a partir da jumpbox, como a politica
+%   permite. Nao e violacao de politica nem movimento lateral -> o sistema nao conclui nada (controlo negativo).
+
+:- novo_facto(login_ok(ev_ok4,db_srv_01,jumpbox_admin,ssh)).
+:- novo_facto(tempo(ev_ok4,19600)).

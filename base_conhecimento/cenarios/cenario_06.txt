@@ -1,0 +1,6 @@
+% Cenario 6 - Versao desconhecida: web_srv_05 tem Apache mas o inventario nao sabe a versao -> exploracao incerta.
+
+:- novo_facto(alerta_ids(ev_f1,web_srv_05,sig_apache_path_traversal)).
+:- novo_facto(origem(ev_f1,ip_198_51_100_22)).
+:- novo_facto(origem_zona(ev_f1,internet)).
+:- novo_facto(tempo(ev_f1,2200)).

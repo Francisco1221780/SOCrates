@@ -1,0 +1,8 @@
+% Cenario 16 - Duas instalacoes do mesmo programa: exploit de Apache vindo da internet contra web_srv_08. O porto 80 e do
+%   site publico (2.4.52, corrigido); a consola antiga (2.4.49, vulneravel) so escuta no 8081, fechado a internet.
+%   O vetor so chega a instalacao corrigida -> tentativa sem impacto (versao corrigida), sem exploracao possivel.
+
+:- novo_facto(alerta_ids(ev_r1,web_srv_08,sig_apache_path_traversal)).
+:- novo_facto(origem(ev_r1,ip_203_0_113_120)).
+:- novo_facto(origem_zona(ev_r1,internet)).
+:- novo_facto(tempo(ev_r1,10000)).

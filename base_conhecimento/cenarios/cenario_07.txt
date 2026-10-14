@@ -1,0 +1,9 @@
+% Cenario 7 - Agente offline: exploit viavel contra web_srv_04 (CGI ativo) e o agente de host esta em baixo -> pergunta
+%   ao analista pela evidencia que a execucao de comandos deixaria: ha uma shell lancada pelo servico? Abrem-se dois
+%   incidentes: a inspecao manual (responder a pergunta) e a exploracao possivel (verificar o host e corrigir a vulnerabilidade).
+
+:- novo_facto(estado_sensor(web_srv_04,agente_host,offline)).
+:- novo_facto(alerta_ids(ev_e1,web_srv_04,sig_apache_path_traversal)).
+:- novo_facto(origem(ev_e1,ip_198_51_100_23)).
+:- novo_facto(origem_zona(ev_e1,internet)).
+:- novo_facto(tempo(ev_e1,3000)).

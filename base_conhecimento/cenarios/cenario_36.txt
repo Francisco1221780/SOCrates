@@ -1,0 +1,6 @@
+% Cenario 36 - Politica por confirmar: web_srv_04, na DMZ, entra no PostgreSQL da base de dados. A politica so tem
+%   registado o acesso da loja (app_srv_01), e o levantamento dos outros acessos ainda nao foi feito. A falta de
+%   autorizacao nao prova que o acesso e proibido -> "politica por confirmar", sem movimento lateral.
+
+:- novo_facto(login_ok(ev_ad1,db_srv_01,web_srv_04,postgresql)).
+:- novo_facto(tempo(ev_ad1,17400)).

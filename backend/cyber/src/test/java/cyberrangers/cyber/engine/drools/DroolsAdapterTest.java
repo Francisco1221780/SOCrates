@@ -12,7 +12,7 @@ class DroolsAdapterTest {
     @Test
     void chamaOMotorDrools() {
         String pedido = """
-                {"versaoKB":"5.1","passos":[{"id":"p1","factos":[
+                {"versaoKB":"6","passos":[{"id":"p1","factos":[
                   {"predicado":"alerta_ids","args":["ev_e1","web_srv_04","sig_x"]}]}]}
                 """;
         assertEquals("drools", adapter.nome());
