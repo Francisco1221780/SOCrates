@@ -4,8 +4,10 @@
 
 O motor está em dois ficheiros: `soc_motor.pl` é só o núcleo (carregar a base, inferir, injetar factos e cenários), sem menu, sem ler do teclado e sem escrever no `stdout`; as mensagens ("Base carregada…", "29 factos novos…") vão para o `stderr` com `print_message/2`. `soc_menu.pl` carrega o núcleo e acrescenta as explicações (`como`, `whynot`), a visualização e o menu. O `wrapper.pl` usa só o núcleo.
 
-> **Base v6.** A base em `base_conhecimento/` é agora a v6 (314 factos, 92 regras). O motor carrega-a e corre-a, mas
-> ainda não faz a reavaliação por `condicao_le/2` que a v6 pede, e os resultados de referência da v6 estão por gerar.
+> **Base v6.** A base em `base_conhecimento/` é a v6 (314 factos, 92 regras). A v6 pede que uma regra seja reavaliada
+> quando chega um facto lido por uma condição calculada (`condicao_le/2`). O motor não o faz diretamente, mas chega ao
+> mesmo resultado porque repete as passagens por todos os factos até ao ponto fixo. Os resultados de referência da v6
+> estão em [`referencia_prolog/`](referencia_prolog/).
 
 ## Ficheiros e onde ficam
 

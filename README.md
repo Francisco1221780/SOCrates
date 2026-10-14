@@ -50,7 +50,7 @@ ninguém assumir uma peça que ainda não corre.
 | Módulo `motores/drools` com `MotorDrools` | Feito, com uma regra de exemplo; as 92 regras reais por portar |
 | Backend: `MotorInferencia` e `DroolsAdapter` | Feito; sem endpoints REST ainda |
 | Base de conhecimento v6 (`base_conhecimento/`) | Feito: factos, 92 regras, 67 ficheiros de cenário e `soc_cenarios.pl` |
-| Motor Prolog (`soc_motor.pl`) | Em `motores/prolog/`; corre a v6, mas foi escrito para a v5.1: falta a reavaliação por `condicao_le/2` |
+| Motor Prolog (`soc_motor.pl`) | Feito: corre a v6; resultados de referência em `motores/prolog/referencia_prolog/` |
 | `wrapper.pl` (`motores/prolog/`) | Feito: pedido e resposta JSON, passos, erros (issue #9) |
 | `PrologAdapter` | Por fazer |
 | Controllers, validação do pedido, UI, comparador | Por fazer |
@@ -201,10 +201,10 @@ limita-se a adaptadores. Há quatro blocos.
 - **`backend/cyber`** — `CyberApplication` e os pacotes da tabela de arquitetura; hoje contém a interface
   `MotorInferencia` e o `DroolsAdapter`.
 
-> **O motor Prolog foi escrito para a base v5.1 (75 regras).** Carrega e corre a v6, mas a v6 pede uma
-> alteração ao motor: reavaliar uma regra quando chega um facto lido por uma condição calculada (`condicao_le/2`,
-> em `soc_suporte.txt`), que o motor atual não tem. Os resultados de referência (`motores/prolog/referencia_prolog/`)
-> geram-se para a v6 depois dessa alteração; os da v5.1 ficaram só no histórico do git.
+> **Motor Prolog e base v6.** A v6 pede ao motor que reavalie uma regra quando chega um facto lido por uma
+> condição calculada (`condicao_le/2`, em `soc_suporte.txt`). O `soc_motor.pl` chega ao mesmo resultado porque
+> repete as passagens por todos os factos até não haver conclusões novas: nas 10 variantes de
+> `motores/prolog/referencia_prolog/` dá os mesmos factos que uma versão que segue o requisito à letra.
 
 ---
 
