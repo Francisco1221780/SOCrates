@@ -19,7 +19,6 @@
     <properties>
         <java.version>25</java.version>
         <springdoc.version>3.1.1</springdoc.version>
-        <drools.version>7.74.1.Final</drools.version>
     </properties>
 
     <dependencies>
@@ -37,9 +36,9 @@
             <version>${springdoc.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.kie</groupId>
-            <artifactId>kie-api</artifactId>
-            <version>${drools.version}</version>
+            <groupId>CyberRangers</groupId>
+            <artifactId>motores-drools</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
