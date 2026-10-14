@@ -1,6 +1,0 @@
-% Cenario 5 - Ruido: exploit de Apache contra a BD (nao tem Apache e nao expoe o porto 80; inventario completo).
-
-:- novo_facto(alerta_ids(ev_d1,db_srv_01,sig_apache_path_traversal)).
-:- novo_facto(origem(ev_d1,ip_198_51_100_21)).
-:- novo_facto(origem_zona(ev_d1,internet)).
-:- novo_facto(tempo(ev_d1,2100)).

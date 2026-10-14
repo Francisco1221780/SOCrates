@@ -1,8 +1,0 @@
-% Cenario 13 - Inventario incompleto: exploit de Apache contra web_srv_07, servidor descoberto agora,
-%   sem portos nem programas registados. Nao se conclui que o ataque nao podia resultar:
-%   exploracao incerta e tickets para recolher o inventario de rede e o de software.
-
-:- novo_facto(alerta_ids(ev_m1,web_srv_07,sig_apache_path_traversal)).
-:- novo_facto(origem(ev_m1,ip_198_51_100_31)).
-:- novo_facto(origem_zona(ev_m1,internet)).
-:- novo_facto(tempo(ev_m1,9000)).

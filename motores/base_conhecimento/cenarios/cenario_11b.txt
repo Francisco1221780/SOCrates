@@ -1,4 +1,0 @@
-% Cenario 11b - A ligacao aparece: o sensor diz que o trafego para o C2 foi feito pelo processo da aplicacao Java que
-%   usa o log4j, o programa atacado. Os dois sinais ficam ligados -> compromisso confirmado; o provavel fica superado.
-
-:- novo_facto(evento_processo(ev_k1,java_loja)).

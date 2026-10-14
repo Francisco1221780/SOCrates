@@ -1,5 +1,0 @@
-% Cenario 18 - Movimento lateral sem propagacao: login SSH na jumpbox (ativo normal) a partir de web_srv_02, na DMZ, sem
-%   autorizacao. web_srv_02 nao esta comprometido, por isso so a jumpbox e impactada: impacto local e prioridade p2.
-
-:- novo_facto(login_ok(ev_t1,jumpbox_admin,web_srv_02,ssh)).
-:- novo_facto(tempo(ev_t1,10400)).

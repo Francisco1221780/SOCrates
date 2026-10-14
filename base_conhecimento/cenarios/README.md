@@ -6,4 +6,4 @@ Telemetria e respostas do analista usadas para testar e demonstrar a base, um fi
 - Nas variantes 7b e 19b usa-se só uma das respostas (`_sim`, `_nao`, `_nao_sei`); o 29c usa-se em vez do 29b.
 - Os cenários 30 a 34 são atividade normal e não devem concluir nada.
 
-Estado: o conteúdo vem da branch `feature/motor-prolog`.
+Estado: os 67 ficheiros de cenário da v6 e o `indice.txt`.

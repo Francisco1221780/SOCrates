@@ -1,7 +1,0 @@
-% Cenario 15 - Ramo corrigido a parte: Log4Shell contra app_srv_02, que tem o log4j 2.12.2. Esta versao fica entre 2.0.0
-%   e 2.14.1, mas fora de todos os intervalos afetados -> tentativa sem impacto (versao corrigida).
-
-:- novo_facto(alerta_ids(ev_q1,app_srv_02,sig_log4shell_jndi)).
-:- novo_facto(origem(ev_q1,ip_203_0_113_99)).
-:- novo_facto(origem_zona(ev_q1,internet)).
-:- novo_facto(tempo(ev_q1,9800)).

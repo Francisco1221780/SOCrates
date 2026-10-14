@@ -1,3 +1,0 @@
-% Cenario 17b - o analista ainda nao conseguiu verificar web_srv_05 (cenario 17): nada muda, o incidente continua aberto.
-
-:- novo_facto(resposta_analista(web_srv_05,ev_s1,compromisso_no_host,nao_sei)).

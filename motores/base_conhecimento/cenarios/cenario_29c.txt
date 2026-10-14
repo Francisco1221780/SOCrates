@@ -1,4 +1,0 @@
-% Cenario 29c - em vez do 29b: a telemetria do processo nao chega e e o analista que confirma no host que foi a loja
-%   a dar a resposta (cenario 29). Confirma-se a SQL injection -> exposicao de dados, sem isolar a maquina.
-
-:- novo_facto(resposta_analista(app_srv_01,ev_ab1,compromisso_no_host,sim)).

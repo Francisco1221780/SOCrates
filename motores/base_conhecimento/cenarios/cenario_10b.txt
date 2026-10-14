@@ -1,5 +1,0 @@
-% Cenario 10b - Acesso apos reconhecimento: login da mesma origem 5 min depois (janela de 15 min) -> acesso suspeito:
-%   revogar credenciais e cortar sessoes, sem isolar a maquina.
-
-:- novo_facto(login_ok(ev_j2,web_srv_02,ip_192_0_2_77,ssh)).
-:- novo_facto(tempo(ev_j2,6300)).

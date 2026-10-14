@@ -1,8 +1,0 @@
-% Cenario 24 - CGI desligado: exploit de Apache contra web_srv_09 (2.4.49, vulneravel, mas com o CGI desligado).
-%   A execucao de comandos fica excluida. Nao se conclui "sem impacto" (a instalacao e vulneravel): fica como
-%   exploracao possivel, com um ticket para verificar o host e corrigir a vulnerabilidade.
-
-:- novo_facto(alerta_ids(ev_z1,web_srv_09,sig_apache_path_traversal)).
-:- novo_facto(origem(ev_z1,ip_198_51_100_50)).
-:- novo_facto(origem_zona(ev_z1,internet)).
-:- novo_facto(tempo(ev_z1,11600)).

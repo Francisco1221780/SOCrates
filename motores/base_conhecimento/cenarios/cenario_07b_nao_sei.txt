@@ -1,5 +1,0 @@
-% Cenario 7b (resposta: nao sei) - o analista responde a pergunta sobre a shell do cenario 7 (web_srv_04).
-%   Nao consegue verificar -> suspeita: o servidor fica em vigilancia e o ticket de inspecao manual continua aberto.
-%   Usa-se UM dos ficheiros cenario_07b_*.txt, nao os tres. Depende do cenario 7.
-
-:- novo_facto(resposta_analista(web_srv_04,ev_e1,shell_servico,nao_sei)).

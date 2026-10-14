@@ -1,7 +1,0 @@
-% Cenario 1 - Tentativa sem impacto: exploit contra web_srv_02 (Apache 2.4.52, acima do intervalo
-%   afetado), com inventario completo. O IDS acertou: e uma tentativa real. Fica registada e a origem em vigilancia.
-
-:- novo_facto(alerta_ids(ev_b1,web_srv_02,sig_apache_path_traversal)).
-:- novo_facto(origem(ev_b1,ip_203_0_113_50)).
-:- novo_facto(origem_zona(ev_b1,internet)).
-:- novo_facto(tempo(ev_b1,900)).

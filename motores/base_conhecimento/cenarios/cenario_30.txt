@@ -1,6 +1,0 @@
-% Cenario 30 - Atividade normal: um administrador abre uma shell na jumpbox, por SSH. Nao houve nenhum ataque a jumpbox,
-%   por isso a shell nao e evidencia de nada -> o sistema nao conclui nada (controlo negativo).
-
-:- novo_facto(evento_host(ev_ok1,jumpbox_admin,shell_iniciada)).
-:- novo_facto(evento_processo(ev_ok1,sshd)).
-:- novo_facto(tempo(ev_ok1,16000)).

@@ -1,6 +1,0 @@
-% Cenario 28 - Movimento lateral horas depois: novo login SSH na BD a partir de web_srv_01, quase 4 h depois do
-%   compromisso. A maquina continua comprometida (ninguem registou que foi recuperada) -> compromisso provavel da BD,
-%   como no cenario 3. Se antes do login se registasse recuperado(web_srv_01, ev_a1), ficava so o movimento lateral.
-
-:- novo_facto(login_ok(ev_i3,db_srv_01,web_srv_01,ssh)).
-:- novo_facto(tempo(ev_i3,15000)).

@@ -1,7 +1,0 @@
-% Cenario 27 - Versao num formato desconhecido: exploit de Apache contra web_srv_11, cuja versao esta registada como
-%   '2.4.49-ubuntu1'. A base nao a sabe comparar com o catalogo -> exploracao incerta e "versao por confirmar".
-
-:- novo_facto(alerta_ids(ev_aa1,web_srv_11,sig_apache_path_traversal)).
-:- novo_facto(origem(ev_aa1,ip_198_51_100_52)).
-:- novo_facto(origem_zona(ev_aa1,internet)).
-:- novo_facto(tempo(ev_aa1,12400)).

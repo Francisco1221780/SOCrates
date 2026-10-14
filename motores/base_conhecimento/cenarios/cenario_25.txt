@@ -1,7 +1,0 @@
-% Cenario 25 - Configuracao desconhecida: exploit de Apache contra web_srv_10 (2.4.49, vulneravel), que nao tem a
-%   configuracao inventariada. Na duvida, a execucao de comandos conta como possivel, e pede-se para verificar a configuracao.
-
-:- novo_facto(alerta_ids(ev_n1,web_srv_10,sig_apache_path_traversal)).
-:- novo_facto(origem(ev_n1,ip_198_51_100_51)).
-:- novo_facto(origem_zona(ev_n1,internet)).
-:- novo_facto(tempo(ev_n1,11800)).

@@ -1,9 +1,0 @@
-% Cenario 22 - Porto de destino conhecido: exploit de Apache contra web_srv_08 vindo da rede interna, para o porto 80 (tcp).
-%   Da rede interna chega-se as duas instalacoes do Apache (80 e 8081), mas o alerta diz que o ataque foi ao 80, o site
-%   corrigido. So esse conta: tentativa sem impacto, sem exploracao possivel na consola antiga (8081).
-
-:- novo_facto(alerta_ids(ev_v1,web_srv_08,sig_apache_path_traversal)).
-:- novo_facto(destino(ev_v1,80,tcp)).
-:- novo_facto(origem(ev_v1,ip_192_0_2_140)).
-:- novo_facto(origem_zona(ev_v1,rede_interna)).
-:- novo_facto(tempo(ev_v1,11200)).

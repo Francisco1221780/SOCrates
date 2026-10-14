@@ -20,7 +20,7 @@
 %   ?- consult('soc_motor.pl').
 %   ?- menu.                                    (interface)
 % ou, a mao:
-%   ?- carrega_bc('../base_conhecimento/soc_factos.txt').
+%   ?- carrega_bc('../../base_conhecimento/soc_factos.txt').
 %   ?- introduz_facto(alerta_ids(ev_b1,web_srv_02,sig_apache_path_traversal)), ...
 %   ?- arranca_motor.
 %   ?- como(N).   ?- como(compromisso_confirmado(web_srv_01,ev_a1)).
@@ -615,7 +615,7 @@ menu :-
 
 executa(0) :- !.
 executa(1) :- !,
-	le('Ficheiro da base (ex.: \'../base_conhecimento/soc_factos.txt\')', F),
+	le('Ficheiro da base (ex.: \'../../base_conhecimento/soc_factos.txt\')', F),
 	carrega_bc(F).
 executa(Op) :-
 	\+ bc_carregada, Op \== 12, !,

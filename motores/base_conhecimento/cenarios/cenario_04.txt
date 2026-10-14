@@ -1,6 +1,0 @@
-% Cenario 4 - Backport: web_srv_03 tem a versao 2.4.49 mas a distribuicao ja aplicou o patch -> nao afetado.
-
-:- novo_facto(alerta_ids(ev_c1,web_srv_03,sig_apache_path_traversal)).
-:- novo_facto(origem(ev_c1,ip_198_51_100_20)).
-:- novo_facto(origem_zona(ev_c1,internet)).
-:- novo_facto(tempo(ev_c1,2000)).

@@ -2,33 +2,37 @@
 
 `soc_motor.pl` é o motor de inferência em SWI-Prolog que corre a base de conhecimento v5.1 (`soc_factos.txt`, `soc_regras.txt`, `soc_suporte.txt`). Parte do `sp_exp2.pl` da UC e acrescenta o que a v5.1 exige (alterações M1 a M4 da issue #3), a injeção dos ficheiros de cenário, explicações melhoradas e um menu de texto.
 
+> **Base v6.** A base em `base_conhecimento/` é agora a v6 (314 factos, 92 regras). O motor carrega-a e corre-a, mas
+> ainda não faz a reavaliação por `condicao_le/2` que a v6 pede, e os resultados de referência abaixo são da v5.1.
+
 ## Ficheiros e onde ficam
 
-O motor e a base de conhecimento estão em pastas separadas dentro de `motores/`:
+O motor fica em `motores/prolog/` e a base de conhecimento em `base_conhecimento/`, na raiz do repositório:
 
 ```
-motores/
-├── prolog/
-│   ├── soc_motor.pl        ← o motor
-│   ├── README_motor.md     ← este ficheiro
-│   └── referencia_prolog/  ← resultados de referência do motor, um ficheiro por variante
+.
+├── motores/
+│   └── prolog/
+│       ├── soc_motor.pl        ← o motor
+│       ├── README_motor.md     ← este ficheiro
+│       └── referencia_prolog/  ← resultados de referência do motor (v5.1), um ficheiro por variante
 └── base_conhecimento/
-    ├── soc_factos.txt      ← os 272 factos fixos; é o ficheiro que se carrega
-    ├── soc_regras.txt      ← as 75 regras (carregado pelo soc_factos.txt)
+    ├── soc_factos.txt      ← os factos fixos; é o ficheiro que se carrega
+    ├── soc_regras.txt      ← as regras (carregado pelo soc_factos.txt)
     ├── soc_suporte.txt     ← metaconhecimento e condições calculadas (carregado pelo soc_factos.txt)
     ├── soc_cenarios.pl     ← liga cada nome de cenário (c1, c2, …) ao seu ficheiro (carregado pelo motor)
     └── cenarios/
         ├── indice.txt      ← a ordem dos cenários e o que cada um testa (só para pessoas)
         ├── cenario_01.txt
         ├── …
-        └── cenario_34.txt
+        └── cenario_39.txt
 ```
 
 - O motor não depende da pasta onde está: o `carrega_bc` guarda a pasta do `soc_factos.txt` e procura lá tudo o resto.
 - Os ficheiros da base têm de ficar juntos em `base_conhecimento/`, porque o `soc_factos.txt` carrega o `soc_regras.txt` e o `soc_suporte.txt` a partir da sua própria pasta.
 - O `soc_cenarios.pl` tem de estar ao lado do `soc_factos.txt`: o `carrega_bc` carrega-o sozinho a partir daí. Sem ele, os cenários só se injetam pelo nome do ficheiro (`injeta_ficheiro/1`).
 - A pasta `cenarios/` também fica ao lado do `soc_factos.txt`. Os caminhos dos cenários são relativos a essa pasta, por isso funcionam seja qual for a pasta de trabalho do Prolog.
-- O metaconhecimento do `soc_suporte.txt` (`facto_dispara_regras/2`) foi gerado pelo `gera_meta.pl`, que não está neste repositório. Não é preciso para correr o motor, só para o regenerar quando as regras mudam.
+- O metaconhecimento do `soc_suporte.txt` (`facto_dispara_regras/2`) é gerado pelo `ferramentas/gera_meta.pl`. Não é preciso para correr o motor, só para o regenerar quando as regras mudam.
 
 ## Começar
 
@@ -37,10 +41,10 @@ Abre o SWI-Prolog na pasta `motores/prolog/` (por exemplo, `cd motores/prolog &&
 ```prolog
 ?- working_directory(_, '/caminho/para/CyberRangers/motores/prolog/').
 ?- consult('soc_motor.pl').
-?- carrega_bc('../base_conhecimento/soc_factos.txt').
-Base carregada: 272 factos e 75 regras.
+?- carrega_bc('../../base_conhecimento/soc_factos.txt').
+Base carregada: 314 factos e 92 regras.
 ?- arranca_motor.
-29 factos novos (n. 273 a 301).
+29 factos novos (n. 315 a 343).
 ```
 
 O caminho dado ao `carrega_bc` é relativo à pasta de trabalho do Prolog. Também se pode dar o caminho absoluto, e então a pasta de trabalho não interessa. Escrever só `'soc_factos.txt'` a partir de `motores/prolog/` dá o erro "does not exist".
@@ -217,7 +221,7 @@ Com a base v5.1:
 | `injeta_todos` (1 a 29b + 30 a 34) | 947 factos, com as mesmas 520 conclusões: os cenários 30 a 34 não acrescentam nenhuma |
 | 1 a 29b + respostas 3b, 10d e 17b | 957 factos, 52 incidentes, 35 tickets abertos, 17 fechados, e o incidente "propagação" com dois ativos |
 
-Estes valores foram confirmados com a organização atual das pastas (motor em `prolog/`, base em `base_conhecimento/`). As outras variantes do README da v5.1 estão em [`referencia_prolog/`](referencia_prolog/), com um ficheiro por variante (`base.txt`, `respostas_3b_10d_17b.txt`, …). Cada linha tem o número do facto, o facto e a regra que o concluiu (ou `dado`), separados por tabulações. Servem de referência para o Drools e para o comparador.
+Estes valores são da base v5.1 (que já não está no repositório; está no histórico do git) e têm de ser regenerados para a v6. As outras variantes do README da v5.1 estão em [`referencia_prolog/`](referencia_prolog/), com um ficheiro por variante (`base.txt`, `respostas_3b_10d_17b.txt`, …). Cada linha tem o número do facto, o facto e a regra que o concluiu (ou `dado`), separados por tabulações. Servem de referência para o Drools e para o comparador.
 
 ## Notas
 
