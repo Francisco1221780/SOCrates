@@ -1,11 +1,13 @@
 % =====================================================================================
 % MOTOR DE INFERENCIA - Analista virtual de SOC (CyberRangers)
 % Parte do sp_exp2.pl da UC (encadeamento direto, metaconhecimento, negacao "nao",
-% explicacoes "como" e "porque nao") e acrescenta o que a base de conhecimento v5.1 exige:
+% explicacoes "como" e "porque nao") e acrescenta o que a base de conhecimento v6 exige:
 %   1. CONDICOES CALCULADAS: uma condicao C com condicao_calculada(C) avalia-se com call(C)
 %      (depois/3, versao_cmp/3, anterior/2, ...), em vez de se procurar como facto.
 %   2. TODAS AS INSTANCIACOES: cada regra dispara para todas as combinacoes de factos que
 %      verificam o seu LHS e em que entra o facto que a acionou (o sp_exp2 so disparava a primeira).
+%      Quando chega um facto que uma condicao calculada da regra le (condicao_le/2 da base, v6), a regra
+%      avalia-se por inteiro, sem exigir que esse facto seja uma das premissas.
 %   3. PONTO FIXO: o arranca_motor percorre os factos por ordem, incluindo os que vai criando,
 %      e repete a passagem ate nao haver conclusoes novas (no sp_exp2 era preciso chama-lo varias vezes).
 %   4. SEM PAUSA NEM ESCRITA no cria_facto (o get0 e o write do sp_exp2). As duas passam a ser opcoes,
@@ -141,11 +143,18 @@ facto_dispara_regras1(_, LRegras) :-
 
 % Dispara a regra ID para TODAS as instanciacoes em que o facto N e uma das premissas.
 % O forall volta atras por cada posicao do facto no LHS e por cada combinacao dos outros factos.
+% Se o facto for lido por uma condicao calculada da regra (condicao_le/2 da base), a regra avalia-se tambem por inteiro,
+% sem exigir que o facto seja uma das premissas: ex.: o tempo de um evento que chega depois do evento torna verdadeira
+% uma condicao depois/3 de uma regra em que esse tempo nao aparece diretamente.
 dispara_regra(N, Facto, ID) :-
 	forall(( regra ID se LHS entao RHS,
 		 facto_esta_numa_condicao(Facto, LHS),
 		 verifica_condicoes(LHS, LFactos),
 		 memberchk(N, LFactos) ),
+	       concluir(RHS, ID, LFactos)),
+	forall(( regra ID se LHS entao RHS,
+		 \+ \+ facto_lido_por_condicao_calculada(Facto, LHS),
+		 verifica_condicoes(LHS, LFactos) ),
 	       concluir(RHS, ID, LFactos)).
 
 
@@ -156,6 +165,24 @@ facto_esta_numa_condicao(F, [avalia(F1) e _]) :- F =.. [H,H1|_], F1 =.. [H,H1|_]
 facto_esta_numa_condicao(F, [_ e Fs]) :- facto_esta_numa_condicao(F, [Fs]).
 facto_esta_numa_condicao(F, [F]).
 facto_esta_numa_condicao(F, [avalia(F1)]) :- F =.. [H,H1|_], F1 =.. [H,H1|_].
+
+
+% O facto e lido por uma condicao calculada positiva do LHS: a base diz, com condicao_le(Condicao, Factos), que factos
+% podem tornar a condicao verdadeira. Sem condicao_le/2 na base (ex.: bases da UC), nunca se verifica.
+
+facto_lido_por_condicao_calculada(F, LHS) :-
+	current_predicate(condicao_le/2),
+	condicao_do_lhs(C, LHS),
+	C \= nao(_),
+	calculada(C),
+	condicao_le(C, Lidos),
+	member(L, Lidos),
+	\+ \+ F = L, !.
+
+condicao_do_lhs(C, [L]) :- condicao_da_conjuncao(C, L).
+
+condicao_da_conjuncao(C, A e B) :- !, ( C = A ; condicao_da_conjuncao(C, B) ).
+condicao_da_conjuncao(C, C).
 
 
 % Verificar o LHS. LFactos guarda, por cada condicao, o numero do facto que a verificou

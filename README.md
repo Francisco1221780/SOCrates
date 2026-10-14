@@ -51,7 +51,8 @@ ninguém assumir uma peça que ainda não corre.
 | Backend: `MotorInferencia` e `DroolsAdapter` | Feito; sem endpoints REST ainda |
 | Base de conhecimento v6 (`base_conhecimento/`) | Feito: factos, 92 regras, 67 ficheiros de cenário e `soc_cenarios.pl` |
 | Motor Prolog (`soc_motor.pl`) | Feito: corre a v6; resultados de referência em `motores/prolog/referencia_prolog/` |
-| `wrapper.pl`, `PrologAdapter` | Por fazer |
+| `wrapper.pl` (`motores/prolog/`) | Feito: pedido e resposta JSON, passos, erros (issue #9) |
+| `PrologAdapter` | Por fazer |
 | Controllers, validação do pedido, UI, comparador | Por fazer |
 | Scripts de geração (`gera_meta.pl`, `gera_json.pl`) | Por fazer |
 
@@ -116,7 +117,7 @@ Princípios que o código tem de respeitar:
 
 - **Servidor sem estado** — cada pedido traz tudo o que aconteceu até ao momento e o motor infere de novo, numa
   sessão ou processo novos. Não há sessões guardadas entre pedidos.
-- **Dois motores, um contrato** — o `MotorDrools` já recebe e devolve JSON; o `wrapper.pl` terá o mesmo formato
+- **Dois motores, um contrato** — o `MotorDrools` já recebe e devolve JSON; o `wrapper.pl` usa o mesmo formato
   em `stdin`/`stdout`. Os adaptadores do backend ficam por isso quase iguais.
 - **Uma só fonte para o conhecimento** — factos fixos e cenários escrevem-se em `base_conhecimento/` e geram-se
   para os outros formatos. Só as regras existem duas vezes (Prolog e DRL), escritas à mão.
@@ -193,7 +194,7 @@ limita-se a adaptadores. Há quatro blocos.
   cada passo, corre `fireAllRules()` e faz `dispose()` no fim. As regras estão em
   `src/main/resources/regras/` (hoje só `00_exemplo.drl`) e são carregadas por `META-INF/kmodule.xml`.
 - **`motores/prolog`** — o núcleo (`soc_motor.pl`) faz encadeamento direto com metaconhecimento, todas as
-  instanciações e ponto fixo. O `wrapper.pl` previsto lê o pedido do `stdin` e escreve um único documento JSON no
+  instanciações e ponto fixo. O `wrapper.pl` lê o pedido do `stdin` e escreve um único documento JSON no
   `stdout`.
 - **`base_conhecimento`** — 314 factos fixos, 92 regras e 67 ficheiros de cenário (39 cenários numerados, com variantes e
   respostas do analista); é o que os dois motores têm de reproduzir de forma igual.
@@ -201,9 +202,8 @@ limita-se a adaptadores. Há quatro blocos.
   `MotorInferencia` e o `DroolsAdapter`.
 
 > **Motor Prolog e base v6.** A v6 pede ao motor que reavalie uma regra quando chega um facto lido por uma
-> condição calculada (`condicao_le/2`, em `soc_suporte.txt`). O `soc_motor.pl` chega ao mesmo resultado porque
-> repete as passagens por todos os factos até não haver conclusões novas: nas 10 variantes de
-> `motores/prolog/referencia_prolog/` dá os mesmos factos que uma versão que segue o requisito à letra.
+> condição calculada (`condicao_le/2`, em `soc_suporte.txt`). O `soc_motor.pl` faz essa reavaliação; os
+> resultados das 10 variantes estão em `motores/prolog/referencia_prolog/`.
 
 ---
 
