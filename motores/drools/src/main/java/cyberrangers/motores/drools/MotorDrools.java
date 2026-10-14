@@ -17,7 +17,7 @@ import org.kie.api.runtime.KieSession;
  */
 public class MotorDrools {
 
-    public static final String VERSAO_KB = "5.1";
+    public static final String VERSAO_KB = "6";
 
     private static final String SESSAO = "sessao";
 
