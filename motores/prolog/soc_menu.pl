@@ -31,9 +31,10 @@ carrega_bc :-
 	read(NBC),
 	carrega_bc(NBC).
 
-% Injeta de uma so vez todos os cenarios, pela ordem do indice: os de ataque (1 a 29b) e os de atividade normal
+% Injeta de uma so vez todos os cenarios, pela ordem do indice: os da sequencia base (1 a 29b e 35 a 39) e os de atividade normal
 % (30 a 34), com o motor a correr entre cada um. Recomeca do estado inicial (recarrega a base) e mostra o estado no fim.
-% As respostas do analista (7b, 19b, 3b, 10d, 17b, 29c) nao entram: injetam-se depois, uma a uma, porque algumas
+% As respostas do analista e as alternativas (7b, 19b, 3b, 10d, 17b, 29c, 35d, 36c) e as atualizacoes (06b, 13b, 21b,
+% 27b) nao entram: injetam-se depois, uma a uma, porque algumas
 % sao alternativas umas as outras.
 injeta_todos :-
 	ficheiro_base(B), !,

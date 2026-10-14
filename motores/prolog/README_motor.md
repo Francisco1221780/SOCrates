@@ -65,7 +65,7 @@ Cada cenário é a telemetria que chega num momento (alertas, eventos dos hosts,
 | --- | --- |
 | `injeta_cenario(c2).` | Injeta um cenário pelo nome e corre o motor. |
 | `injeta_cenarios([c1,c2,c3]).` | Vários cenários, por ordem, com o motor a correr entre cada um. |
-| `injeta_todos.` | Recomeça do estado inicial (recarrega a base) e injeta os cenários de ataque 1 a 29b e os de atividade normal 30 a 34, por ordem. No fim mostra o estado. |
+| `injeta_todos.` | Recomeça do estado inicial (recarrega a base) e injeta os cenários da sequência base (1 a 29b e 35 a 39) e os de atividade normal 30 a 34, por ordem. No fim mostra o estado. |
 | `injeta_cenario('cenarios/cenario_30.txt').` ou `injeta_ficheiro(...)` | Injeta um ficheiro pelo nome. Um caminho relativo procura-se primeiro na pasta de trabalho e depois na pasta do `soc_factos.txt`. |
 | `lista_cenarios.` | Mostra os nomes dos cenários e o que cada um faz. |
 
@@ -79,7 +79,7 @@ O `injeta_todos` não injeta as respostas do analista (7b, 19b, 3b, 10d, 17b, 29
 ?- injeta_cenario(c7b_nao).
 ```
 
-Nos cenários 7b e 19b usa-se só uma das três respostas (`_sim`, `_nao` ou `_nao_sei`). O 29c usa-se em vez do 29b.
+Nos cenários 7b e 19b usa-se só uma das três respostas (`_sim`, `_nao` ou `_nao_sei`). O 29c, o 35d e o 36c usam-se em vez do 29b, do 35c e do 36b.
 
 ### Factos à mão
 
@@ -214,6 +214,18 @@ arranca_motor
 | Interface | — | `menu/0` (em `soc_menu.pl`), perguntas ao analista com "porque?", incidentes, tickets, ações. |
 
 O motor continua a funcionar com as bases da UC (por exemplo, `veiculos2.txt`). Numa base sem metaconhecimento, cada facto tenta todas as regras.
+
+## Resultados de referência
+
+Com a base v6:
+
+| Sequência | Resultado |
+| --- | --- |
+| Estado inicial + sequência base (cenários 1 a 29b e 35 a 39), sem respostas | 1110 factos, 61 incidentes, 61 tickets (41 abertos, 20 fechados) |
+| `injeta_todos` (sequência base + 30 a 34) | 1126 factos, com as mesmas 633 conclusões: os cenários 30 a 34 não acrescentam nenhuma |
+| Sequência base + respostas 3b, 10d e 17b | 1136 factos, 63 incidentes, 40 tickets abertos, 23 fechados, e o incidente "propagação" com dois ativos |
+
+Estes valores foram confirmados com a organização atual das pastas (motor em `motores/prolog/`, base em `base_conhecimento/`). As outras variantes (respostas 7b e 19b, alternativas 29c, 35d e 36c, e as atualizações 06b, 13b, 21b e 27b) estão em [`referencia_prolog/`](referencia_prolog/), com um ficheiro por variante (`base.txt`, `respostas_3b_10d_17b.txt`, …). Cada linha tem o número do facto, o facto e a regra que o concluiu (ou `dado`), separados por tabulações. Servem de referência para o Drools e para o comparador.
 
 ## Notas
 
