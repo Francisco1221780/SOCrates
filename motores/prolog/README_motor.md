@@ -2,6 +2,8 @@
 
 `soc_motor.pl` é o motor de inferência em SWI-Prolog que corre a base de conhecimento v5.1 (`soc_factos.txt`, `soc_regras.txt`, `soc_suporte.txt`). Parte do `sp_exp2.pl` da UC e acrescenta o que a v5.1 exige (alterações M1 a M4 da issue #3), a injeção dos ficheiros de cenário, explicações melhoradas e um menu de texto.
 
+O motor está em dois ficheiros: `soc_motor.pl` é só o núcleo (carregar a base, inferir, injetar factos e cenários), sem menu, sem ler do teclado e sem escrever no `stdout`; as mensagens ("Base carregada…", "29 factos novos…") vão para o `stderr` com `print_message/2`. `soc_menu.pl` carrega o núcleo e acrescenta as explicações (`como`, `whynot`), a visualização e o menu. O `wrapper.pl` usa só o núcleo.
+
 > **Base v6.** A base em `base_conhecimento/` é agora a v6 (314 factos, 92 regras). O motor carrega-a e corre-a, mas
 > ainda não faz a reavaliação por `condicao_le/2` que a v6 pede, e os resultados de referência abaixo são da v5.1.
 
@@ -13,7 +15,8 @@ O motor fica em `motores/prolog/` e a base de conhecimento em `base_conhecimento
 .
 ├── motores/
 │   └── prolog/
-│       ├── soc_motor.pl        ← o motor
+│       ├── soc_motor.pl        ← o núcleo do motor
+│       ├── soc_menu.pl         ← explicações, visualização e menu (carrega o soc_motor.pl)
 │       ├── README_motor.md     ← este ficheiro
 │       └── referencia_prolog/  ← resultados de referência do motor (v5.1), um ficheiro por variante
 └── base_conhecimento/
@@ -40,18 +43,18 @@ Abre o SWI-Prolog na pasta `motores/prolog/` (por exemplo, `cd motores/prolog &&
 
 ```prolog
 ?- working_directory(_, '/caminho/para/CyberRangers/motores/prolog/').
-?- consult('soc_motor.pl').
+?- consult('soc_menu.pl').
 ?- carrega_bc('../../base_conhecimento/soc_factos.txt').
-Base carregada: 314 factos e 92 regras.
+% Base carregada: 314 factos e 92 regras.
 ?- arranca_motor.
-29 factos novos (n. 315 a 343).
+% 29 factos novos (n. 315 a 343).
 ```
 
 O caminho dado ao `carrega_bc` é relativo à pasta de trabalho do Prolog. Também se pode dar o caminho absoluto, e então a pasta de trabalho não interessa. Escrever só `'soc_factos.txt'` a partir de `motores/prolog/` dá o erro "does not exist".
 
 O primeiro `arranca_motor` tira as conclusões que só dependem dos dados fixos: a classe de cada ativo, e que instalações são vulneráveis ou não afetadas. Depois injetam-se os cenários.
 
-Há duas formas de usar o motor: os comandos abaixo, ou o menu de texto (`?- menu.`), que faz o mesmo através de opções numeradas.
+Há duas formas de usar o motor: os comandos abaixo, ou o menu de texto (`?- menu.`), que faz o mesmo através de opções numeradas. Os dois precisam do `soc_menu.pl`; com `consult('soc_motor.pl')` só há o núcleo (sem `como`, `whynot`, `estado` nem menu). As linhas que começam por `%` são as mensagens do motor, escritas no `stderr` (não aparecem com `swipl -q`).
 
 ## Injetar cenários
 
@@ -207,7 +210,7 @@ arranca_motor
 | `como` | Repete as mesmas sub-árvores (as conclusões do fim da cadeia davam centenas de linhas). | Árvore sem repetições, e aceita o facto em vez do número. |
 | `whynot` | Uma condição calculada dava valores inventados a uma premissa que já tinha falhado, e "não está definido na base" nunca aparecia. | Trata as condições calculadas, não repete o que já explicou, distingue dados de entrada, e tem profundidade máxima. |
 | Cenários | — | `injeta_cenario`, `injeta_ficheiro`, `injeta_todos`. |
-| Interface | — | `menu/0`, perguntas ao analista com "porque?", incidentes, tickets, ações. |
+| Interface | — | `menu/0` (em `soc_menu.pl`), perguntas ao analista com "porque?", incidentes, tickets, ações. |
 
 O motor continua a funcionar com as bases da UC (por exemplo, `veiculos2.txt`). Numa base sem metaconhecimento, cada facto tenta todas as regras.
 
