@@ -3,9 +3,9 @@
 `soc_motor.pl` é o motor de inferência em SWI-Prolog que corre a base de conhecimento v5.1 (`soc_factos.txt`, `soc_regras.txt`, `soc_suporte.txt`). Parte do `sp_exp2.pl` da UC e acrescenta o que a v5.1 exige (alterações M1 a M4 da issue #3), a injeção dos ficheiros de cenário, explicações melhoradas e um menu de texto.
 
 > **Base v6.** A base em `base_conhecimento/` é a v6 (314 factos, 92 regras). A v6 pede que uma regra seja reavaliada
-> quando chega um facto lido por uma condição calculada (`condicao_le/2`). O motor não o faz diretamente, mas chega ao
-> mesmo resultado porque repete as passagens por todos os factos até ao ponto fixo. Os resultados de referência da v6
-> estão abaixo e em [`referencia_prolog/`](referencia_prolog/).
+> quando chega um facto lido por uma condição calculada (`condicao_le/2`); o motor faz essa reavaliação (ver a tabela
+> "O que mudou em relação ao `sp_exp2.pl`"). Os resultados de referência da v6 estão abaixo e em
+> [`referencia_prolog/`](referencia_prolog/).
 
 ## Ficheiros e onde ficam
 
@@ -204,6 +204,7 @@ arranca_motor
 | --- | --- | --- |
 | **M1** Condições calculadas | Só factos, negações e `avalia`. | Uma condição `C` com `condicao_calculada(C)` avalia-se com `call(C)`: `depois/3`, `versao_cmp/3`, `anterior/2`, … (definidas em `soc_suporte.txt`). |
 | **M2** Instanciações | Cada regra dispara só com a primeira combinação de factos. | Dispara para todas as combinações em que entra o facto que a acionou (`forall`). |
+| Reavaliação por `condicao_le/2` (v6) | Uma regra só dispara a partir de um facto que seja uma das suas premissas. | Quando chega um facto que uma condição calculada da regra lê (por exemplo o `tempo` de um evento, lido por `depois/3`), a regra avalia-se por inteiro, sem exigir que esse facto seja uma premissa. Sem `condicao_le/2` na base (bases da UC), nada muda. |
 | **M3** Ponto fixo | O `arranca_motor` tinha de ser chamado várias vezes. | Um `arranca_motor` chega: repete as passagens até não haver conclusões novas. |
 | **M4** `cria_facto` | Escreve cada conclusão e espera por uma tecla (`get0`). | Não escreve nem espera; as duas coisas são opções, desligadas por omissão. |
 | `como` | Repete as mesmas sub-árvores (as conclusões do fim da cadeia davam centenas de linhas). | Árvore sem repetições, e aceita o facto em vez do número. |

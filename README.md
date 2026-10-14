@@ -202,9 +202,8 @@ limita-se a adaptadores. Há quatro blocos.
   `MotorInferencia` e o `DroolsAdapter`.
 
 > **Motor Prolog e base v6.** A v6 pede ao motor que reavalie uma regra quando chega um facto lido por uma
-> condição calculada (`condicao_le/2`, em `soc_suporte.txt`). O `soc_motor.pl` chega ao mesmo resultado porque
-> repete as passagens por todos os factos até não haver conclusões novas: nas 10 variantes de
-> `motores/prolog/referencia_prolog/` dá os mesmos factos que uma versão que segue o requisito à letra.
+> condição calculada (`condicao_le/2`, em `soc_suporte.txt`). O `soc_motor.pl` faz essa reavaliação; os
+> resultados das 10 variantes estão em `motores/prolog/referencia_prolog/`.
 
 ---
 
