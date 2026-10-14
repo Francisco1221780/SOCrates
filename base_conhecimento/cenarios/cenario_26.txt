@@ -1,0 +1,6 @@
+% Cenario 26 - C2 numa maquina ja comprometida: web_srv_01 (compromisso confirmado no cenario 2) fala com um C2 catalogado.
+%   Nao se sabe que processo fez o trafego -> compromisso provavel. A maquina ja tem um compromisso confirmado, mas este
+%   sinal fica como incidente a parte, com a sua propria confirmacao no host: pode ser um segundo ataque.
+
+:- novo_facto(trafego_saida(ev_o1,web_srv_01,c2_203_0_113_9)).
+:- novo_facto(tempo(ev_o1,12200)).

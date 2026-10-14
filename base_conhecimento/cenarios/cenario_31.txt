@@ -1,0 +1,6 @@
+% Cenario 31 - Atividade normal: web_srv_03 liga-se a um endereco externo que nao esta no catalogo de IoC
+%   (por exemplo, para ir buscar atualizacoes). So o trafego para um C2 conhecido conta -> o sistema nao conclui nada
+%   (controlo negativo).
+
+:- novo_facto(trafego_saida(ev_ok2,web_srv_03,ip_198_51_100_200)).
+:- novo_facto(tempo(ev_ok2,19200)).

@@ -1,0 +1,4 @@
+% Cenario 38b - Chega a hora da shell do cenario 38: 15 s depois do ataque, dentro da janela -> as regras sao reavaliadas
+%   e o compromisso confirma-se. Depende do cenario 38.
+
+:- novo_facto(tempo(ev_af2,17815)).

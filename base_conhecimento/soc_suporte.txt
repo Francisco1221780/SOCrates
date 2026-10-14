@@ -1,0 +1,352 @@
+% SUPORTE AO MOTOR - nao e conhecimento do dominio.
+% O motor tem de fazer tres coisas alem do sp_exp2.pl:
+%   1. avaliar com call/1 as condicoes marcadas com condicao_calculada/1;
+%   2. disparar todas as instanciacoes de uma regra para o facto que a acionou;
+%   3. reavaliar uma regra quando chega um facto que uma das suas condicoes calculadas le (condicao_le/2, abaixo).
+%      Ex.: o tempo de um evento pode chegar depois do proprio evento; quando chega, as regras com depois/3 tem de ser
+%      reavaliadas. Nesse caso o facto que chegou nao aparece diretamente nas condicoes da regra, por isso a regra
+%      avalia-se por inteiro (todas as instanciacoes), sem exigir que esse facto seja uma das premissas usadas.
+% Metaconhecimento gerado por gera_meta.pl e condicoes calculadas usadas pelas regras.
+
+:- multifile condicao_calculada/1.
+
+% Metaconhecimento: que regras cada tipo de facto pode disparar (gerado por gera_meta.pl; regenerar se as regras mudarem).
+% Inclui as regras que o facto pode disparar atraves de uma condicao calculada que o le (condicao_le/2).
+
+facto_dispara_regras(acesso_suspeito(_, _), [46]).
+facto_dispara_regras(alerta_ids(_, _, _), [4, 5, 11, 14, 15, 69]).
+facto_dispara_regras(assinatura_vuln(_, _), [4, 5, 11, 14, 15]).
+facto_dispara_regras(classe_ativo(_, _), [80]).
+facto_dispara_regras(classe_impacto(_, _), [22, 23, 24, 25, 26, 27, 28, 43, 50, 92]).
+facto_dispara_regras(cobertura(_, _, _), [5, 11, 60, 61]).
+facto_dispara_regras(cobertura_politica(_, _, _), [38]).
+facto_dispara_regras(componente(_, _, _), [1, 2, 3]).
+facto_dispara_regras(compromisso_confirmado(_, _), [29, 41, 52, 63]).
+facto_dispara_regras(compromisso_provavel(_, _), [47, 49]).
+facto_dispara_regras(comunicacao_c2(_, _, _), [43, 44, 45, 46]).
+facto_dispara_regras(confianca(_, _), [76, 77]).
+facto_dispara_regras(configuracao(_, _, _), [17, 18, 57]).
+facto_dispara_regras(corrigido_backport(_, _), [3]).
+facto_dispara_regras(criticidade(_, _), [74, 75]).
+facto_dispara_regras(destino(_, _, _), [5, 10, 14, 15, 66]).
+facto_dispara_regras(estado_sensor(_, _, _), [31]).
+facto_dispara_regras(evento_host(_, _, _), [20, 21, 22, 23, 24, 69]).
+facto_dispara_regras(evento_instancia(_, _), [20, 21, 22, 23, 43]).
+facto_dispara_regras(evento_processo(_, _), [20, 21, 22, 23, 43]).
+facto_dispara_regras(evidencia_impacto(_, _, _), [20, 21, 22, 23, 24, 31, 32, 90]).
+facto_dispara_regras(exploracao_incerta(_, _, _), [45, 64, 65]).
+facto_dispara_regras(exploracao_possivel(_, _, _), [13, 30, 33, 34, 44, 64, 67]).
+facto_dispara_regras(exposto(_, _, _, _), [4]).
+facto_dispara_regras(falhas_janela(_, _), [35]).
+facto_dispara_regras(falhas_login(_, _), [35]).
+facto_dispara_regras(gravidade(_, _), [80, 83]).
+facto_dispara_regras(impacto(_, _), [81, 82]).
+facto_dispara_regras(impacto_confirmado(_, _, _), [25, 26, 55]).
+facto_dispara_regras(impacto_excluido(_, _, _, _, _), [24, 33]).
+facto_dispara_regras(impacto_possivel(_, _, _, _), [20, 21, 22, 23, 31, 32, 43]).
+facto_dispara_regras(impacto_provavel(_, _, _), [27, 28, 50]).
+facto_dispara_regras(incidente(_, _, _, _), [48, 51, 53, 54, 55, 56, 60, 61, 62, 68, 76, 77, 78, 79, 80, 83, 84]).
+facto_dispara_regras(instancia_processo(_, _), [20, 21, 22, 23, 43]).
+facto_dispara_regras(intervalo_afetado(_, _, _), [1, 2, 59]).
+facto_dispara_regras(ioc(_, _), [42]).
+facto_dispara_regras(janela(_, _), [20, 21, 22, 23, 24, 35, 37, 41, 43, 44, 45, 46]).
+facto_dispara_regras(login_ok(_, _, _, _), [37, 38, 39, 62]).
+facto_dispara_regras(matriz_prioridade(_, _, _), [80]).
+facto_dispara_regras(motivo(_, _), [52, 54, 57, 58, 59, 69, 70, 71, 72]).
+facto_dispara_regras(movimento_lateral(_, _, _), [41]).
+facto_dispara_regras(nao_afetado(_, _), [10]).
+facto_dispara_regras(nivel_abaixo(_, _), [77]).
+facto_dispara_regras(origem(_, _), [12, 13, 37]).
+facto_dispara_regras(origem_hostil(_, _), [13]).
+facto_dispara_regras(origem_zona(_, _), [4, 5, 14, 15]).
+facto_dispara_regras(pergunta_analista(_, _, _), [87, 88]).
+facto_dispara_regras(pergunta_confirmacao(_, _), [48, 50, 51, 87]).
+facto_dispara_regras(pergunta_evidencia(_, _), [31, 32, 33, 34, 88]).
+facto_dispara_regras(permitido(_, _, _), [62]).
+facto_dispara_regras(portos_sondados(_, _), [35]).
+facto_dispara_regras(prioridade(_, _), [83, 84]).
+facto_dispara_regras(prioridade_acima(_, _), [82]).
+facto_dispara_regras(prioridade_base(_, _), [81, 82]).
+facto_dispara_regras(processo_componente(_, _), [20, 21, 22, 23, 43]).
+facto_dispara_regras(reconhecimento(_, _, _), [35]).
+facto_dispara_regras(recuperado(_, _), [63]).
+facto_dispara_regras(requer_condicao(_, _, _), [17, 18, 19]).
+facto_dispara_regras(resolvido(_, _), [86]).
+facto_dispara_regras(resposta(_, _), [83]).
+facto_dispara_regras(resposta_analista(_, _, _, _), [32, 33, 34, 49, 50, 51]).
+facto_dispara_regras(revisto(_, _), [67, 68, 70, 71, 73]).
+facto_dispara_regras(sem_evidencia_observada(_, _), [56]).
+facto_dispara_regras(servico(_, _, _, _, _), [4]).
+facto_dispara_regras(severidade(_, _), [76, 77]).
+facto_dispara_regras(substitui(_, _), [53, 54]).
+facto_dispara_regras(superado(_, _), [85]).
+facto_dispara_regras(suspeita(_, _), [36, 37]).
+facto_dispara_regras(tempo(_, _), [13, 20, 21, 22, 23, 24, 37, 41, 43, 44, 45, 46, 69]).
+facto_dispara_regras(tentativa_sem_impacto(_, _, _), [12, 65]).
+facto_dispara_regras(ticket(_, _, _, _, _, _), [85, 86]).
+facto_dispara_regras(ticket_fechado(_, _), [87, 88]).
+facto_dispara_regras(tipo_provavel(_, _), [22, 23, 24, 50]).
+facto_dispara_regras(trafego_saida(_, _, _), [42]).
+facto_dispara_regras(versao(_, _), [1, 2, 8, 58]).
+facto_dispara_regras(vetor_aberto(_, _, _, _), [6, 7, 8, 9, 10, 16, 17, 18, 19, 20, 21, 22, 23, 43, 66]).
+facto_dispara_regras(violacao_politica(_, _, _), [40]).
+facto_dispara_regras(vuln_afeta(_, _), [1, 2, 3, 4, 5, 11, 14, 15, 43]).
+facto_dispara_regras(vuln_impacto(_, _), [16, 17, 18, 19, 89, 90, 91, 92]).
+facto_dispara_regras(vuln_vetor(_, _), [4]).
+facto_dispara_regras(vulneravel(_, _), [6, 16, 17, 18, 19, 20, 21, 22, 23, 43]).
+facto_dispara_regras(zona(_, _), [39, 40]).
+
+% Condicoes calculadas: avaliam-se com call/1 em vez de se procurarem como factos.
+
+condicao_calculada(depois(_, _, _)).
+condicao_calculada(anterior(_, _)).
+condicao_calculada(tardia(_, _, _, _)).
+condicao_calculada(entre(_, _, _)).
+condicao_calculada(sem_ataque_intermedio(_, _, _)).
+condicao_calculada(versao_cmp(_, _, _)).
+condicao_calculada(versao_invalida(_)).
+condicao_calculada(versao_valida(_)).
+condicao_calculada(fora_dos_intervalos(_, _)).
+condicao_calculada(porto_compativel(_, _, _)).
+condicao_calculada(sem_servico_acessivel(_, _, _, _)).
+condicao_calculada(todas_ao_alcance_nao_afetadas(_, _, _)).
+condicao_calculada(fora_do_destino(_, _)).
+condicao_calculada(sem_vetor_exploravel(_, _, _)).
+condicao_calculada(sem_condicao_em_falta(_, _, _)).
+condicao_calculada(evidencias_negadas(_, _, _)).
+condicao_calculada(origem_evidencia(_, _, _, _, _)).
+condicao_calculada(em_aberto(_)).
+condicao_calculada(todos_motivos_revistos(_)).
+
+% condicao_le(Condicao, Factos): factos cuja chegada pode tornar a condicao verdadeira. O gera_meta.pl junta as regras
+% que usam a condicao ao metaconhecimento desses factos, para elas serem reavaliadas quando eles chegam.
+% So se listam os factos que podem tornar a condicao verdadeira: um facto que so a pode tornar falsa nao tem de disparar nada.
+
+condicao_le(depois(_, _, _), [tempo(_, _), janela(_, _)]).
+condicao_le(anterior(_, _), [tempo(_, _)]).
+condicao_le(tardia(_, _, _, _), [tempo(_, _), janela(_, _)]).
+condicao_le(entre(_, _, _), [tempo(_, _)]).
+condicao_le(sem_ataque_intermedio(_, _, _), [tempo(_, _)]).
+condicao_le(fora_dos_intervalos(_, _), [intervalo_afetado(_, _, _)]).
+condicao_le(sem_servico_acessivel(_, _, _, _), [destino(_, _, _)]).
+condicao_le(todas_ao_alcance_nao_afetadas(_, _, _), [destino(_, _, _), nao_afetado(_, _)]).
+condicao_le(fora_do_destino(_, _), [destino(_, _, _)]).
+condicao_le(sem_vetor_exploravel(_, _, _), [revisto(_, _)]).
+condicao_le(evidencias_negadas(_, _, _), [resposta_analista(_, _, _, _), impacto_excluido(_, _, _, _, _)]).
+condicao_le(origem_evidencia(_, _, _, _, _), [evento_processo(_, _), evento_instancia(_, _), processo_componente(_, _), instancia_processo(_, _), vetor_aberto(_, _, _, _), vulneravel(_, _)]).
+condicao_le(todos_motivos_revistos(_), [revisto(_, _)]).
+
+% ATENCAO: algumas condicoes repetem, pela negativa ou por outras palavras, conhecimento que tambem esta nas regras.
+%   sem_condicao_em_falta/3 e o contrario da R18; todas_ao_alcance_nao_afetadas/3 repete o alcance que a R4 calcula;
+%   fora_do_destino/2 repete o porto da R4; origem_evidencia/5 usa os vetores da R4 e as instalacoes vulneraveis da R1.
+%   Quem mudar uma dessas regras tem de mudar a condicao aqui, e testar os dois lados.
+% Estao aqui, e nao nas regras, porque tem de ser calculadas sobre os factos que existem no momento, sem depender da
+% ordem em que o motor tira as conclusoes (uma negacao sobre um facto que ainda vai ser deduzido daria o resultado errado).
+
+% Os relogios das fontes (IDS, sensores, logins) nunca estao exatamente certos uns com os outros: ao comparar dois
+% tempos aceita-se o desvio registado nos factos em janela(tolerancia_relogios, Segundos). Sem esse facto, a tolerancia e 0.
+tolerancia_relogios(Tol) :-
+	(   facto(_, janela(tolerancia_relogios, T)) -> Tol = T ; Tol = 0 ).
+
+% depois(Ev2, Ev1, Janela): Ev2 aconteceu depois de Ev1 e dentro da janela (com a tolerancia dos relogios nos dois extremos).
+depois(Ev2, Ev1, Janela) :-
+	facto(_, tempo(Ev2, T2)),
+	facto(_, tempo(Ev1, T1)),
+	tolerancia_relogios(Tol),
+	T2 >= T1 - Tol,
+	T2 - T1 =< Janela + Tol.
+
+% anterior(Ev1, Ev2): Ev1 aconteceu estritamente antes de Ev2 (por isso sao eventos diferentes).
+anterior(Ev1, Ev2) :-
+	facto(_, tempo(Ev1, T1)),
+	facto(_, tempo(Ev2, T2)),
+	T1 < T2.
+
+% tardia(Ev2, Ev1, JanelaCurta, JanelaLonga): Ev2 aconteceu depois de Ev1, ja fora da janela curta mas dentro da longa.
+tardia(Ev2, Ev1, JanelaCurta, JanelaLonga) :-
+	facto(_, tempo(Ev2, T2)),
+	facto(_, tempo(Ev1, T1)),
+	tolerancia_relogios(Tol),
+	D is T2 - T1,
+	D > JanelaCurta + Tol,
+	D =< JanelaLonga + Tol.
+
+% entre(Outro, Ev1, Ev2): Outro e um evento diferente de Ev1 que aconteceu depois de Ev1 e ate Ev2.
+entre(Outro, Ev1, Ev2) :-
+	Outro \== Ev1,
+	facto(_, tempo(Ev1, T1)),
+	facto(_, tempo(Ev2, T2)),
+	facto(_, tempo(Outro, T)),
+	T > T1, T =< T2.
+
+% sem_ataque_intermedio(EvAtaque, EvHost, Ativo): entre o ataque e a evidencia nao houve outro alerta do IDS contra o
+% mesmo ativo. Se houve, a evidencia e mais provavelmente desse outro ataque, e nao conta como tardia do primeiro.
+% Se o alerta intermedio so chegar depois, a R69 faz o mesmo raciocinio nessa altura.
+sem_ataque_intermedio(EvAtaque, EvHost, Ativo) :-
+	facto(_, tempo(EvAtaque, _)),
+	facto(_, tempo(EvHost, _)),
+	\+ ( facto(_, alerta_ids(Outro, Ativo, _)),
+	     entre(Outro, EvAtaque, EvHost) ).
+
+versao_normal(V, v(Ma, Mi, Pa)) :-
+	nonvar(V),
+	(   V = v(Ma, Mi, Pa) -> true
+	;   V = v(Ma, Mi) -> Pa = 0
+	),
+	versao_campo(Ma), versao_campo(Mi), versao_campo(Pa).
+
+versao_campo(X) :- integer(X), X >= 0.
+
+versao_cmp(A, Op, B) :-
+	versao_normal(A, NA),
+	versao_normal(B, NB),
+	versao_op(Op, NA, NB).
+
+versao_op(<, A, B) :- A @< B.
+versao_op(=<, A, B) :- A @=< B.
+versao_op(>, A, B) :- A @> B.
+versao_op(>=, A, B) :- A @>= B.
+versao_op(==, A, B) :- A == B.
+
+versao_invalida(V) :- \+ versao_normal(V, _).
+versao_valida(V) :- versao_normal(V, _).
+
+% fora_dos_intervalos(V, Vuln): V e uma versao valida, o catalogo tem pelo menos um intervalo_afetado da vulnerabilidade
+% e V nao esta em nenhum deles. Sem intervalos no catalogo nao se conclui nada (R9).
+fora_dos_intervalos(V, Vuln) :-
+	versao_normal(V, _),
+	facto(_, intervalo_afetado(Vuln, _, _)), !,
+	\+ ( facto(_, intervalo_afetado(Vuln, Min, Max)),
+	     versao_cmp(V, >=, Min),
+	     versao_cmp(V, =<, Max) ).
+
+% porto_compativel(Ev, Porto, Protocolo): o servico nesse porto e protocolo pode ter recebido o ataque Ev.
+% Se o alerta trouxer destino(Ev, Porto, Protocolo), tem de ser esse; se nao trouxer, qualquer porto serve.
+porto_compativel(Ev, Porto, Proto) :-
+	(   facto(_, destino(Ev, P0, Pr0))
+	->  Porto == P0, Proto == Pr0
+	;   true
+	).
+
+% sem_servico_acessivel(Ev, Ativo, Programa, Zona): nenhum servico do programa no ativo escuta num porto e protocolo
+% abertos para a zona (e, se o alerta Ev trouxer o porto de destino, nesse porto).
+sem_servico_acessivel(Ev, Ativo, Nome, Zona) :-
+	\+ ( facto(_, servico(_, Ativo, Nome, Porto, Proto)),
+	     porto_compativel(Ev, Porto, Proto),
+	     facto(_, exposto(Ativo, Porto, Proto, Zona)) ).
+
+% todas_ao_alcance_nao_afetadas(Ev, Ativo, Vuln): todas as instalacoes do programa afetado que o ataque Ev alcanca
+% (servico num porto aberto para a zona de origem e, se o alerta o disser, no porto de destino) estao nao afetadas.
+% Uma instalacao ao alcance vulneravel, ou de que nao se sabe a versao, chega para a condicao falhar.
+todas_ao_alcance_nao_afetadas(Ev, Ativo, Vuln) :-
+	facto(_, origem_zona(Ev, Zona)),
+	facto(_, vuln_afeta(Vuln, Nome)),
+	forall(( facto(_, servico(Inst, Ativo, Nome, Porto, Proto)),
+	         porto_compativel(Ev, Porto, Proto),
+	         facto(_, exposto(Ativo, Porto, Proto, Zona)) ),
+	       facto(_, nao_afetado(Inst, Vuln))).
+
+% fora_do_destino(Ev, Inst): o alerta Ev ja diz o porto de destino, e a instalacao nao escuta nesse porto.
+fora_do_destino(Ev, Inst) :-
+	facto(_, destino(Ev, Porto, Proto)),
+	\+ facto(_, servico(Inst, _, _, Porto, Proto)).
+
+% sem_vetor_exploravel(Ev, Ativo, Vuln): nenhum vetor em vigor (nao revisto) do ataque Ev chega a uma instalacao vulneravel.
+sem_vetor_exploravel(Ev, Ativo, Vuln) :-
+	\+ ( facto(_, vetor_aberto(Ev, Ativo, Inst, Vuln)),
+	     facto(_, vulneravel(Inst, Vuln)),
+	     \+ facto(_, revisto(vetor_aberto(Ev, Ativo, Inst, Vuln), _)) ).
+
+% sem_condicao_em_falta(Instalacao, Vuln, Impacto): nenhuma das condicoes que o impacto exige esta registada como "nao"
+% na configuracao da instalacao. E o contrario do que a R18 procura.
+sem_condicao_em_falta(Inst, Vuln, Impacto) :-
+	\+ ( facto(_, requer_condicao(Vuln, Impacto, Cond)),
+	     facto(_, configuracao(Inst, Cond, nao)) ).
+
+% evidencias_negadas(Ativo, Ev, Vuln): o ataque Ev tem pelo menos um impacto possivel no ativo (impacto_possivel, grupo E
+% das regras), cada impacto da vulnerabilidade no catalogo tem pelo menos uma evidencia esperada, cada evidencia dos
+% impactos possiveis tem uma pergunta, e o analista respondeu "nao" a todas essas perguntas.
+% Os impactos excluidos pela configuracao (R18) nao contam, mesmo que antes tenham contado como possiveis (R19).
+% Se faltar uma evidencia ou uma pergunta no catalogo, falha (e as regras de validacao do catalogo assinalam a falta).
+evidencias_negadas(Ativo, Ev, Vuln) :-
+	facto(_, impacto_possivel(Ev, Ativo, Vuln, I0)),
+	\+ facto(_, impacto_excluido(Ev, Ativo, Vuln, I0, _)), !,
+	forall(facto(_, vuln_impacto(Vuln, Imp)),
+	       facto(_, evidencia_impacto(Imp, _, _))),
+	forall(( facto(_, impacto_possivel(Ev, Ativo, Vuln, Imp)),
+	         \+ facto(_, impacto_excluido(Ev, Ativo, Vuln, Imp, _)),
+	         facto(_, evidencia_impacto(Imp, Tipo, _)) ),
+	       ( facto(_, pergunta_evidencia(Tipo, P)),
+	         facto(_, resposta_analista(Ativo, Ev, P, nao)) )).
+
+% origem_evidencia(EvHost, EvAtaque, Ativo, Vuln, Origem): de onde veio um evento do host (uma evidencia, ou o trafego
+% para um C2) em relacao ao ataque EvAtaque a vulnerabilidade Vuln. Origem e uma de:
+%   ligada                                    veio da instancia de processo de uma instalacao vulneravel que o ataque alcancou;
+%   de_outro_processo(programa(P))            veio de um processo de outro programa (P);
+%   de_outro_processo(instancia(I))           veio de outra instancia (I), que o ataque nao alcancou, do mesmo programa;
+%   por_confirmar(sem_processo)               o sensor nao disse que processo foi;
+%   por_confirmar(processo_desconhecido(N))   o processo N nao esta na tabela processo_componente;
+%   por_confirmar(instancia_por_identificar(N))  ha varias instancias de N no ativo e o sensor nao disse qual foi;
+%   por_confirmar(instancia_nao_inventariada(N)) N e do programa atacado, mas nao ha nenhuma instancia dele inventariada no ativo.
+% A instancia vem do sensor (evento_instancia); se o sensor so disser o nome, conta a unica instancia com esse nome no ativo.
+origem_evidencia(EvHost, EvAtaque, Ativo, Vuln, Origem) :-
+	once(facto(_, vuln_afeta(Vuln, Prog))),
+	classifica_origem(EvHost, EvAtaque, Ativo, Vuln, Prog, O),
+	Origem = O.
+
+classifica_origem(EvHost, EvAtaque, Ativo, Vuln, _, O) :-
+	once(facto(_, evento_instancia(EvHost, I))), !,
+	instancia_ligada(EvAtaque, Ativo, Vuln, I, O).
+classifica_origem(EvHost, EvAtaque, Ativo, Vuln, Prog, O) :-
+	once(facto(_, evento_processo(EvHost, Nome))), !,
+	(   \+ facto(_, processo_componente(_, Nome))
+	->  O = por_confirmar(processo_desconhecido(Nome))
+	;   \+ facto(_, processo_componente(Prog, Nome))
+	->  once(facto(_, processo_componente(Outro, Nome))),
+	    O = de_outro_processo(programa(Outro))
+	;   instancias_com_nome(Ativo, Nome, Is),
+	    (   Is = [I] -> instancia_ligada(EvAtaque, Ativo, Vuln, I, O)
+	    ;   Is = []  -> O = por_confirmar(instancia_nao_inventariada(Nome))
+	    ;   O = por_confirmar(instancia_por_identificar(Nome))
+	    )
+	).
+classifica_origem(_, _, _, _, _, por_confirmar(sem_processo)).
+
+instancia_ligada(EvAtaque, Ativo, Vuln, I, O) :-
+	(   instancia_atacada(EvAtaque, Ativo, Vuln, I) -> O = ligada ; O = de_outro_processo(instancia(I)) ).
+
+% instancia_atacada(EvAtaque, Ativo, Vuln, I): I e a instancia de processo de uma instalacao vulneravel a que chega um
+% vetor em vigor (nao revisto) do ataque.
+instancia_atacada(EvAtaque, Ativo, Vuln, I) :-
+	facto(_, vetor_aberto(EvAtaque, Ativo, Inst, Vuln)),
+	\+ facto(_, revisto(vetor_aberto(EvAtaque, Ativo, Inst, Vuln), _)),
+	facto(_, vulneravel(Inst, Vuln)),
+	facto(_, instancia_processo(Inst, I)), !.
+
+% instancias_com_nome(Ativo, Nome, Instancias): as instancias de processo do ativo cujo programa corre com esse nome.
+instancias_com_nome(Ativo, Nome, Is) :-
+	findall(I, ( facto(_, instancia_processo(Inst, I)),
+	             facto(_, componente(Inst, Ativo, P)),
+	             facto(_, processo_componente(P, Nome)) ), Is0),
+	sort(Is0, Is).
+
+% em_aberto(Incidente): o incidente nao foi superado nem resolvido.
+em_aberto(Inc) :-
+	\+ facto(_, superado(Inc, _)),
+	\+ facto(_, resolvido(Inc, _)).
+
+% todos_motivos_revistos(Incidente): o incidente tem pelo menos um motivo, e todos os seus motivos passaram a historicos.
+todos_motivos_revistos(Inc) :-
+	facto(_, motivo(Inc, _)), !,
+	forall(facto(_, motivo(Inc, M)), facto(_, revisto(motivo(Inc, M), _))).
+
+% novo_facto(F): acrescenta o facto F com o proximo numero livre. E o que os ficheiros da pasta cenarios/ usam para
+% injetar a telemetria e as respostas do analista: os factos deduzidos pelo motor usam o mesmo contador, por isso os
+% numeros nunca se repetem. Se o facto ja existir nao faz nada (carregar o mesmo cenario duas vezes nao o repete).
+novo_facto(F) :-
+	facto(_, F), !.
+novo_facto(F) :-
+	retract(ultimo_facto(N0)),
+	N is N0 + 1,
+	assertz(ultimo_facto(N)),
+	assertz(facto(N, F)).

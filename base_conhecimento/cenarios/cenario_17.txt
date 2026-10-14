@@ -1,0 +1,5 @@
+% Cenario 17 - C2 com evidencia fraca: web_srv_05 (cenario 6, exploracao incerta porque nao se sabe a versao do Apache)
+%   fala com um C2 catalogado. Duas evidencias fracas -> compromisso provavel: confirmar no host, sem isolar ainda.
+
+:- novo_facto(trafego_saida(ev_s1,web_srv_05,c2_203_0_113_9)).
+:- novo_facto(tempo(ev_s1,10200)).

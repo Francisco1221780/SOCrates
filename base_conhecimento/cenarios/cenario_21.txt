@@ -1,0 +1,7 @@
+% Cenario 21 - Catalogo sem intervalos: exploit da falha de upload, acabada de reportar, contra a loja de app_srv_01.
+%   O catalogo ainda nao diz que versoes afeta: nao se conclui "nao afetado"; exploracao incerta e completar o catalogo.
+
+:- novo_facto(alerta_ids(ev_x1,app_srv_01,sig_loja_upload_jsp)).
+:- novo_facto(origem(ev_x1,ip_203_0_113_150)).
+:- novo_facto(origem_zona(ev_x1,internet)).
+:- novo_facto(tempo(ev_x1,11000)).

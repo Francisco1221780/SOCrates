@@ -1,0 +1,465 @@
+% FACTOS - Analista virtual de SOC (CyberRangers), versao 6
+% ESTADO INICIAL: os dados fixos da organizacao (ativos, software, servicos, configuracao, vulnerabilidades, rede,
+% politicas, janelas de tempo, tipos de incidente e prioridades). E o que o sistema sabe antes de chegar qualquer evento.
+% A telemetria (alertas, eventos dos hosts, logins, respostas do analista) nao esta aqui: cada cenario tem o seu
+% ficheiro na pasta cenarios/, e acrescenta factos a este estado (ver cenarios/indice.txt).
+% Cada facto tem um numero de ordem: facto(Numero, ...).
+
+:-dynamic facto/2,ultimo_facto/1.
+:-consult('soc_regras.txt').
+:-consult('soc_suporte.txt').
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% DADOS FIXOS
+
+% zona(Ativo, Zona): DMZ (exposta a internet) ou rede interna
+facto(1,zona(web_srv_01,dmz)).
+facto(2,zona(web_srv_02,dmz)).
+facto(3,zona(web_srv_03,dmz)).
+facto(4,zona(web_srv_04,dmz)).
+facto(5,zona(web_srv_05,dmz)).
+facto(6,zona(web_srv_06,dmz)).
+facto(7,zona(web_srv_07,dmz)).
+facto(8,zona(app_srv_01,dmz)).
+facto(9,zona(app_srv_02,dmz)).
+facto(10,zona(db_srv_01,rede_interna)).
+facto(11,zona(jumpbox_admin,rede_interna)).
+facto(12,zona(web_srv_08,dmz)).
+facto(13,zona(app_srv_03,dmz)).
+facto(14,zona(web_srv_09,dmz)).
+facto(15,zona(web_srv_10,dmz)).
+facto(16,zona(web_srv_11,dmz)).
+
+% criticidade do ativo (1 a 10)
+facto(17,criticidade(web_srv_01,8)).
+facto(18,criticidade(web_srv_02,3)).
+facto(19,criticidade(web_srv_03,5)).
+facto(20,criticidade(web_srv_04,5)).
+facto(21,criticidade(web_srv_05,4)).
+facto(22,criticidade(web_srv_06,5)).
+facto(23,criticidade(web_srv_07,6)).
+facto(24,criticidade(app_srv_01,6)).
+facto(25,criticidade(app_srv_02,6)).
+facto(26,criticidade(db_srv_01,9)).
+facto(27,criticidade(jumpbox_admin,5)).
+facto(28,criticidade(web_srv_08,5)).
+facto(29,criticidade(app_srv_03,6)).
+facto(30,criticidade(web_srv_09,5)).
+facto(31,criticidade(web_srv_10,5)).
+facto(32,criticidade(web_srv_11,5)).
+
+% exposto(Ativo, Porto, Protocolo, ZonaDeOrigem): a firewall deixa chegar a esse porto e protocolo do ativo a partir dessa zona
+% A base de dados aceita ligacoes PostgreSQL a partir da DMZ, porque a loja (app_srv_01) a usa.
+facto(33,exposto(web_srv_01,80,tcp,internet)).
+facto(34,exposto(web_srv_01,443,tcp,internet)).
+facto(35,exposto(web_srv_02,80,tcp,internet)).
+facto(36,exposto(web_srv_03,80,tcp,internet)).
+facto(37,exposto(web_srv_04,80,tcp,internet)).
+facto(38,exposto(web_srv_05,80,tcp,internet)).
+facto(39,exposto(web_srv_06,80,tcp,internet)).
+facto(40,exposto(app_srv_01,8080,tcp,internet)).
+facto(41,exposto(app_srv_02,8080,tcp,internet)).
+facto(42,exposto(db_srv_01,5432,tcp,rede_interna)).
+facto(43,exposto(db_srv_01,22,tcp,rede_interna)).
+facto(44,exposto(db_srv_01,5432,tcp,dmz)).
+facto(45,exposto(web_srv_08,80,tcp,internet)).
+facto(46,exposto(web_srv_08,8081,tcp,rede_interna)).
+facto(47,exposto(web_srv_08,80,tcp,rede_interna)).
+facto(48,exposto(app_srv_03,8080,tcp,internet)).
+facto(49,exposto(web_srv_09,80,tcp,internet)).
+facto(50,exposto(web_srv_10,80,tcp,internet)).
+facto(51,exposto(web_srv_11,80,tcp,internet)).
+
+% cobertura(Ativo, rede|sbom, completa|parcial): se o inventario de rede (portos) ou de software (SBOM) do ativo esta completo.
+% So com inventario completo a falta de um porto ou de um programa prova que o ataque nao podia resultar.
+% Sem cobertura registada conta como incompleto: web_srv_07 foi descoberto agora e ainda nao tem inventario nenhum.
+facto(52,cobertura(web_srv_01,rede,completa)).
+facto(53,cobertura(web_srv_01,sbom,completa)).
+facto(54,cobertura(web_srv_02,rede,completa)).
+facto(55,cobertura(web_srv_02,sbom,completa)).
+facto(56,cobertura(web_srv_03,rede,completa)).
+facto(57,cobertura(web_srv_03,sbom,completa)).
+facto(58,cobertura(web_srv_04,rede,completa)).
+facto(59,cobertura(web_srv_04,sbom,completa)).
+facto(60,cobertura(web_srv_05,rede,completa)).
+facto(61,cobertura(web_srv_05,sbom,parcial)).
+facto(62,cobertura(web_srv_06,rede,completa)).
+facto(63,cobertura(web_srv_06,sbom,completa)).
+facto(64,cobertura(app_srv_01,rede,completa)).
+facto(65,cobertura(app_srv_01,sbom,completa)).
+facto(66,cobertura(app_srv_02,rede,completa)).
+facto(67,cobertura(app_srv_02,sbom,completa)).
+facto(68,cobertura(db_srv_01,rede,completa)).
+facto(69,cobertura(db_srv_01,sbom,completa)).
+facto(70,cobertura(jumpbox_admin,rede,completa)).
+facto(71,cobertura(jumpbox_admin,sbom,completa)).
+facto(72,cobertura(web_srv_08,rede,completa)).
+facto(73,cobertura(web_srv_08,sbom,completa)).
+facto(74,cobertura(app_srv_03,rede,completa)).
+facto(75,cobertura(app_srv_03,sbom,completa)).
+facto(76,cobertura(web_srv_09,rede,completa)).
+facto(77,cobertura(web_srv_09,sbom,completa)).
+facto(78,cobertura(web_srv_10,rede,completa)).
+facto(79,cobertura(web_srv_10,sbom,completa)).
+facto(80,cobertura(web_srv_11,rede,completa)).
+facto(81,cobertura(web_srv_11,sbom,completa)).
+
+% SBOM (software instalado): componente(Instalacao, Ativo, Programa) e versao(Instalacao, v(Major,Minor,Patch)).
+% Ex.: v(2,4,49) e a versao 2.4.49; v(2,4) vale como 2.4.0. web_srv_05 tem o Apache mas nao se sabe a versao.
+% Na base de dados regista-se o software que recebe ligacoes (PostgreSQL e OpenSSH); nenhum e alvo do catalogo.
+% web_srv_08 tem duas instalacoes do Apache: o site publico (2.4.52, corrigido) e uma consola de administracao antiga
+%   (2.4.49, vulneravel) que so escuta num porto aberto para a rede interna.
+% web_srv_11 tem a versao registada como texto ('2.4.49-ubuntu1'), num formato que a base nao sabe comparar.
+facto(82,componente(web_srv_01_apache,web_srv_01,apache_httpd)).
+facto(83,componente(web_srv_02_apache,web_srv_02,apache_httpd)).
+facto(84,componente(web_srv_03_apache,web_srv_03,apache_httpd)).
+facto(85,componente(web_srv_04_apache,web_srv_04,apache_httpd)).
+facto(86,componente(web_srv_05_apache,web_srv_05,apache_httpd)).
+facto(87,componente(web_srv_06_apache,web_srv_06,apache_httpd)).
+facto(88,componente(app_srv_01_loja,app_srv_01,loja_app)).
+facto(89,componente(app_srv_01_log4j,app_srv_01,log4j_core)).
+facto(90,componente(app_srv_02_log4j,app_srv_02,log4j_core)).
+facto(91,componente(db_srv_01_postgres,db_srv_01,postgresql)).
+facto(92,componente(db_srv_01_ssh,db_srv_01,openssh)).
+facto(93,componente(web_srv_08_apache,web_srv_08,apache_httpd)).
+facto(94,componente(web_srv_08_apache_admin,web_srv_08,apache_httpd)).
+facto(95,componente(app_srv_03_loja,app_srv_03,loja_app)).
+facto(96,componente(web_srv_09_apache,web_srv_09,apache_httpd)).
+facto(97,componente(web_srv_10_apache,web_srv_10,apache_httpd)).
+facto(98,componente(web_srv_11_apache,web_srv_11,apache_httpd)).
+
+facto(99,versao(web_srv_01_apache,v(2,4,49))).
+facto(100,versao(web_srv_02_apache,v(2,4,52))).
+facto(101,versao(web_srv_03_apache,v(2,4,49))).
+facto(102,versao(web_srv_04_apache,v(2,4,49))).
+facto(103,versao(web_srv_06_apache,v(2,4,49))).
+facto(104,versao(app_srv_01_loja,v(1,2,0))).
+facto(105,versao(app_srv_01_log4j,v(2,12,1))).
+facto(106,versao(app_srv_02_log4j,v(2,12,2))).
+facto(107,versao(web_srv_08_apache,v(2,4,52))).
+facto(108,versao(web_srv_08_apache_admin,v(2,4,49))).
+facto(109,versao(app_srv_03_loja,v(1,1,0))).
+facto(110,versao(web_srv_09_apache,v(2,4,49))).
+facto(111,versao(web_srv_10_apache,v(2,4,49))).
+facto(112,versao(web_srv_11_apache,'2.4.49-ubuntu1')).
+
+% servico(Instalacao, Ativo, Programa, Porto, Protocolo): em que porto cada programa instalado recebe pedidos.
+% O log4j e uma biblioteca: recebe os pedidos atraves da aplicacao Java que a usa, no porto dela.
+facto(113,servico(web_srv_01_apache,web_srv_01,apache_httpd,80,tcp)).
+facto(114,servico(web_srv_01_apache,web_srv_01,apache_httpd,443,tcp)).
+facto(115,servico(web_srv_02_apache,web_srv_02,apache_httpd,80,tcp)).
+facto(116,servico(web_srv_03_apache,web_srv_03,apache_httpd,80,tcp)).
+facto(117,servico(web_srv_04_apache,web_srv_04,apache_httpd,80,tcp)).
+facto(118,servico(web_srv_05_apache,web_srv_05,apache_httpd,80,tcp)).
+facto(119,servico(web_srv_06_apache,web_srv_06,apache_httpd,80,tcp)).
+facto(120,servico(app_srv_01_loja,app_srv_01,loja_app,8080,tcp)).
+facto(121,servico(app_srv_01_log4j,app_srv_01,log4j_core,8080,tcp)).
+facto(122,servico(app_srv_02_log4j,app_srv_02,log4j_core,8080,tcp)).
+facto(123,servico(db_srv_01_postgres,db_srv_01,postgresql,5432,tcp)).
+facto(124,servico(db_srv_01_ssh,db_srv_01,openssh,22,tcp)).
+facto(125,servico(web_srv_08_apache,web_srv_08,apache_httpd,80,tcp)).
+facto(126,servico(web_srv_08_apache_admin,web_srv_08,apache_httpd,8081,tcp)).
+facto(127,servico(app_srv_03_loja,app_srv_03,loja_app,8080,tcp)).
+facto(128,servico(web_srv_09_apache,web_srv_09,apache_httpd,80,tcp)).
+facto(129,servico(web_srv_10_apache,web_srv_10,apache_httpd,80,tcp)).
+facto(130,servico(web_srv_11_apache,web_srv_11,apache_httpd,80,tcp)).
+
+% web_srv_03: a distribuicao aplicou o patch sem mudar o numero da versao (backport)
+facto(131,corrigido_backport(web_srv_03_apache,cve_2021_41773)).
+
+% configuracao(Instalacao, Condicao, sim|nao): como cada instalacao esta configurada, no que interessa as vulnerabilidades.
+% cgi_ativo: o servidor web executa programas (scripts CGI) a pedido de quem o visita.
+% Sem registo, nao se sabe: web_srv_05 e web_srv_10 nao tem a configuracao inventariada. web_srv_09 tem o CGI desligado.
+facto(132,configuracao(web_srv_01_apache,cgi_ativo,sim)).
+facto(133,configuracao(web_srv_02_apache,cgi_ativo,sim)).
+facto(134,configuracao(web_srv_03_apache,cgi_ativo,sim)).
+facto(135,configuracao(web_srv_04_apache,cgi_ativo,sim)).
+facto(136,configuracao(web_srv_06_apache,cgi_ativo,sim)).
+facto(137,configuracao(web_srv_08_apache,cgi_ativo,sim)).
+facto(138,configuracao(web_srv_08_apache_admin,cgi_ativo,sim)).
+facto(139,configuracao(web_srv_09_apache,cgi_ativo,nao)).
+facto(140,configuracao(web_srv_11_apache,cgi_ativo,sim)).
+
+% processo_componente(Programa, Processo): nome do processo que cada programa corre no sistema operativo.
+% Um processo que nao esteja nesta tabela conta como de origem desconhecida (nao se sabe de que programa e).
+% O nome so diz o programa; a instancia concreta do processo esta na tabela seguinte (instancia_processo).
+facto(141,processo_componente(apache_httpd,httpd)).
+facto(142,processo_componente(log4j_core,java_loja)).
+facto(143,processo_componente(loja_app,java_loja)).
+facto(144,processo_componente(openssh,sshd)).
+
+% instancia_processo(Instalacao, Instancia): em que instancia de processo corre cada instalacao. Distingue duas instalacoes
+% do mesmo programa no mesmo ativo, que tem o mesmo nome de processo (web_srv_08 tem dois httpd: o do site e o da consola).
+% Duas instalacoes na mesma instancia sao o mesmo processo: a loja e o log4j que ela usa correm juntos em app_srv_01.
+% O sensor do host pode dizer de que instancia veio um evento (evento_instancia, nos cenarios). Se nao disser, e so houver
+% uma instancia com esse nome no ativo, e essa; se houver varias, nao se sabe qual foi.
+facto(145,instancia_processo(web_srv_01_apache,web_srv_01_httpd)).
+facto(146,instancia_processo(web_srv_02_apache,web_srv_02_httpd)).
+facto(147,instancia_processo(web_srv_03_apache,web_srv_03_httpd)).
+facto(148,instancia_processo(web_srv_04_apache,web_srv_04_httpd)).
+facto(149,instancia_processo(web_srv_05_apache,web_srv_05_httpd)).
+facto(150,instancia_processo(web_srv_06_apache,web_srv_06_httpd)).
+facto(151,instancia_processo(app_srv_01_loja,app_srv_01_java)).
+facto(152,instancia_processo(app_srv_01_log4j,app_srv_01_java)).
+facto(153,instancia_processo(app_srv_02_log4j,app_srv_02_java)).
+facto(154,instancia_processo(db_srv_01_postgres,db_srv_01_postgres)).
+facto(155,instancia_processo(db_srv_01_ssh,db_srv_01_sshd)).
+facto(156,instancia_processo(web_srv_08_apache,web_srv_08_httpd_site)).
+facto(157,instancia_processo(web_srv_08_apache_admin,web_srv_08_httpd_consola)).
+facto(158,instancia_processo(app_srv_03_loja,app_srv_03_java)).
+facto(159,instancia_processo(web_srv_09_apache,web_srv_09_httpd)).
+facto(160,instancia_processo(web_srv_10_apache,web_srv_10_httpd)).
+facto(161,instancia_processo(web_srv_11_apache,web_srv_11_httpd)).
+
+% catalogo de vulnerabilidades: programa afetado, intervalos de versoes afetadas, vetor e impactos (o que o atacante obtem).
+% Uma vulnerabilidade pode ter varios impactos. requer_condicao(Vuln, Impacto, Condicao): esse impacto so existe se a
+%   instalacao tiver essa configuracao; um impacto sem requer_condicao existe sempre.
+%   Um impacto pode ter varias condicoes: basta uma estar em falta para ficar excluido.
+% intervalo_afetado(Vuln, Min, Max): pode haver varios por vulnerabilidade, quando um ramo antigo foi corrigido a parte.
+%   Os intervalos sao fechados (Min e Max sao ambos afetados) e as versoes so tem numeros (2 ou 3 partes, sem sufixos como
+%   -beta9). Quando a fonte oficial da "afetado ate X, exclusive", regista-se como Max a ultima versao afetada.
+% cve_2021_41773: Apache 2.4.49 (corrigido na 2.4.50). E uma falha de path traversal que, quando o servidor tem o CGI
+%   ativo, deixa executar comandos (execucao_remota). Sem CGI a falha continua a deixar ler ficheiros fora da pasta do
+%   site, mas esse impacto NAO esta neste catalogo: nao ha uma evidencia validada para o detetar. Por isso um ataque a
+%   um servidor vulneravel sem CGI nunca e dado como "sem impacto": fica como exploracao possivel, para verificar e corrigir.
+% cve_2021_44228: Log4Shell no log4j-core. Corrigido na 2.15.0 e tambem, a parte, na 2.3.1 e na 2.12.2 (ramos antigos):
+%   afeta 2.0.0 a 2.3.0, 2.4.0 a 2.12.1 e 2.13.0 a 2.14.1. Oficialmente o primeiro intervalo comeca na 2.0-beta9;
+%   as versoes beta nao cabem no formato v(Major,Minor,Patch), por isso aqui comeca na 2.0.0.
+% vuln_interna_sqli_loja: falha interna de SQL injection na aplicacao da loja (ate 1.2.0), sem CVE publico (exemplo criado para o cenario).
+% vuln_interna_upload_loja: falha interna de upload de ficheiros na loja, acabada de reportar; ainda nao se sabe que versoes afeta,
+%   por isso nao tem intervalo_afetado (exemplo criado para o cenario).
+facto(162,vuln_afeta(cve_2021_41773,apache_httpd)).
+facto(163,intervalo_afetado(cve_2021_41773,v(2,4,49),v(2,4,49))).
+facto(164,vuln_vetor(cve_2021_41773,rede)).
+facto(165,vuln_impacto(cve_2021_41773,execucao_remota)).
+facto(166,requer_condicao(cve_2021_41773,execucao_remota,cgi_ativo)).
+
+facto(167,vuln_afeta(cve_2021_44228,log4j_core)).
+facto(168,intervalo_afetado(cve_2021_44228,v(2,0,0),v(2,3,0))).
+facto(169,intervalo_afetado(cve_2021_44228,v(2,4,0),v(2,12,1))).
+facto(170,intervalo_afetado(cve_2021_44228,v(2,13,0),v(2,14,1))).
+facto(171,vuln_vetor(cve_2021_44228,rede)).
+facto(172,vuln_impacto(cve_2021_44228,execucao_remota)).
+
+facto(173,vuln_afeta(vuln_interna_sqli_loja,loja_app)).
+facto(174,intervalo_afetado(vuln_interna_sqli_loja,v(1,0,0),v(1,2,0))).
+facto(175,vuln_vetor(vuln_interna_sqli_loja,rede)).
+facto(176,vuln_impacto(vuln_interna_sqli_loja,injecao_sql)).
+
+facto(177,vuln_afeta(vuln_interna_upload_loja,loja_app)).
+facto(178,vuln_vetor(vuln_interna_upload_loja,rede)).
+facto(179,vuln_impacto(vuln_interna_upload_loja,execucao_remota)).
+
+% assinaturas do IDS: que vulnerabilidade tenta explorar cada assinatura
+facto(180,assinatura_vuln(sig_apache_path_traversal,cve_2021_41773)).
+facto(181,assinatura_vuln(sig_log4shell_jndi,cve_2021_44228)).
+facto(182,assinatura_vuln(sig_sqli_union,vuln_interna_sqli_loja)).
+facto(183,assinatura_vuln(sig_loja_upload_jsp,vuln_interna_upload_loja)).
+
+% classe_impacto(Impacto, controlo|dados): o que o atacante ganha com cada impacto, e por isso o que se faz quando se confirma.
+%   controlo: passa a mandar na maquina -> compromisso, isolar a maquina.
+%   dados: le ou extrai dados, sem mandar na maquina -> exposicao de dados, conter e avaliar o que foi exposto.
+facto(184,classe_impacto(execucao_remota,controlo)).
+facto(185,classe_impacto(injecao_sql,dados)).
+
+% tipo_provavel(Classe, TipoDeIncidente): o incidente que se abre quando um impacto dessa classe e provavel (falta confirmar no host).
+facto(186,tipo_provavel(controlo,compromisso_provavel)).
+facto(187,tipo_provavel(dados,exposicao_provavel)).
+
+% evidencia esperada no host depois de um ataque bem sucedido: evidencia_impacto(Impacto, TipoDeEvento, JanelaEmSegundos)
+facto(188,evidencia_impacto(execucao_remota,shell_iniciada,60)).
+facto(189,evidencia_impacto(injecao_sql,resposta_volumosa,120)).
+
+% JANELAS DE TEMPO usadas pelas regras, em segundos: janela(Nome, Segundos). Sao escolhas do grupo.
+% Os relogios do IDS, dos sensores dos hosts e dos registos de login nunca estao exatamente certos uns com os outros:
+%   tolerancia_relogios e o desvio que se aceita ao comparar dois tempos (5 s). Com desvios maiores as janelas falham.
+%   reconhecimento_falhas: os logins falhados contam se couberem neste intervalo (5 min)
+%   login_apos_reconhecimento: login com sucesso da mesma origem depois do reconhecimento (15 min)
+%   movimento_lateral_apos_compromisso: ate onde se procura para tras um compromisso da origem de um login (7 dias);
+%     nao quer dizer que o compromisso acabe ao fim desse tempo: acaba quando se regista recuperado(Ativo, Evento)
+%   c2_apos_sinal: trafego para um C2 depois de outro sinal no mesmo ativo (24 h)
+%   evidencia_tardia: evidencia no host que aparece fora da janela curta do impacto (24 h)
+facto(190,janela(tolerancia_relogios,5)).
+facto(191,janela(reconhecimento_falhas,300)).
+facto(192,janela(login_apos_reconhecimento,900)).
+facto(193,janela(movimento_lateral_apos_compromisso,604800)).
+facto(194,janela(c2_apos_sinal,86400)).
+facto(195,janela(evidencia_tardia,86400)).
+
+% POLITICA DE ACESSO: permitido(Destino, Servico, Origem) diz que origem pode entrar nesse servico.
+% cobertura_politica(Destino, Servico, completa): a politica desse servico esta toda registada, por isso um acesso que
+%   nao esteja autorizado e proibido. Sem esse facto, a politica esta incompleta e a falta de autorizacao nao prova nada.
+% SSH para a base de dados: so a partir da jumpbox (politica completa). SSH para a jumpbox: ninguem esta autorizado
+%   a entrar a partir de outros servidores (politica completa). PostgreSQL na base de dados: esta registado que a loja
+%   de app_srv_01 pode entrar, mas o levantamento dos outros acessos ainda nao foi feito (politica incompleta).
+facto(196,permitido(db_srv_01,ssh,jumpbox_admin)).
+facto(197,cobertura_politica(db_srv_01,ssh,completa)).
+facto(198,cobertura_politica(jumpbox_admin,ssh,completa)).
+facto(199,permitido(db_srv_01,postgresql,app_srv_01)).
+
+% catalogo de IoC: ioc(Ip, Tipo)
+facto(200,ioc(c2_203_0_113_9,c2)).
+facto(201,ioc(c2_198_51_100_7,c2)).
+
+% PERGUNTAS AO ANALISTA (o que a interface mostra quando o sensor do servidor esta em baixo)
+% Pergunta-se pela evidencia que o impacto da vulnerabilidade atacada deixaria: pergunta_evidencia(TipoDeEvento, Pergunta).
+% texto_pergunta(Pergunta, Texto)   opcao_resposta(Pergunta, Resposta, Texto)
+facto(202,pergunta_evidencia(shell_iniciada,shell_servico)).
+facto(203,pergunta_evidencia(resposta_volumosa,resposta_volumosa_servico)).
+
+facto(204,texto_pergunta(shell_servico,'O sensor deste servidor esta em baixo. Consegue ver uma shell ativa lancada pelo servico que foi atacado?')).
+facto(205,opcao_resposta(shell_servico,sim,'Sim, ha uma shell lancada pelo servico')).
+facto(206,opcao_resposta(shell_servico,nao,'Nao, nao ha nenhuma shell lancada pelo servico')).
+facto(207,opcao_resposta(shell_servico,nao_sei,'Nao sei, nao consigo verificar')).
+
+facto(208,texto_pergunta(resposta_volumosa_servico,'O sensor deste servidor esta em baixo. Nos registos do servico atacado, ha uma resposta anormalmente grande logo a seguir ao ataque?')).
+facto(209,opcao_resposta(resposta_volumosa_servico,sim,'Sim, ha uma resposta anormalmente grande')).
+facto(210,opcao_resposta(resposta_volumosa_servico,nao,'Nao, as respostas tem o tamanho normal')).
+facto(211,opcao_resposta(resposta_volumosa_servico,nao_sei,'Nao sei, nao consigo verificar')).
+
+% PERGUNTAS DE CONFIRMACAO NO HOST, uma por tipo de incidente provavel: pergunta_confirmacao(TipoDeIncidente, Pergunta).
+% O ticket pede para confirmar no host; a resposta a esta pergunta e a forma de registar o resultado.
+facto(212,pergunta_confirmacao(compromisso_provavel,compromisso_no_host)).
+facto(213,pergunta_confirmacao(exposicao_provavel,exposicao_no_host)).
+
+facto(214,texto_pergunta(compromisso_no_host,'Ha sinais fortes de que o ataque a esta maquina resultou, mas falta confirmar. Depois de verificar no proprio host (processos, ligacoes, ficheiros recentes), confirma-se?')).
+facto(215,opcao_resposta(compromisso_no_host,sim,'Sim, confirma-se no host')).
+facto(216,opcao_resposta(compromisso_no_host,nao,'Nao, verifiquei e nao se confirma')).
+facto(217,opcao_resposta(compromisso_no_host,nao_sei,'Nao sei, ainda nao consegui verificar')).
+
+facto(218,texto_pergunta(exposicao_no_host,'Ha sinais de que o ataque a este servico expos dados, mas falta confirmar. Depois de verificar no proprio host (registos do servico e da base de dados), confirma-se que houve dados expostos?')).
+facto(219,opcao_resposta(exposicao_no_host,sim,'Sim, confirma-se que houve dados expostos')).
+facto(220,opcao_resposta(exposicao_no_host,nao,'Nao, verifiquei e nao houve dados expostos')).
+facto(221,opcao_resposta(exposicao_no_host,nao_sei,'Nao sei, ainda nao consegui verificar')).
+
+% SIGNIFICADO OPERACIONAL das conclusoes e das acoes mais fortes: significado(Termo, Texto). A interface mostra-o ao analista.
+facto(222,significado(compromisso_confirmado,'Houve um ataque que podia dar ao atacante o controlo da maquina, apareceu a evidencia que esse ataque deixaria, dentro da janela de tempo, e a evidencia esta ligada a instancia de processo atacada ou foi vista por um analista. Autoriza isolar a maquina. Nao e uma prova de causalidade.')).
+facto(223,significado(compromisso_provavel,'Ha sinais fortes de ataque no mesmo ativo, mas falta a ligacao entre eles. Confirmar no host antes de isolar.')).
+facto(224,significado(bloquear_origem,'Contencao preventiva e reversivel: deixa de se aceitar trafego vindo desse IP, que ja tinha atacado antes. Nao e prova de compromisso.')).
+facto(225,significado(bloquear_saida,'Contencao preventiva e reversivel: o ativo deixa de poder enviar trafego para esse IP (um C2 conhecido), sem parar o servico. Nao e prova de compromisso.')).
+facto(226,significado(isolar_maquina,'Contencao forte: a maquina sai da rede e o servico para. So com o compromisso confirmado.')).
+facto(227,significado(exposicao_de_dados,'Confirmou-se um ataque que deixa ler ou extrair dados, sem dar ao atacante o controlo da maquina. Conter a origem e avaliar que dados ficaram expostos. Nao se isola a maquina.')).
+facto(228,significado(exploracao_possivel,'O ataque podia resultar nesta maquina e ainda nao apareceu evidencia de que resultou. Verificar o host e corrigir a vulnerabilidade.')).
+facto(229,significado(exposicao_provavel,'Ha sinais de que um ataque que expoe dados resultou, mas falta a ligacao entre eles. Confirmar no host. Nao se isola a maquina.')).
+facto(230,significado(sem_evidencia_observada,'O analista nao viu nenhuma das evidencias que o ataque deixaria. Nao prova que o ataque falhou: a vulnerabilidade continua por corrigir.')).
+facto(231,significado(historico,'Conclusao que deixou de valer porque chegou um facto novo (revisto, superado ou resolvido). Fica registada para explicar o que se fez, mas ja nao e usada para concluir nada.')).
+
+% TIPOS DE INCIDENTE: severidade (quanto mal faz se for verdade), confianca (quao forte e a evidencia) e resposta (acao do ticket).
+% Quando a mesma situacao pode ter evidencias de forca diferente, cada uma e um tipo diferente (compromisso / compromisso_provavel).
+% Confianca baixa desce a gravidade um nivel. O perito viu estes valores na v4.3 e considerou a estrutura boa; continuam a ser escolhas do grupo.
+% Os tipos propagacao, exposicao_de_dados e exploracao_possivel sao da v5.1; exposicao_provavel e politica_por_confirmar sao da v6.
+facto(232,severidade(compromisso,critica)).
+facto(233,confianca(compromisso,alta)).
+facto(234,resposta(compromisso,isolar_maquina)).
+
+facto(235,severidade(compromisso_provavel,critica)).
+facto(236,confianca(compromisso_provavel,baixa)).
+facto(237,resposta(compromisso_provavel,confirmar_compromisso_no_host)).
+
+facto(238,severidade(propagacao,critica)).
+facto(239,confianca(propagacao,alta)).
+facto(240,resposta(propagacao,isolar_origem_e_destino)).
+
+facto(241,severidade(exposicao_de_dados,alta)).
+facto(242,confianca(exposicao_de_dados,alta)).
+facto(243,resposta(exposicao_de_dados,conter_e_avaliar_dados_expostos)).
+
+facto(244,severidade(exposicao_provavel,alta)).
+facto(245,confianca(exposicao_provavel,baixa)).
+facto(246,resposta(exposicao_provavel,confirmar_exposicao_no_host)).
+
+facto(247,severidade(exploracao_possivel,alta)).
+facto(248,confianca(exploracao_possivel,baixa)).
+facto(249,resposta(exploracao_possivel,verificar_host_e_corrigir_vulnerabilidade)).
+
+facto(250,severidade(comunicacao_c2,critica)).
+facto(251,confianca(comunicacao_c2,baixa)).
+facto(252,resposta(comunicacao_c2,investigar_trafego_c2)).
+
+facto(253,severidade(movimento_lateral,alta)).
+facto(254,confianca(movimento_lateral,alta)).
+facto(255,resposta(movimento_lateral,revogar_credenciais_e_cortar_sessoes)).
+
+facto(256,severidade(politica_por_confirmar,media)).
+facto(257,confianca(politica_por_confirmar,alta)).
+facto(258,resposta(politica_por_confirmar,verificar_politica_de_acesso)).
+
+facto(259,severidade(acesso_suspeito,critica)).
+facto(260,confianca(acesso_suspeito,baixa)).
+facto(261,resposta(acesso_suspeito,revogar_credenciais_e_verificar_acesso)).
+
+facto(262,severidade(impacto_ambiguo,alta)).
+facto(263,confianca(impacto_ambiguo,baixa)).
+facto(264,resposta(impacto_ambiguo,inspecionar_processos)).
+
+facto(265,severidade(inspecao_manual,alta)).
+facto(266,confianca(inspecao_manual,baixa)).
+facto(267,resposta(inspecao_manual,inspecao_manual_do_host)).
+
+facto(268,severidade(vigilancia,media)).
+facto(269,confianca(vigilancia,alta)).
+facto(270,resposta(vigilancia,vigilancia_ativa)).
+
+facto(271,severidade(versao_por_confirmar,media)).
+facto(272,confianca(versao_por_confirmar,alta)).
+facto(273,resposta(versao_por_confirmar,verificar_inventario)).
+
+facto(274,severidade(configuracao_por_confirmar,media)).
+facto(275,confianca(configuracao_por_confirmar,alta)).
+facto(276,resposta(configuracao_por_confirmar,verificar_configuracao)).
+
+facto(277,severidade(inventario_rede_incompleto,media)).
+facto(278,confianca(inventario_rede_incompleto,alta)).
+facto(279,resposta(inventario_rede_incompleto,recolher_inventario(rede))).
+
+facto(280,severidade(sbom_incompleto,media)).
+facto(281,confianca(sbom_incompleto,alta)).
+facto(282,resposta(sbom_incompleto,recolher_inventario(sbom))).
+
+facto(283,severidade(catalogo_incompleto,media)).
+facto(284,confianca(catalogo_incompleto,alta)).
+facto(285,resposta(catalogo_incompleto,completar_catalogo_de_vulnerabilidades)).
+
+facto(286,severidade(tentativa_sem_impacto,baixa)).
+facto(287,confianca(tentativa_sem_impacto,alta)).
+facto(288,resposta(tentativa_sem_impacto,registar_e_vigiar_origem)).
+
+% substitui(TipoMaisForte, TipoSubstituido): quando aparece um incidente do tipo mais forte para o mesmo evento,
+% o do tipo substituido deixa de ter de ser tratado.
+% O incidente de C2 so e substituido pelo compromisso que esse trafego confirmou. Ao lado de um compromisso provavel
+% continua aberto de proposito: sao dois trabalhos diferentes (investigar o trafego e confirmar no host).
+% A inspecao manual NAO substitui a exploracao possivel: responder as perguntas nao corrige a vulnerabilidade.
+facto(289,substitui(compromisso,exploracao_possivel)).
+facto(290,substitui(compromisso,compromisso_provavel)).
+facto(291,substitui(compromisso,comunicacao_c2)).
+facto(292,substitui(exposicao_de_dados,exploracao_possivel)).
+facto(293,substitui(exposicao_de_dados,exposicao_provavel)).
+facto(294,substitui(compromisso_provavel,exploracao_possivel)).
+facto(295,substitui(exposicao_provavel,exploracao_possivel)).
+facto(296,substitui(impacto_ambiguo,exploracao_possivel)).
+facto(297,substitui(propagacao,compromisso)).
+facto(298,substitui(movimento_lateral,politica_por_confirmar)).
+
+% nivel_abaixo(Nivel, NivelAbaixo): usado quando a confianca e baixa
+facto(299,nivel_abaixo(critica,alta)).
+facto(300,nivel_abaixo(alta,media)).
+facto(301,nivel_abaixo(media,baixa)).
+facto(302,nivel_abaixo(baixa,baixa)).
+
+% matriz_prioridade(Gravidade, ClasseDoAtivo, PrioridadeDeBase): ativo critico = criticidade 8 ou mais; p1 = mais urgente
+facto(303,matriz_prioridade(critica,critico,p1)).
+facto(304,matriz_prioridade(critica,normal,p2)).
+facto(305,matriz_prioridade(alta,critico,p1)).
+facto(306,matriz_prioridade(alta,normal,p2)).
+facto(307,matriz_prioridade(media,critico,p2)).
+facto(308,matriz_prioridade(media,normal,p3)).
+facto(309,matriz_prioridade(baixa,critico,p3)).
+facto(310,matriz_prioridade(baixa,normal,p4)).
+
+% prioridade_acima(Prioridade, PrioridadeAcima): usado quando o impacto e alargado (mais do que um ativo impactado)
+facto(311,prioridade_acima(p1,p1)).
+facto(312,prioridade_acima(p2,p1)).
+facto(313,prioridade_acima(p3,p2)).
+facto(314,prioridade_acima(p4,p3)).
+
+ultimo_facto(314).

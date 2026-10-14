@@ -1,0 +1,6 @@
+% Cenario 11b - A ligacao aparece: o sensor diz que o trafego para o C2 foi feito pelo processo da aplicacao Java que
+%   usa o log4j, o processo atacado. O Log4Shell podia dar o controlo da maquina -> compromisso confirmado; o provavel
+%   fica superado. A SQL injection do cenario 9 tambem atingiu esse processo, mas so expoe dados: sozinha nao explicaria
+%   o C2, por isso nao conta para a confirmacao.
+
+:- novo_facto(evento_processo(ev_k1,java_loja)).

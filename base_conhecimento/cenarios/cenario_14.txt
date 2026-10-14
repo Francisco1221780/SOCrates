@@ -1,0 +1,6 @@
+% Cenario 14 - Comando e controlo nao corroborado: a jumpbox fala com um C2 catalogado, sem nenhuma outra evidencia
+%   de ataque. Corta-se a saida para esse IP e abre-se incidente de C2 (IoC nao corroborado), sem confirmar compromisso
+%   nem isolar.
+
+:- novo_facto(trafego_saida(ev_p1,jumpbox_admin,c2_198_51_100_7)).
+:- novo_facto(tempo(ev_p1,9500)).

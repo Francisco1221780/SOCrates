@@ -1,0 +1,10 @@
+% Cenario 20 - Evidencia sem telemetria de processo: novo exploit contra web_srv_06 e, 15 s depois, uma shell no host,
+%   mas o sensor nao disse que processo a lancou. Nao e "outro processo" (cenario 12): a origem e desconhecida.
+%   Compromisso provavel: confirmar no host antes de isolar.
+
+:- novo_facto(alerta_ids(ev_u1,web_srv_06,sig_apache_path_traversal)).
+:- novo_facto(origem(ev_u1,ip_198_51_100_40)).
+:- novo_facto(origem_zona(ev_u1,internet)).
+:- novo_facto(tempo(ev_u1,10800)).
+:- novo_facto(evento_host(ev_u2,web_srv_06,shell_iniciada)).
+:- novo_facto(tempo(ev_u2,10815)).

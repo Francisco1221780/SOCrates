@@ -1,0 +1,7 @@
+% Cenario 35b - Shell de um httpd em web_srv_08, 20 s depois do ataque do cenario 35. Ha dois httpd neste servidor (o do
+%   site e o da consola) e o sensor nao diz de qual veio: pelo nome nao se sabe se foi a instancia atacada
+%   -> compromisso provavel (instancia por identificar), confirmar no host. Depende do cenario 35.
+
+:- novo_facto(evento_host(ev_ac2,web_srv_08,shell_iniciada)).
+:- novo_facto(evento_processo(ev_ac2,httpd)).
+:- novo_facto(tempo(ev_ac2,17020)).

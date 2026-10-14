@@ -1,0 +1,9 @@
+% Cenario 35 - Duas instalacoes ao alcance, uma corrigida e outra vulneravel: exploit de Apache contra web_srv_08 vindo
+%   da rede interna, sem o alerta dizer o porto. Da rede interna chega-se ao site (porto 80, 2.4.52, corrigido) e a consola
+%   antiga (porto 8081, 2.4.49, vulneravel, CGI ativo). O site estar corrigido NAO chega para concluir "sem impacto":
+%   a consola tambem estava ao alcance -> exploracao possivel, e nenhuma tentativa sem impacto.
+
+:- novo_facto(alerta_ids(ev_ac1,web_srv_08,sig_apache_path_traversal)).
+:- novo_facto(origem(ev_ac1,ip_192_0_2_150)).
+:- novo_facto(origem_zona(ev_ac1,rede_interna)).
+:- novo_facto(tempo(ev_ac1,17000)).

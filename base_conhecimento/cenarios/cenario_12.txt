@@ -1,0 +1,11 @@
+% Cenario 12 - Coincidencia no tempo, sem ligacao ao processo: exploit contra web_srv_06 (2.4.49, vulneravel) e,
+%   20 s depois, uma shell no host, mas aberta por uma sessao SSH de gestao (pai: sshd), nao pelo httpd.
+%   Nao se confirma o compromisso: impacto ambiguo e inspecao dos processos, sem isolar a maquina.
+
+:- novo_facto(alerta_ids(ev_l1,web_srv_06,sig_apache_path_traversal)).
+:- novo_facto(origem(ev_l1,ip_198_51_100_30)).
+:- novo_facto(origem_zona(ev_l1,internet)).
+:- novo_facto(tempo(ev_l1,8000)).
+:- novo_facto(evento_host(ev_l2,web_srv_06,shell_iniciada)).
+:- novo_facto(evento_processo(ev_l2,sshd)).
+:- novo_facto(tempo(ev_l2,8020)).
