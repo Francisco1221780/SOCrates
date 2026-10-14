@@ -5,7 +5,7 @@
 O motor está em dois ficheiros: `soc_motor.pl` é só o núcleo (carregar a base, inferir, injetar factos e cenários), sem menu, sem ler do teclado e sem escrever no `stdout`; as mensagens ("Base carregada…", "29 factos novos…") vão para o `stderr` com `print_message/2`. `soc_menu.pl` carrega o núcleo e acrescenta as explicações (`como`, `whynot`), a visualização e o menu. O `wrapper.pl` usa só o núcleo.
 
 > **Base v6.** A base em `base_conhecimento/` é agora a v6 (314 factos, 92 regras). O motor carrega-a e corre-a, mas
-> ainda não faz a reavaliação por `condicao_le/2` que a v6 pede, e os resultados de referência abaixo são da v5.1.
+> ainda não faz a reavaliação por `condicao_le/2` que a v6 pede, e os resultados de referência da v6 estão por gerar.
 
 ## Ficheiros e onde ficam
 
@@ -17,8 +17,7 @@ O motor fica em `motores/prolog/` e a base de conhecimento em `base_conhecimento
 │   └── prolog/
 │       ├── soc_motor.pl        ← o núcleo do motor
 │       ├── soc_menu.pl         ← explicações, visualização e menu (carrega o soc_motor.pl)
-│       ├── README_motor.md     ← este ficheiro
-│       └── referencia_prolog/  ← resultados de referência do motor (v5.1), um ficheiro por variante
+│       └── README_motor.md     ← este ficheiro
 └── base_conhecimento/
     ├── soc_factos.txt      ← os factos fixos; é o ficheiro que se carrega
     ├── soc_regras.txt      ← as regras (carregado pelo soc_factos.txt)
@@ -213,18 +212,6 @@ arranca_motor
 | Interface | — | `menu/0` (em `soc_menu.pl`), perguntas ao analista com "porque?", incidentes, tickets, ações. |
 
 O motor continua a funcionar com as bases da UC (por exemplo, `veiculos2.txt`). Numa base sem metaconhecimento, cada facto tenta todas as regras.
-
-## Resultados de referência
-
-Com a base v5.1:
-
-| Sequência | Resultado |
-| --- | --- |
-| Estado inicial + cenários 1 a 29b, sem respostas | 931 factos, 50 incidentes, 50 tickets (36 abertos, 14 fechados) |
-| `injeta_todos` (1 a 29b + 30 a 34) | 947 factos, com as mesmas 520 conclusões: os cenários 30 a 34 não acrescentam nenhuma |
-| 1 a 29b + respostas 3b, 10d e 17b | 957 factos, 52 incidentes, 35 tickets abertos, 17 fechados, e o incidente "propagação" com dois ativos |
-
-Estes valores são da base v5.1 (que já não está no repositório; está no histórico do git) e têm de ser regenerados para a v6. As outras variantes do README da v5.1 estão em [`referencia_prolog/`](referencia_prolog/), com um ficheiro por variante (`base.txt`, `respostas_3b_10d_17b.txt`, …). Cada linha tem o número do facto, o facto e a regra que o concluiu (ou `dado`), separados por tabulações. Servem de referência para o Drools e para o comparador.
 
 ## Notas
 

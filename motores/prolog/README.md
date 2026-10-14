@@ -11,7 +11,7 @@ Conteúdo:
 | `wrapper.pl` | Lê o pedido JSON do `stdin`, corre os passos e escreve uma resposta JSON no `stdout` (M5 a M10, issue #9). |
 | `exemplos/` | Pedidos JSON de exemplo (cenário 7 e as três respostas 7b), para correr o wrapper à mão. |
 | `ferramentas/` | Scripts de geração: metaconhecimento e JSON dos cenários. |
-| `referencia_prolog/` | Resultados de referência do motor, um ficheiro por variante; servem de base ao Drools e ao comparador. |
+| `referencia_prolog/` | Resultados de referência do motor, um ficheiro por variante; servem de base ao Drools e ao comparador. Por gerar para a v6, depois de o motor ter a reavaliação por `condicao_le/2`. |
 | `README_motor.md` | Documentação do motor e da tabela de alterações M1 a M10. |
 
 Regras do wrapper:
@@ -60,4 +60,4 @@ Os termos seguem a tabela da issue #6: átomo → string, inteiro → número, l
 mesma resposta, e um prefixo dos passos dá os mesmos factos que esse ponto de um pedido mais longo.
 
 Estado: motor (`soc_motor.pl`, escrito para a v5.1; corre a v6 sem a reavaliação por `condicao_le/2`), menu e
-wrapper feitos; os resultados de referência são da v5.1.
+wrapper feitos; os resultados de referência da v6 estão por gerar.

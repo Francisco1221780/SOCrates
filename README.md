@@ -203,8 +203,8 @@ limita-se a adaptadores. Há quatro blocos.
 
 > **O motor Prolog foi escrito para a base v5.1 (75 regras).** Carrega e corre a v6, mas a v6 pede uma
 > alteração ao motor: reavaliar uma regra quando chega um facto lido por uma condição calculada (`condicao_le/2`,
-> em `soc_suporte.txt`), que o motor atual não tem. Os resultados de referência em `motores/prolog/referencia_prolog/`
-> (931 factos, 50 incidentes, 50 tickets) são da v5.1 e têm de ser regenerados.
+> em `soc_suporte.txt`), que o motor atual não tem. Os resultados de referência (`motores/prolog/referencia_prolog/`)
+> geram-se para a v6 depois dessa alteração; os da v5.1 ficaram só no histórico do git.
 
 ---
 
