@@ -1,0 +1,15 @@
+{
+  "versaoKB": "6",
+  "passos": [
+    {"id": "cenario_07", "factos": [
+      {"predicado": "estado_sensor", "args": ["web_srv_04", "agente_host", "offline"]},
+      {"predicado": "alerta_ids", "args": ["ev_e1", "web_srv_04", "sig_apache_path_traversal"]},
+      {"predicado": "origem", "args": ["ev_e1", "ip_198_51_100_23"]},
+      {"predicado": "origem_zona", "args": ["ev_e1", "internet"]},
+      {"predicado": "tempo", "args": ["ev_e1", 3000]}
+    ]},
+    {"id": "cenario_07b_sim", "factos": [
+      {"predicado": "resposta_analista", "args": ["web_srv_04", "ev_e1", "shell_servico", "sim"]}
+    ]}
+  ]
+}
