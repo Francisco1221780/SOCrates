@@ -46,7 +46,7 @@ class TermosJsonTest {
     }
 
     @Test
-    void objetoQueNaoETermoDaErro() throws Exception {
+    void objetoQueNaoETermoDaErro() {
         PedidoInvalido e = assertThrows(PedidoInvalido.class, () -> TermosJson.termo(
                 json.readTree("{\"f\":\"v\",\"args\":[],\"x\":1}"), "cenario_01"));
         assertEquals("termo invalido no passo cenario_01: um objeto tem de ser {\"f\": nome, \"args\": [...]}",

@@ -281,7 +281,8 @@ swipl -g run_tests -t halt motores/prolog/testes/testes.pl
 | Suite | Path | Expectation |
 | :--- | :--- | :--- |
 | `MotorDroolsTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/` | A R7 dá os mesmos factos que o `wrapper.pl`; perguntas, tickets, estado "pronto" e erros do pedido como no wrapper |
-| `TermosJsonTest`, `BaseFactosTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/` | Termos JSON ↔ Java; numeração, factos repetidos e nomes das variáveis nas premissas |
+| `TermosJsonTest`, `RespostaTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/json/` | Termos JSON ↔ Java; premissas no formato do wrapper, com os nomes das variáveis |
+| `BaseFactosTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/sessao/` | Numeração, origem, passo e factos repetidos |
 | `DroolsAdapterTest` | `backend/cyber/src/test/java/cyberrangers/cyber/engine/drools/` | O adaptador chama o `MotorDrools` e devolve a conclusão da R7 |
 | `CyberApplicationTests` | `backend/cyber/src/test/java/cyberrangers/cyber/` | O contexto Spring arranca com o Drools carregado |
 | `testes.pl` (plunit) | `motores/prolog/testes/` | O wrapper cumpre os AC2, AC3, AC10–AC12 e M9; os JSON gerados (AC18) e as referências do motor estão em dia |
