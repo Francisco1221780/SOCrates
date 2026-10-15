@@ -9,6 +9,11 @@ import cyberrangers.motores.drools.json.PedidoInvalido;
 import cyberrangers.motores.drools.json.Resposta;
 import cyberrangers.motores.drools.modelo.Facto;
 import cyberrangers.motores.drools.sessao.BaseFactos;
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.kie.api.KieServices;
@@ -35,6 +40,20 @@ public class MotorDrools {
 
     public MotorDrools() {
         this(FactosIniciais.RECURSO);
+    }
+
+    /**
+     * Linha de comandos, como o wrapper.pl: le o pedido do stdin e escreve so a resposta JSON no stdout;
+     * codigo de saida 1 se a resposta for um erro. Ver "Correr so o Drools" no README do modulo.
+     */
+    public static void main(String[] args) throws IOException {
+        String pedido = new String(System.in.readAllBytes(), StandardCharsets.UTF_8);
+        MotorDrools motor = new MotorDrools();
+        String resposta = motor.infere(pedido);
+        PrintStream out = new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
+        out.println(resposta);
+        boolean erro = "erro".equals(motor.json.readTree(resposta).path("estado").asText());
+        System.exit(erro ? 1 : 0);
     }
 
     /** @param recursoFactos o ficheiro de factos iniciais no classpath (outro nome so nos testes) */
