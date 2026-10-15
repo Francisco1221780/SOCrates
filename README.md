@@ -289,8 +289,14 @@ swipl -g run_tests -t halt motores/prolog/testes/testes.pl
 
 Naming: `<Classe>Test.java` para testes unitários e `<Classe>Tests.java` no teste de contexto do Spring.
 
-CI: a GitHub Action `.github/workflows/prolog.yml` corre os testes Prolog em cada PR e em cada push para `develop` e
-`main`. Os testes Maven ainda correm só localmente.
+CI: em cada PR e em cada push para `develop` e `main` correm duas GitHub Actions:
+
+| Workflow | O que corre |
+| :--- | :--- |
+| `.github/workflows/prolog.yml` | Os testes Prolog (`motores/prolog/testes/testes.pl`) |
+| `.github/workflows/drools.yml` | O módulo Drools: `./mvnw -B -pl motores/drools verify`, com o JDK 25 |
+
+Os testes do backend ainda correm só localmente; o CI do backend fica com quem fizer a parte do backend (#12).
 
 ---
 

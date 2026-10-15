@@ -1,0 +1,33 @@
+# Testes do motor Drools (issue #4): o modulo motores/drools com as suas regras, o formato da resposta igual ao
+# wrapper.pl, a paridade da R7 com o Prolog e o estado "pronto" com o factos_iniciais.json gerado.
+# So o modulo Drools; o backend nao corre aqui. Localmente: .\mvnw.cmd -pl motores/drools verify (JDK 25).
+name: Drools
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+jobs:
+  drools:
+    name: Modulo motores/drools
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar o JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Testes do modulo Drools
+        run: ./mvnw -B -pl motores/drools verify
+
+      - name: Relatorios dos testes (so se falhar)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-drools
+          path: motores/drools/target/surefire-reports/
