@@ -47,7 +47,7 @@ ninguém assumir uma peça que ainda não corre.
 | Peça | Estado |
 | :--- | :--- |
 | Build Maven multi-módulo (`pom.xml` na raiz) | Feito; `.\mvnw.cmd verify` passa |
-| Módulo `motores/drools` com `MotorDrools` | Feito, com uma regra de exemplo; as 92 regras reais por portar |
+| Módulo `motores/drools` com `MotorDrools` | Infraestrutura feita (issue #4): factos numerados, justificação, resposta no formato do `wrapper.pl`, estado "pronto", 314 factos iniciais do `factos_iniciais.json`; só a R7 portada (molde) |
 | Backend: `MotorInferencia` e `DroolsAdapter` | Feito; sem endpoints REST ainda |
 | Base de conhecimento v6 (`base_conhecimento/`) | Feito: factos, 92 regras, 67 ficheiros de cenário e `soc_cenarios.pl` |
 | Motor Prolog (`soc_motor.pl`) | Feito: corre a v6; resultados de referência em `motores/prolog/referencia_prolog/` |
@@ -190,9 +190,11 @@ Cada pasta tem um `README.md` com o seu papel.
 O código organiza-se por **motor**: cada motor é um projeto com os seus testes e as suas regras, e o backend
 limita-se a adaptadores. Há quatro blocos.
 
-- **`motores/drools`** — `MotorDrools.infere(String)` abre uma `KieSession` nova por pedido, insere os factos de
-  cada passo, corre `fireAllRules()` e faz `dispose()` no fim. As regras estão em
-  `src/main/resources/regras/` (hoje só `00_exemplo.drl`) e são carregadas por `META-INF/kmodule.xml`.
+- **`motores/drools`** — `MotorDrools.infere(String)` abre uma `KieSession` nova por pedido, insere os factos
+  iniciais e corre as regras sobre eles, depois insere os factos de cada passo, corre `fireAllRules()` e faz
+  `dispose()` no fim. A resposta tem o formato do `wrapper.pl`, com justificação por facto. As regras estão em
+  `src/main/resources/regras/` (hoje só a R7, em `B_vetor.drl`, que serve de molde) e são carregadas por
+  `META-INF/kmodule.xml`.
 - **`motores/prolog`** — o núcleo (`soc_motor.pl`) faz encadeamento direto com metaconhecimento, todas as
   instanciações e ponto fixo. O `wrapper.pl` lê o pedido do `stdin` e escreve um único documento JSON no
   `stdout`.
@@ -245,6 +247,15 @@ O módulo Drools tem de estar instalado no repositório local antes de arrancar 
 | :--- | :--- |
 | Backend | `http://localhost:8080` — arranca, mas ainda não expõe endpoints |
 
+Cada motor também corre sozinho, sem o backend, com o mesmo pedido JSON no `stdin` e a resposta no `stdout`:
+
+```powershell
+Get-Content pedido.json | .\mvnw.cmd -q -pl motores/drools compile exec:java          # Drools
+Get-Content pedido.json | swipl motores/prolog/wrapper.pl base_conhecimento           # Prolog
+```
+
+Exemplo de pedido e limites atuais em [`motores/drools/README.md`](motores/drools/README.md#correr-só-o-drools).
+
 ### Troubleshooting
 
 | Symptom | Cause and fix |
@@ -266,8 +277,9 @@ O módulo Drools tem de estar instalado no repositório local antes de arrancar 
 
 | Suite | Path | Expectation |
 | :--- | :--- | :--- |
-| `MotorDroolsTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/` | A regra de exemplo dispara; `versaoKB` desconhecida devolve `estado: "erro"` |
-| `DroolsAdapterTest` | `backend/cyber/src/test/java/cyberrangers/cyber/engine/drools/` | O adaptador chama o `MotorDrools` e devolve a conclusão |
+| `MotorDroolsTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/` | A R7 dá os mesmos factos que o `wrapper.pl`; perguntas, tickets, estado "pronto" e erros do pedido como no wrapper |
+| `TermosJsonTest`, `BaseFactosTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/` | Termos JSON ↔ Java; numeração, factos repetidos e nomes das variáveis nas premissas |
+| `DroolsAdapterTest` | `backend/cyber/src/test/java/cyberrangers/cyber/engine/drools/` | O adaptador chama o `MotorDrools` e devolve a conclusão da R7 |
 | `CyberApplicationTests` | `backend/cyber/src/test/java/cyberrangers/cyber/` | O contexto Spring arranca com o Drools carregado |
 
 Naming: `<Classe>Test.java` para testes unitários e `<Classe>Tests.java` no teste de contexto do Spring.
