@@ -2,7 +2,7 @@
 % referencias do motor geradas pelo gera_referencias.pl.
 % Correm-se a partir de qualquer pasta (os caminhos sao relativos a este ficheiro):
 %   swipl -g run_tests -t halt motores/prolog/testes/testes.pl
-% O codigo de saida e 0 se todos passarem e diferente de zero se algum falhar.
+% O codigo de saida e 0 se todos passarem e diferente de zero se algum falhar (e o que a CI usa).
 %
 % O wrapper corre num processo a parte, como o PrologAdapter o vai lancar: o pedido entra pelo stdin e a resposta sai
 % pelo stdout. Os pedidos montam-se com os passos do cenarios.json, a fonte unica dos passos de cada cenario.

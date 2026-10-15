@@ -11,7 +11,7 @@ Conteúdo previsto:
 | `wrapper.pl` | Lê o pedido JSON do `stdin`, corre os passos e escreve uma resposta JSON no `stdout` (M5 a M10, issue #9). |
 | `ferramentas/` | Scripts de geração: metaconhecimento e JSON dos cenários. |
 | `referencia_prolog/` | Resultados de referência do motor, um ficheiro por variante; servem de base ao Drools e ao comparador. |
-| `testes/` | Testes automáticos (`plunit`) do wrapper, dos JSON gerados e das referências. |
+| `testes/` | Testes automáticos (`plunit`) do wrapper, dos JSON gerados e das referências; correm na CI em cada PR. |
 | `README_motor.md` | Documentação do motor e da tabela de alterações M1 a M10. |
 
 Regras do wrapper:
@@ -65,8 +65,8 @@ mesma resposta, e um prefixo dos passos dá os mesmos factos que esse ponto de u
 swipl -g run_tests -t halt motores/prolog/testes/testes.pl
 ```
 
-Código de saída 0 se todos passarem; correm igual em Windows, Mac e Linux. Corre-os antes de abrir um PR. Lançam o
-wrapper como um processo
+Código de saída 0 se todos passarem. Correm igual em Windows, Mac e Linux, e na GitHub Action
+`.github/workflows/prolog.yml` em cada PR e em cada push para `develop` e `main`. Lançam o wrapper como um processo
 (como o `PrologAdapter`), com pedidos montados a partir do `cenarios.json`, e verificam:
 
 | Teste | O que verifica |

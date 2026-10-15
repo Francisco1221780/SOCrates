@@ -20,8 +20,8 @@ swipl motores/prolog/ferramentas/gera_json.pl              # escreve os dois JSO
 swipl motores/prolog/ferramentas/gera_json.pl --verificar  # só verifica; código 1 se algum estiver desatualizado
 ```
 
-O `--verificar` é o teste do AC18: corre-se antes de abrir um PR, sozinho ou com os testes Prolog (teste
-`ac18_json_em_dia` em `motores/prolog/testes/`). Não escreve nada e diz que ficheiro está
+O `--verificar` é o teste do AC18: corre na CI em cada PR (teste `ac18_json_em_dia` em `motores/prolog/testes/`) e
+pode correr-se à mão antes de abrir um PR. Não escreve nada e diz que ficheiro está
 desatualizado. Os fins de linha não contam (o git pode convertê-los no Windows).
 
 **O que vai em cada ficheiro:**
@@ -57,4 +57,4 @@ swipl motores/prolog/ferramentas/gera_referencias.pl --verificar  # só verifica
 ```
 
 Corre o `wrapper.pl` sobre cada variante (cerca de 2 s cada) e guarda a resposta JSON com os cenários da variante.
-As variantes estão descritas no início do script. O `--verificar` também corre nos testes Prolog (teste `referencias_em_dia`).
+As variantes estão descritas no início do script. O `--verificar` também corre na CI (teste `referencias_em_dia`).

@@ -276,7 +276,8 @@ swipl -g run_tests -t halt motores/prolog/testes/testes.pl
 
 Naming: `<Classe>Test.java` para testes unitários e `<Classe>Tests.java` no teste de contexto do Spring.
 
-Não há pipeline de CI configurada; os testes (Maven e Prolog) correm só localmente.
+CI: a GitHub Action `.github/workflows/prolog.yml` corre os testes Prolog em cada PR e em cada push para `develop` e
+`main`. Os testes Maven ainda correm só localmente.
 
 ---
 
