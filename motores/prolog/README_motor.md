@@ -224,7 +224,7 @@ Com a base v6:
 | `injeta_todos` (sequência base + 30 a 34) | 1126 factos, com as mesmas 633 conclusões: os cenários 30 a 34 não acrescentam nenhuma |
 | Sequência base + respostas 3b, 10d e 17b | 1136 factos, 63 incidentes, 40 tickets abertos, 23 fechados, e o incidente "propagação" com dois ativos |
 
-Estes valores foram confirmados com a organização atual das pastas (motor em `motores/prolog/`, base em `base_conhecimento/`). As outras variantes (respostas 7b e 19b, alternativas 29c, 35d e 36c, e as atualizações 06b, 13b, 21b e 27b) estão em [`referencia_prolog/`](referencia_prolog/), com um ficheiro por variante (`base.txt`, `respostas_3b_10d_17b.txt`, …). Cada linha tem o número do facto, o facto e a regra que o concluiu (ou `dado`), separados por tabulações. Servem de referência para o Drools e para o comparador.
+Estes valores foram confirmados com a organização atual das pastas (motor em `motores/prolog/`, base em `base_conhecimento/`). As outras variantes (respostas 7b e 19b, alternativas 29c, 35d e 36c, e as atualizações 06b, 13b, 21b e 27b) estão em [`referencia_prolog/`](referencia_prolog/), com um ficheiro JSON por variante (`base.json`, `respostas_3b_10d_17b.json`, …), gerado pelo `ferramentas/gera_referencias.pl`. Cada ficheiro tem os cenários da variante e a resposta do `wrapper.pl`, no formato do contrato JSON. Servem de referência para o Drools e para o comparador.
 
 ## Notas
 

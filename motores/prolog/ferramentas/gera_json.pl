@@ -23,7 +23,12 @@
 %   alternativas  "(em alternativa ao N)" e as linhas com varios ficheiros e "(so UM)"
 % Se o indice tiver uma linha que nao se percebe, ou faltar um ficheiro, para com erro em vez de gerar dados errados.
 
+% A biblioteca JSON passou de library(http/json) para library(json) no SWI-Prolog 10; aceitam-se as duas.
+:- if(exists_source(library(json))).
 :- use_module(library(json)).
+:- else.
+:- use_module(library(http/json)).
+:- endif.
 :- use_module(library(lists)).
 :- use_module(library(apply)).
 

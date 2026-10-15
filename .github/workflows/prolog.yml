@@ -1,0 +1,27 @@
+# Testes do lado Prolog (issues #9 e #10): o wrapper.pl (AC2, AC3, AC10, AC11, AC12, M5, M9), os JSON gerados
+# pelo gera_json.pl (AC18: falha se estiverem desatualizados face aos .txt da base) e as referencias do motor geradas
+# pelo gera_referencias.pl (falha se o motor, a base ou os cenarios mudarem sem as regenerar).
+# Os testes estao em motores/prolog/testes/testes.pl; localmente correm-se com o mesmo comando do ultimo passo.
+name: Prolog
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+jobs:
+  prolog:
+    name: Wrapper e JSON gerados
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar o SWI-Prolog
+        run: |
+          sudo apt-add-repository -y ppa:swi-prolog/stable
+          sudo apt-get update
+          sudo apt-get install -y swi-prolog-nox
+          swipl --version
+
+      - name: Testes do wrapper e dos JSON gerados
+        run: swipl -g run_tests -t halt motores/prolog/testes/testes.pl

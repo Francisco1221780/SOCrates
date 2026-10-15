@@ -273,6 +273,9 @@ Exemplo de pedido e limites atuais em [`motores/drools/README.md`](motores/drool
 
 # Só o módulo Drools
 .\mvnw.cmd -pl motores/drools test
+
+# Lado Prolog: wrapper e JSON gerados (precisa do SWI-Prolog)
+swipl -g run_tests -t halt motores/prolog/testes/testes.pl
 ```
 
 | Suite | Path | Expectation |
@@ -281,10 +284,12 @@ Exemplo de pedido e limites atuais em [`motores/drools/README.md`](motores/drool
 | `TermosJsonTest`, `BaseFactosTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/` | Termos JSON ↔ Java; numeração, factos repetidos e nomes das variáveis nas premissas |
 | `DroolsAdapterTest` | `backend/cyber/src/test/java/cyberrangers/cyber/engine/drools/` | O adaptador chama o `MotorDrools` e devolve a conclusão da R7 |
 | `CyberApplicationTests` | `backend/cyber/src/test/java/cyberrangers/cyber/` | O contexto Spring arranca com o Drools carregado |
+| `testes.pl` (plunit) | `motores/prolog/testes/` | O wrapper cumpre os AC2, AC3, AC10–AC12 e M9; os JSON gerados (AC18) e as referências do motor estão em dia |
 
 Naming: `<Classe>Test.java` para testes unitários e `<Classe>Tests.java` no teste de contexto do Spring.
 
-Não há pipeline de CI configurada; os testes correm só localmente.
+CI: a GitHub Action `.github/workflows/prolog.yml` corre os testes Prolog em cada PR e em cada push para `develop` e
+`main`. Os testes Maven ainda correm só localmente.
 
 ---
 

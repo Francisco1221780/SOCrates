@@ -11,6 +11,7 @@ Conteúdo previsto:
 | `wrapper.pl` | Lê o pedido JSON do `stdin`, corre os passos e escreve uma resposta JSON no `stdout` (M5 a M10, issue #9). |
 | `ferramentas/` | Scripts de geração: metaconhecimento e JSON dos cenários. |
 | `referencia_prolog/` | Resultados de referência do motor, um ficheiro por variante; servem de base ao Drools e ao comparador. |
+| `testes/` | Testes automáticos (`plunit`) do wrapper, dos JSON gerados e das referências; correm na CI em cada PR. |
 | `README_motor.md` | Documentação do motor e da tabela de alterações M1 a M10. |
 
 Regras do wrapper:
@@ -58,5 +59,27 @@ Os termos seguem a tabela da issue #6: átomo → string, inteiro → número, l
 `{"f": nome, "args": [...]}`. As listas da resposta vão por número de facto, por isso o mesmo pedido dá sempre a
 mesma resposta, e um prefixo dos passos dá os mesmos factos que esse ponto de um pedido mais longo.
 
-Estado: o motor (`soc_motor.pl`, ainda com o menu no mesmo ficheiro), os resultados de referência da v6 e o wrapper
-estão aqui.
+## Testes
+
+```bash
+swipl -g run_tests -t halt motores/prolog/testes/testes.pl
+```
+
+Código de saída 0 se todos passarem. Correm igual em Windows, Mac e Linux, e na GitHub Action
+`.github/workflows/prolog.yml` em cada PR e em cada push para `develop` e `main`. Lançam o wrapper como um processo
+(como o `PrologAdapter`), com pedidos montados a partir do `cenarios.json`, e verificam:
+
+| Teste | O que verifica |
+| --- | --- |
+| `ac12_pergunta`, `ac12_resposta` | O cenário 7 dá `aguarda_resposta` com a pergunta; com cada resposta 7b, os factos são os mesmos que o motor dá ao injetar os ficheiros de cenário |
+| `ac11_prefixo` | Um prefixo dos passos dá os mesmos factos que esse ponto de um pedido mais longo |
+| `ac10_determinismo` | O mesmo pedido dá a mesma resposta, byte a byte |
+| `ac3_stdout_so_json` | O `stdout` tem um só documento JSON; as mensagens do motor vão para o `stderr` |
+| `ac2_acentos` | Um facto com acentos vai e volta igual |
+| `m9_erros` | Pedidos inválidos (versão errada, sem passos, JSON partido, stdin vazio, facto sem predicado, pasta errada) dão `estado: "erro"` e código diferente de zero |
+| `ac18_json_em_dia` | `gera_json.pl --verificar`: os JSON gerados estão em dia com os `.txt` da base |
+| `cenarios_coerentes` | No `cenarios.json`, as dependências e as alternativas existem, e as sequências respeitam-nas |
+| `referencias_em_dia` | `gera_referencias.pl --verificar`: as referências em `referencia_prolog/` são o que o wrapper dá hoje |
+
+Estado: o motor (`soc_motor.pl`, ainda com o menu no mesmo ficheiro), os resultados de referência da v6, o wrapper e os
+testes estão aqui.
