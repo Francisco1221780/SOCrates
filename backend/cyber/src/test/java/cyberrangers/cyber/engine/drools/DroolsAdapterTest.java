@@ -12,10 +12,13 @@ class DroolsAdapterTest {
     @Test
     void chamaOMotorDrools() {
         String pedido = """
-                {"versaoKB":"6","passos":[{"id":"p1","factos":[
-                  {"predicado":"alerta_ids","args":["ev_e1","web_srv_04","sig_x"]}]}]}
+                {"versaoKB":"6","passos":[{"id":"cenario_06","factos":[
+                  {"predicado":"vetor_aberto","args":["ev_f1","web_srv_05","web_srv_05_apache","cve_2021_41773"]}]}]}
                 """;
+        String resposta = adapter.infere(pedido);
         assertEquals("drools", adapter.nome());
-        assertTrue(adapter.infere(pedido).contains("exemplo_conclusao"));
+        assertTrue(resposta.contains("\"estado\":\"concluido\""), resposta);
+        assertTrue(resposta.contains("\"predicado\":\"incidente\""), resposta);
+        assertTrue(resposta.contains("\"regra\":7"), resposta);
     }
 }

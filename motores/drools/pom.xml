@@ -58,6 +58,31 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
             </plugin>
+            <!-- Correr so o motor, sem o backend: pedido no stdin, resposta no stdout (como o wrapper.pl) -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <mainClass>cyberrangers.motores.drools.MotorDrools</mainClass>
+                    <!-- logger so para esta execucao, so erros: dentro do exec:java o Maven junta o stderr ao stdout,
+                         e o stdout tem de ficar so com o JSON da resposta -->
+                    <includePluginDependencies>true</includePluginDependencies>
+                    <systemProperties>
+                        <systemProperty>
+                            <key>org.slf4j.simpleLogger.defaultLogLevel</key>
+                            <value>error</value>
+                        </systemProperty>
+                    </systemProperties>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-simple</artifactId>
+                        <version>2.0.16</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
         </plugins>
     </build>
 </project>

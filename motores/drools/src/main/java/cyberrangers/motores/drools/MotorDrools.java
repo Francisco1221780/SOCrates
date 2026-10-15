@@ -1,41 +1,99 @@
 package cyberrangers.motores.drools;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import cyberrangers.motores.drools.json.FactosIniciais;
+import cyberrangers.motores.drools.json.Pedido;
+import cyberrangers.motores.drools.json.PedidoInvalido;
+import cyberrangers.motores.drools.json.Resposta;
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.sessao.BaseFactos;
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.kie.api.KieServices;
+import org.kie.api.builder.Message;
 import org.kie.api.runtime.KieContainer;
 import org.kie.api.runtime.KieSession;
 
 /**
- * Motor Drools: recebe o pedido JSON (lista de passos), corre cada passo numa KieSession nova
- * e devolve a resposta JSON. Mesmo contrato do wrapper Prolog.
+ * Motor Drools: recebe o pedido JSON (lista de passos), corre-o numa KieSession nova e devolve a resposta JSON,
+ * no mesmo formato do wrapper.pl. Como no wrapper, as regras correm primeiro sobre os dados fixos e depois, passo a
+ * passo, sobre os factos de cada passo.
  */
 public class MotorDrools {
 
     public static final String VERSAO_KB = "6";
 
+    private static final String MOTOR = "drools";
     private static final String SESSAO = "sessao";
 
     private final ObjectMapper json = new ObjectMapper();
-    private final KieContainer container = KieServices.Factory.get().getKieClasspathContainer();
+    private final KieContainer container;
+    private final FactosIniciais iniciais;
+    private final EstadoMotor estado;
+
+    public MotorDrools() {
+        this(FactosIniciais.RECURSO);
+    }
+
+    /**
+     * Linha de comandos, como o wrapper.pl: le o pedido do stdin e escreve so a resposta JSON no stdout;
+     * codigo de saida 1 se a resposta for um erro. Ver "Correr so o Drools" no README do modulo.
+     */
+    public static void main(String[] args) throws IOException {
+        String pedido = new String(System.in.readAllBytes(), StandardCharsets.UTF_8);
+        MotorDrools motor = new MotorDrools();
+        String resposta = motor.infere(pedido);
+        PrintStream out = new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
+        out.println(resposta);
+        boolean erro = "erro".equals(motor.json.readTree(resposta).path("estado").asText());
+        System.exit(erro ? 1 : 0);
+    }
+
+    /** @param recursoFactos o ficheiro de factos iniciais no classpath (outro nome so nos testes) */
+    MotorDrools(String recursoFactos) {
+        List<String> erros = new ArrayList<>();
+        KieContainer c = null;
+        try {
+            c = KieServices.Factory.get().getKieClasspathContainer();
+            for (Message m : c.verify().getMessages(Message.Level.ERROR)) {
+                erros.add("regras: " + m.getText());
+            }
+        } catch (RuntimeException e) {
+            erros.add("regras: " + e.getMessage());
+        }
+        boolean regrasOk = c != null && erros.isEmpty();
+        FactosIniciais fi = null;
+        try {
+            fi = FactosIniciais.carrega(recursoFactos, VERSAO_KB, json);
+        } catch (IllegalStateException e) {
+            erros.add("factos iniciais: " + e.getMessage());
+        }
+        this.container = c;
+        this.iniciais = fi;
+        this.estado = new EstadoMotor(erros.isEmpty(), regrasOk, fi == null ? 0 : fi.quantos(), erros);
+    }
+
+    /** Se as regras e os factos iniciais carregaram (AC13). */
+    public EstadoMotor estado() {
+        return estado;
+    }
 
     public String infere(String pedidoJson) {
         try {
-            JsonNode pedido = json.readTree(pedidoJson);
-            String versao = pedido.path("versaoKB").asText("");
-            if (!VERSAO_KB.equals(versao)) {
-                return erro("versaoKB desconhecida: \"" + versao + "\" (carregada: " + VERSAO_KB + ")");
+            if (!estado.pronto()) {
+                return erro("motor drools nao esta pronto: " + String.join("; ", estado.erros()));
             }
-            JsonNode passos = pedido.path("passos");
-            if (!passos.isArray() || passos.isEmpty()) {
-                return erro("o pedido tem de ter pelo menos um passo");
-            }
-            return corre(passos);
+            Pedido pedido = Pedido.de(json.readTree(pedidoJson), VERSAO_KB);
+            return json.writeValueAsString(corre(pedido));
+        } catch (PedidoInvalido e) {
+            return erro(e.getMessage());
         } catch (JsonProcessingException e) {
             return erro("pedido JSON invalido: " + e.getOriginalMessage());
         } catch (RuntimeException e) {
@@ -43,40 +101,29 @@ public class MotorDrools {
         }
     }
 
-    private String corre(JsonNode passos) throws JsonProcessingException {
+    private ObjectNode corre(Pedido pedido) {
         KieSession sessao = container.newKieSession(SESSAO);
         try {
-            for (JsonNode passo : passos) {
-                for (JsonNode f : passo.path("factos")) {
-                    List<Object> args = new ArrayList<>();
-                    for (JsonNode a : f.path("args")) {
-                        args.add(json.treeToValue(a, Object.class));
-                    }
-                    sessao.insert(new Facto(f.path("predicado").asText(), args));
+            BaseFactos base = new BaseFactos(sessao);
+            sessao.setGlobal("base", base);
+            for (Facto f : iniciais.copias()) {
+                base.insereInicial(f);
+            }
+            sessao.fireAllRules();
+            for (Pedido.Passo passo : pedido.passos()) {
+                base.passo(passo.id());
+                for (Facto f : passo.factos()) {
+                    base.insereEntrada(f);
                 }
                 sessao.fireAllRules();
             }
-            ObjectNode resposta = json.createObjectNode();
-            resposta.put("estado", "concluido");
-            resposta.put("motor", "drools");
-            resposta.put("versaoKB", VERSAO_KB);
-            ArrayNode factos = resposta.putArray("factos");
-            for (Object o : sessao.getObjects(x -> x instanceof Facto)) {
-                factos.add(json.valueToTree(o));
-            }
-            resposta.putNull("erro");
-            return json.writeValueAsString(resposta);
+            return Resposta.monta(base, MOTOR, VERSAO_KB);
         } finally {
             sessao.dispose();
         }
     }
 
     private String erro(String mensagem) {
-        ObjectNode resposta = json.createObjectNode();
-        resposta.put("estado", "erro");
-        resposta.put("motor", "drools");
-        resposta.put("versaoKB", VERSAO_KB);
-        resposta.put("erro", mensagem);
-        return resposta.toString();
+        return Resposta.erro(MOTOR, VERSAO_KB, mensagem).toString();
     }
 }
