@@ -1,0 +1,7 @@
+{
+  "versaoKB": "6",
+  "factos": [
+    {"predicado": "zona", "args": ["web_srv_05", "dmz"]},
+    {"predicado": "vetor_aberto", "args": ["ev_f1", "web_srv_05", "web_srv_05_apache", "cve_2021_41773"]}
+  ]
+}

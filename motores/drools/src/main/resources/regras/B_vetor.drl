@@ -1,0 +1,36 @@
+package regras;
+
+// B. O ATACANTE CONSEGUE CHEGAR A VULNERABILIDADE? (soc_regras.txt, base v6)
+//
+// Molde para portar uma regra:
+//   - um padrao Facto(functor == "predicado/aridade", ...) por condicao, pela ordem do "se" da regra Prolog;
+//   - "nao X" -> not Facto(...); um argumento "_" nao entra no padrao;
+//   - o ENTAO nao faz insert: chama base.cria(kcontext, <numero da regra>, premissas, facto) por cada cria_facto;
+//   - premissas: uma por condicao, pela mesma ordem -> Premissa.de($f) para um facto,
+//     Premissa.nao("predicado", args...) para uma negacao (Variavel.nova() no lugar de cada "_"),
+//     Premissa.calculada("nome", args...) para uma condicao calculada.
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.modelo.Variavel;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R7: vetor aberto ate uma instalacao de que nao se sabe a versao -> exploracao incerta e incidente "versao por confirmar"
+//   se [vetor_aberto(Ev,Alvo,Inst,Vuln) e nao versao(Inst,_)]
+//   entao [cria_facto(exploracao_incerta(Ev,Alvo,Vuln)),
+//          cria_facto(motivo(inc(versao_por_confirmar,Ev),instalacao_sem_versao_valida(Inst))),
+//          cria_facto(incidente(inc(versao_por_confirmar,Ev),versao_por_confirmar,Alvo,[Alvo]))].
+rule "R7"
+when
+    $v : Facto(functor == "vetor_aberto/4", $ev : arg(0), $alvo : arg(1), $inst : arg(2), $vuln : arg(3))
+    not Facto(functor == "versao/2", arg(0) == $inst)
+then
+    List<Premissa> p = List.of(Premissa.de($v), Premissa.nao("versao", $inst, Variavel.nova()));
+    Termo inc = Termo.de("inc", "versao_por_confirmar", $ev);
+    base.cria(kcontext, 7, p, Facto.de("exploracao_incerta", $ev, $alvo, $vuln));
+    base.cria(kcontext, 7, p, Facto.de("motivo", inc, Termo.de("instalacao_sem_versao_valida", $inst)));
+    base.cria(kcontext, 7, p, Facto.de("incidente", inc, "versao_por_confirmar", $alvo, List.of($alvo)));
+end
