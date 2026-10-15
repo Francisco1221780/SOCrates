@@ -4,7 +4,7 @@
 % uma resposta JSON no stdout. O motor (soc_motor.pl) e a base nao sabem nada de JSON.
 %
 %   swipl wrapper.pl <pasta da base>  < pedido.json  > resposta.json
-%   ex.: swipl motores/prolog/wrapper.pl base_conhecimento < motores/prolog/exemplos/pedido_cenario_07.json
+%   ex.: swipl motores/prolog/wrapper.pl base_conhecimento < pedido.json
 %
 % Pedido:   {"versaoKB": "6", "passos": [{"id": "cenario_07", "factos": [{"predicado": "...", "args": [...]}]}, ...]}
 % Resposta: {"estado", "motor", "versaoKB", "perguntas", "incidentes", "tickets", "factos", "erro"}
