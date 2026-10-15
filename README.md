@@ -262,6 +262,9 @@ O módulo Drools tem de estar instalado no repositório local antes de arrancar 
 
 # Só o módulo Drools
 .\mvnw.cmd -pl motores/drools test
+
+# Lado Prolog: wrapper e JSON gerados (precisa do SWI-Prolog)
+swipl -g run_tests -t halt motores/prolog/testes/testes.pl
 ```
 
 | Suite | Path | Expectation |
@@ -269,10 +272,11 @@ O módulo Drools tem de estar instalado no repositório local antes de arrancar 
 | `MotorDroolsTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/` | A regra de exemplo dispara; `versaoKB` desconhecida devolve `estado: "erro"` |
 | `DroolsAdapterTest` | `backend/cyber/src/test/java/cyberrangers/cyber/engine/drools/` | O adaptador chama o `MotorDrools` e devolve a conclusão |
 | `CyberApplicationTests` | `backend/cyber/src/test/java/cyberrangers/cyber/` | O contexto Spring arranca com o Drools carregado |
+| `testes.pl` (plunit) | `motores/prolog/testes/` | O wrapper cumpre os AC2, AC3, AC10–AC12 e M9; os JSON gerados (AC18) e as referências do motor estão em dia |
 
 Naming: `<Classe>Test.java` para testes unitários e `<Classe>Tests.java` no teste de contexto do Spring.
 
-Não há pipeline de CI configurada; os testes correm só localmente.
+Não há pipeline de CI configurada; os testes (Maven e Prolog) correm só localmente.
 
 ---
 
