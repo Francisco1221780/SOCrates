@@ -22,6 +22,10 @@ import java.util.stream.Collectors;
 @Service
 public class InferenceService {
 
+    private static final List<String> ERROS_DO_PEDIDO = List.of(
+            "pedido JSON invalido", "o pedido tem de", "versaoKB desconhecida", "o passo ",
+            "facto invalido no passo", "termo invalido no passo");
+
     private final Map<String, MotorInferencia> motores;
     private final RequestValidator requestValidator;
     private final BaseCarregada base;
@@ -70,10 +74,9 @@ public class InferenceService {
         }
         Pedido pedido;
         try {
-            pedido = jsonMapper.readValue(corpo, Pedido.class);
-        } catch (JacksonException e) {
-            return new Resultado(TipoResultado.PEDIDO_INVALIDO,
-                    erro(nomeMotor, "pedido JSON invalido: " + e.getOriginalMessage()));
+            pedido = lePedido(corpo);
+        } catch (PedidoIlegivel e) {
+            return new Resultado(TipoResultado.PEDIDO_INVALIDO, erro(nomeMotor, e.getMessage()));
         }
 
         List<String> erros = requestValidator.validaPedido(pedido, base.versaoKB());
@@ -112,7 +115,80 @@ public class InferenceService {
         if (erro.startsWith("ocupado")) {
             return new Resultado(TipoResultado.OCUPADO, resposta);
         }
+        if (ERROS_DO_PEDIDO.stream().anyMatch(erro::startsWith)) {
+            return new Resultado(TipoResultado.PEDIDO_INVALIDO, resposta);
+        }
         return new Resultado(TipoResultado.FALHA_MOTOR, resposta);
+    }
+
+    /**
+     * Le o corpo como Pedido. Os erros dizem o que esta mal sem detalhes internos do Jackson (nomes de classes Java,
+     * "Source: REDACTED"): sintaxe com a linha e a coluna, um JSON que nao e um objeto, ou o campo com o tipo errado.
+     * @param corpo
+     * @return
+     */
+    private Pedido lePedido(String corpo) {
+        JsonNode arvore;
+        try {
+            arvore = jsonMapper.readTree(corpo);
+        } catch (JacksonException e) {
+            throw new PedidoIlegivel("pedido JSON invalido na linha " + e.getLocation().getLineNr()
+                    + ", coluna " + e.getLocation().getColumnNr() + ": " + semLocalizacao(e.getOriginalMessage()));
+        }
+        if (arvore == null || arvore.isMissingNode()) {
+            throw new PedidoIlegivel("pedido JSON invalido: o corpo esta vazio");
+        }
+        if (!arvore.isObject()) {
+            throw new PedidoIlegivel("o pedido tem de ser um objeto JSON");
+        }
+        try {
+            return jsonMapper.treeToValue(arvore, Pedido.class);
+        } catch (JacksonException e) {
+            String campo = caminho(e);
+            throw new PedidoIlegivel(campo.isEmpty() ? "o pedido tem a forma errada"
+                    : "o campo " + campo + " tem o tipo errado");
+        }
+    }
+
+    /**
+     * Tira da mensagem do Jackson a parte que descreve a fonte ("(start marker at [Source: ...])", " at [Source...").
+     * @param mensagem
+     * @return
+     */
+    private static String semLocalizacao(String mensagem) {
+        for (String corte : List.of(" (start marker at", " at [Source")) {
+            int i = mensagem.indexOf(corte);
+            if (i >= 0) {
+                mensagem = mensagem.substring(0, i);
+            }
+        }
+        return mensagem;
+    }
+
+    /**
+     * O caminho do campo onde o Jackson falhou, como no JSON: passos[0].factos[1].args.
+     * @param e
+     * @return
+     */
+    private static String caminho(JacksonException e) {
+        StringBuilder sb = new StringBuilder();
+        for (JacksonException.Reference r : e.getPath()) {
+            if (r.getPropertyName() != null) {
+                sb.append(sb.isEmpty() ? "" : ".").append(r.getPropertyName());
+            } else if (r.getIndex() >= 0) {
+                sb.append('[').append(r.getIndex()).append(']');
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * O corpo do pedido nao se le como Pedido; a mensagem vai para o campo erro da resposta.
+     */
+    private static final class PedidoIlegivel extends RuntimeException {
+        PedidoIlegivel(String mensagem) {
+            super(mensagem);
+        }
     }
 
     /**

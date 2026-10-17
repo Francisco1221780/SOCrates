@@ -6,9 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import cyberrangers.cyber.config.PrologProperties;
 import cyberrangers.cyber.domain.Resultado;
 import cyberrangers.cyber.domain.SaudeMotor;
 import cyberrangers.cyber.domain.TipoResultado;
+import cyberrangers.cyber.engine.drools.DroolsAdapter;
+import cyberrangers.cyber.engine.prolog.PrologAdapter;
+import cyberrangers.cyber.engine.prolog.PrologInstaller;
+import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -256,5 +262,75 @@ class InferenceServiceTest {
         Resultado r = servico(motor("prolog", "isto nao e json")).infere("prolog", PEDIDO);
         assertEquals(TipoResultado.FALHA_MOTOR, r.tipoResultado());
         assertTrue(assertErro(r, "prolog").contains("resposta"), r.jsonResultado());
+    }
+
+    /**
+     * Verifica que as mensagens com que os motores recusam um pedido mal formado dao PEDIDO_INVALIDO (400), e nao
+     * FALHA_MOTOR (500). As mensagens sao as do wrapper.pl e do Drools, que sao iguais.
+     */
+    @Test
+    void errosDoPedidoVindosDoMotorDaoPedidoInvalido() {
+        for (String mensagem : List.of(
+                "termo invalido no passo p1: um objeto tem de ser {\\\"f\\\": nome, \\\"args\\\": [...]}",
+                "facto invalido no passo p1 (tem de ter \\\"predicado\\\" e \\\"args\\\")",
+                "o passo p1 nao tem a lista \\\"factos\\\"",
+                "o passo 2 nao e um objeto JSON",
+                "o pedido tem de ter pelo menos um passo",
+                "o pedido tem de ser um objeto JSON",
+                "versaoKB desconhecida: \\\"5\\\" (carregada: 6)",
+                "pedido JSON invalido: x")) {
+            String resposta = "{\"estado\":\"erro\",\"motor\":\"prolog\",\"versaoKB\":\"6\",\"erro\":\"" + mensagem + "\"}";
+            Resultado r = servico(motor("prolog", resposta)).infere("prolog", PEDIDO);
+            assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado(), mensagem);
+            assertEquals(resposta, r.jsonResultado());
+        }
+    }
+
+    /**
+     * Verifica, com os dois motores reais, que um termo invalido dentro de args (que so os motores validam) da
+     * PEDIDO_INVALIDO. Falha se um dos motores mudar a mensagem sem se atualizar a lista do InferenceService.
+     */
+    @Test
+    void termoInvalidoNosMotoresReaisDaPedidoInvalido() {
+        PrologProperties props = new PrologProperties("swipl", Path.of("../.."), Duration.ofSeconds(10), 4,
+                Duration.ofSeconds(2));
+        InferenceService s = servico(new DroolsAdapter(),
+                new PrologAdapter(props, json, new PrologInstaller(props)));
+        String termoInvalido = """
+                {"versaoKB":"6","passos":[{"id":"p1","factos":[{"predicado":"nota","args":[{"f":"x"}]}]}]}
+                """;
+        for (String m : List.of("drools", "prolog")) {
+            Resultado r = s.infere(m, termoInvalido);
+            assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado(), m + ": " + r.jsonResultado());
+            assertTrue(json.readTree(r.jsonResultado()).path("erro").asString().startsWith("termo invalido"),
+                    r.jsonResultado());
+        }
+    }
+
+    /**
+     * Verifica que os erros de leitura do pedido dizem o que esta mal sem detalhes internos: sintaxe com linha e
+     * coluna, um JSON que nao e objeto, um campo com o tipo errado (com o caminho) e o corpo vazio.
+     */
+    @Test
+    void errosDeLeituraSemDetalhesInternos() {
+        InferenceService s = servico(motor("prolog", CONCLUIDO));
+        String[][] casos = {
+                {"{\"versaoKB\": \"6\", \"passos\": [", "pedido JSON invalido na linha 1, coluna"},
+                {"[1, 2]", "o pedido tem de ser um objeto JSON"},
+                {"\"texto\"", "o pedido tem de ser um objeto JSON"},
+                {"{\"versaoKB\":\"6\",\"passos\":\"x\"}", "o campo passos tem o tipo errado"},
+                {"{\"versaoKB\":\"6\",\"passos\":[{\"factos\":[{\"predicado\":\"x\",\"args\":\"y\"}]}]}",
+                        "o campo passos[0].factos[0].args tem o tipo errado"},
+                {"", "pedido JSON invalido: o corpo esta vazio"},
+                {"   ", "pedido JSON invalido: o corpo esta vazio"}};
+        for (String[] caso : casos) {
+            Resultado r = s.infere("prolog", caso[0]);
+            String erro = assertErro(r, "prolog");
+            assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado(), caso[0]);
+            assertTrue(erro.startsWith(caso[1]), caso[0] + " -> " + erro);
+            for (String interno : List.of("Source", "REDACTED", "cyberrangers", "java.", "JsonToken")) {
+                assertFalse(erro.contains(interno), caso[0] + " -> " + erro);
+            }
+        }
     }
 }
