@@ -2,14 +2,29 @@ package cyberrangers.cyber.api;
 
 import cyberrangers.cyber.application.InferenceService;
 import cyberrangers.cyber.domain.Resultado;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import static cyberrangers.cyber.api.HttpResponseUtils.codigoHttp;
 
+/**
+ * POST /api/{motor}/infer: passa o corpo original ao InferenceService e converte o resultado num codigo HTTP.
+ */
 @RestController
 @RequestMapping("/api")
+@Tag(name = "Inferencia", description = "O mesmo pedido em qualquer dos dois motores, com o mesmo formato de resposta")
 public class InferController {
 
     private final InferenceService inferenceService;
@@ -18,8 +33,37 @@ public class InferController {
         this.inferenceService = inferenceService;
     }
 
-    @PostMapping(path = "/{motor}/infer", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> infere(@PathVariable String motor, @RequestBody(required = false) String corpo) {
+    /**
+     * Corre o pedido no motor dado e devolve a resposta do motor, ou um erro no formato do contrato.
+     * @param motor
+     * @param corpo
+     * @return
+     */
+    @Operation(summary = "Corre um pedido num motor",
+            description = "O pedido e uma lista ordenada de passos (telemetria de um cenario ou respostas do "
+                    + "analista). Para cada passo o motor injeta os factos e corre ate nao haver conclusoes novas. "
+                    + "Uma pergunta ao analista da estado aguarda_resposta; a resposta entra como um passo novo com "
+                    + "resposta_analista. O servidor nao guarda estado: cada pedido traz todos os passos.")
+    @ApiResponse(responseCode = "200", description = "Resposta do motor: concluido ou aguarda_resposta")
+    @ApiResponse(responseCode = "400", description = "Pedido invalido: JSON, versaoKB, passos, factos ou termos")
+    @ApiResponse(responseCode = "404", description = "Motor desconhecido")
+    @ApiResponse(responseCode = "415", description = "O Content-Type nao e application/json")
+    @ApiResponse(responseCode = "500", description = "O motor falhou")
+    @ApiResponse(responseCode = "503", description = "Todos os processos do motor estao ocupados; tentar mais tarde")
+    @ApiResponse(responseCode = "504", description = "O motor nao respondeu dentro do timeout")
+    @PostMapping(path = "/{motor}/infer",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> infere(
+            @Parameter(description = "Motor de inferencia", schema = @Schema(allowableValues = {"drools", "prolog"}))
+            @PathVariable String motor,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Pedido: versaoKB e passos",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, examples = {
+                            @ExampleObject(name = "R7: versao por confirmar (os dois motores)", value = ExemplosOpenApi.R7),
+                            @ExampleObject(name = "Cenario 7: pergunta ao analista", value = ExemplosOpenApi.PERGUNTA),
+                            @ExampleObject(name = "Cenario 7 + resposta sim", value = ExemplosOpenApi.RESPOSTA),
+                            @ExampleObject(name = "Versao da base errada (400)", value = ExemplosOpenApi.VERSAO_ERRADA)}))
+            @RequestBody(required = false) String corpo) {
         Resultado resultado = inferenceService.infere(motor, corpo == null ? "" : corpo);
         return ResponseEntity.status(codigoHttp(resultado.tipoResultado())).body(resultado.jsonResultado());
     }
