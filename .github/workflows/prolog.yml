@@ -1,6 +1,7 @@
 # Testes do lado Prolog (issues #9 e #10): o wrapper.pl (AC2, AC3, AC10, AC11, AC12, M5, M9), os JSON gerados
 # pelo gera_json.pl (AC18: falha se estiverem desatualizados face aos .txt da base) e as referencias do motor geradas
-# pelo gera_referencias.pl (falha se o motor, a base ou os cenarios mudarem sem as regenerar).
+# pelo gera_referencias.pl (falha se o motor, a base ou os cenarios mudarem sem as regenerar) e o metaconhecimento
+# gerado pelo gera_meta.pl (AC13: falha se as regras mudarem sem o regenerar).
 # Os testes estao em motores/prolog/testes/testes.pl; localmente correm-se com o mesmo comando do ultimo passo.
 name: Prolog
 

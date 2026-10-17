@@ -4,9 +4,29 @@ Scripts Prolog que geram ficheiros a partir da base de conhecimento. O que sai d
 
 | Script | Gera |
 | --- | --- |
-| `gera_meta.pl` | Metaconhecimento (`facto_dispara_regras/2`) a partir de `soc_regras.txt`. Voltar a correr sempre que as regras mudam. |
+| `gera_meta.pl` | Metaconhecimento (`facto_dispara_regras/2`) a partir de `soc_regras.txt` e do `condicao_le/2` do `soc_suporte.txt`. Voltar a correr sempre que as regras mudam. |
 | `gera_json.pl` | `factos_iniciais.json` para `motores/drools/src/main/resources/` e `cenarios.json` para `backend/cyber/src/main/resources/generated/`. |
 | `gera_referencias.pl` | Os resultados de referência do motor em `motores/prolog/referencia_prolog/<variante>.json`, a correr o `wrapper.pl` sobre cada variante. |
+
+## Regenerar o metaconhecimento (`gera_meta.pl`)
+
+**Quando:** sempre que se muda uma regra do `soc_regras.txt`, ou o `condicao_calculada/1` ou o `condicao_le/2` do
+`soc_suporte.txt`. Faz-se commit das regras e do metaconhecimento juntos.
+
+```bash
+swipl motores/prolog/ferramentas/gera_meta.pl              # escreve as linhas facto_dispara_regras/2 no stdout
+swipl motores/prolog/ferramentas/gera_meta.pl --verificar  # só verifica; código 1 se estiver desatualizado
+```
+
+As linhas que o script escreve substituem as `facto_dispara_regras/2` do `soc_suporte.txt`. Também se pode correr à
+mão, com o motor e a base carregados: `?- consult('ferramentas/gera_meta.pl'), gera_meta.`
+
+O `--verificar` é o teste do AC13: carrega o motor, as regras e o suporte, calcula o metaconhecimento e compara-o com o
+do `soc_suporte.txt`. Compara os termos, não o texto (a ordem e a formatação das linhas não contam). Não escreve nada
+no `stdout`; no `stderr` diz o que está mal, por tipo de facto: `Falta`, `A mais`, `Repetido` ou `Desatualizado`
+(com as regras que estão e as que as regras dão). Se a base não carregar (ex.: um erro de sintaxe nas regras), também
+sai com código 1. Corre na CI em cada PR (teste `ac13_meta_em_dia`) e é o que o health do backend pode usar para
+dizer se o metaconhecimento está em dia.
 
 ## Regenerar os JSON (`gera_json.pl`)
 
