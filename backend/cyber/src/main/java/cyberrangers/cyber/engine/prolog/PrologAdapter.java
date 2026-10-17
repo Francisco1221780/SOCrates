@@ -2,6 +2,7 @@ package cyberrangers.cyber.engine.prolog;
 
 import cyberrangers.cyber.application.MotorInferencia;
 import cyberrangers.cyber.config.PrologProperties;
+import cyberrangers.cyber.domain.SaudeMotor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -64,6 +65,54 @@ public class PrologAdapter implements MotorInferencia {
             return corre(pedidoJson);
         } finally {
                 lugares.release();
+        }
+    }
+
+    /**
+     * Verifica se o motor Prolog esta instalado e se o swipl responde.
+     * @return
+     */
+    @Override
+    public SaudeMotor estado() {
+        if (prologInstaller.home() == null) {
+            return new SaudeMotor(nome(), false, null, List.of(prologInstaller.erro()));
+        }
+        String erroSwipl = verificaSwipl();
+        if (erroSwipl != null) {
+            return new SaudeMotor(nome(), false, null, List.of(erroSwipl));
+        }
+        return new SaudeMotor(nome(), true, null, List.of());
+    }
+
+    /**
+     * Verifica que o swipl configurado existe e responde, correndo swipl --version.
+     * @return
+     */
+    private String verificaSwipl() {
+        Process process;
+        try {
+            process = new ProcessBuilder(prologProperties.swipl(), "--version")
+                    .redirectErrorStream(true)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .start();
+        } catch (IOException e) {
+            return "swipl nao encontrado: " + e.getMessage();
+        }
+        try {
+            if (!process.waitFor(3, TimeUnit.SECONDS)) {
+                return "swipl nao respondeu em 3 s";
+            }
+            if (process.exitValue() != 0) {
+                return "swipl --version terminou com codigo " + process.exitValue();
+            }
+            return null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return "interrompido";
+        } finally {
+            if (process.isAlive()) {
+                mata(process);
+            }
         }
     }
 

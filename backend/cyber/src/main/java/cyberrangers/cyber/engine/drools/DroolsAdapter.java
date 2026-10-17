@@ -1,6 +1,8 @@
 package cyberrangers.cyber.engine.drools;
 
 import cyberrangers.cyber.application.MotorInferencia;
+import cyberrangers.cyber.domain.SaudeMotor;
+import cyberrangers.motores.drools.EstadoMotor;
 import cyberrangers.motores.drools.MotorDrools;
 import org.springframework.stereotype.Component;
 
@@ -17,5 +19,11 @@ public class DroolsAdapter implements MotorInferencia {
     @Override
     public String infere(String pedidoJson) {
         return motor.infere(pedidoJson);
+    }
+
+    @Override
+    public SaudeMotor estado() {
+        EstadoMotor estado = motor.estado();
+            return new SaudeMotor(nome(), estado.pronto(), MotorDrools.VERSAO_KB, estado.erros());
     }
 }

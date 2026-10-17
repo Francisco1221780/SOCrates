@@ -1,9 +1,12 @@
 package cyberrangers.cyber.engine.prolog;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import cyberrangers.cyber.config.PrologProperties;
+import cyberrangers.cyber.domain.SaudeMotor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -15,6 +18,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -386,5 +391,68 @@ class PrologAdapterTest {
             }
         }
         assertTrue(encontrado, "o facto nota/1 nao voltou na resposta");
+    }
+
+    /**
+     * Verifica que com a pasta do motor e o swipl a responder, o estado e pronto, sem erros e sem versao da base
+     * (o Prolog so a conhece depois de carregar a base).
+     */
+    @Test
+    void estadoProntoComSwiplEPasta() {
+        SaudeMotor e = adapter("swipl", RAIZ).estado();
+        assertEquals("prolog", e.motor());
+        assertTrue(e.pronto(), e.toString());
+        assertTrue(e.erros().isEmpty(), e.toString());
+        assertNull(e.versaoKB());
+    }
+
+    /**
+     * Verifica que sem o executavel do swipl o estado nao e pronto e o erro diz porque.
+     */
+    @Test
+    void estadoNaoProntoSemSwipl() {
+        SaudeMotor e = adapter("swipl-que-nao-existe", RAIZ).estado();
+        assertFalse(e.pronto(), e.toString());
+        assertEquals(1, e.erros().size(), e.toString());
+        assertTrue(e.erros().getFirst().contains("swipl nao encontrado"), e.toString());
+    }
+
+    /**
+     * Verifica que se o swipl terminar com erro, o estado nao e pronto e o erro traz o codigo de saida. O swipl falso
+     * e um script sh, por isso nao corre no Windows.
+     * @param tmp
+     * @throws Exception
+     */
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void estadoNaoProntoSeOSwiplFalhar(@TempDir Path tmp) throws Exception {
+        Path falso = tmp.resolve("swipl-falso");
+        Files.writeString(falso, "#!/bin/sh\nexit 3\n");
+        assertTrue(falso.toFile().setExecutable(true));
+        SaudeMotor e = adapter(falso.toString(), RAIZ).estado();
+        assertFalse(e.pronto(), e.toString());
+        assertTrue(e.erros().getFirst().contains("codigo 3"), e.toString());
+    }
+
+    /**
+     * Verifica que sem a pasta do motor (copia falhada), o estado nao e pronto e o erro e o do PrologInstaller.
+     */
+    @Test
+    void estadoNaoProntoSemPastaDoMotor() {
+        PrologProperties prologProperties = new PrologProperties("swipl", RAIZ, Duration.ofSeconds(10), 4, Duration.ofSeconds(2));
+        PrologInstaller semPasta = new PrologInstaller(prologProperties) {
+            @Override
+            public Path home() {
+                return null;
+            }
+
+            @Override
+            public String erro() {
+                return "copia falhou";
+            }
+        };
+        SaudeMotor e = new PrologAdapter(prologProperties, json, semPasta).estado();
+        assertFalse(e.pronto(), e.toString());
+        assertEquals(List.of("copia falhou"), e.erros());
     }
 }
