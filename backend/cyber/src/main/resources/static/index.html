@@ -43,7 +43,7 @@ button:disabled{cursor:not-allowed;opacity:.4}
 /* ======================= estrutura ======================= */
 .app{position:fixed;inset:0;display:grid;grid-template-rows:56px minmax(0,1fr) auto 26px}
 header{display:flex;align-items:center;gap:12px;padding:0 14px;border-bottom:1px solid var(--line2);background:linear-gradient(180deg,#0d1621,#080e15);min-width:0;position:relative;z-index:30}
-.main{display:grid;grid-template-columns:minmax(0,1fr) 6px var(--insp-w);min-height:0}
+.main{display:grid;grid-template-columns:minmax(0,1fr);min-height:0}
 .app.insp-closed .main{grid-template-columns:minmax(0,1fr) 0 0}
 .app.insp-closed .insp,.app.insp-closed .vresize{display:none}
 
@@ -117,6 +117,19 @@ header{display:flex;align-items:center;gap:12px;padding:0 14px;border-bottom:1px
 /* notch */
 .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:12;display:flex;align-items:center;gap:10px;padding:7px 12px;background:#05090ef2;border:1px solid var(--line2);border-radius:16px;box-shadow:0 12px 34px #000b,0 0 0 1px #000;white-space:nowrap;max-width:calc(100% - 24px)}
 .notch.static{position:static;transform:none;margin:10px auto 0;width:max-content}
+.player{display:flex;align-items:center;gap:8px}
+.player.compact{gap:6px;margin-bottom:8px}
+.player.compact .pos{min-width:0;flex:1}
+.player .ctl{display:flex;align-items:center;gap:3px;background:#0b141e;border:1px solid var(--line);border-radius:10px;padding:2px}
+.player .ctl button{background:transparent;border:none;color:var(--dim);width:28px;height:26px;border-radius:7px;font-size:12px}
+.player .ctl button:hover:not(:disabled){color:#fff;background:#ffffff10}
+.player .ctl button.play{background:var(--ok);color:#03140d;width:32px;height:28px;border-radius:50%;box-shadow:0 0 14px #34d39966;font-size:12px}
+.player .ctl button.play.pause{background:var(--warn);box-shadow:0 0 14px #fbbf2466}
+.player .pos{display:flex;flex-direction:column;line-height:1.25;min-width:140px}
+.player .pos b{font-size:12px}
+.player .pos span{font-size:10px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player .spd{background:#0b141e;border:1px solid var(--line);border-radius:7px;padding:4px 7px;color:var(--cyan);font-weight:800}
+.player input[type=range]{width:130px;accent-color:var(--cyan)}
 .notch .ctl{display:flex;align-items:center;gap:3px;background:#0b141e;border:1px solid var(--line);border-radius:10px;padding:2px}
 .notch .ctl button{background:transparent;border:none;color:var(--dim);width:28px;height:26px;border-radius:7px;font-size:12px}
 .notch .ctl button:hover:not(:disabled){color:#fff;background:#ffffff10}
@@ -299,6 +312,95 @@ details.box>div{padding:0 12px 12px}
 .uses button{text-align:left;background:var(--panel3);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:11px;line-height:1.35}
 .uses button:hover{border-color:var(--cyan3)}
 
+
+/* ======================= vista casos ======================= */
+.casos{position:absolute;inset:0;display:grid;grid-template-columns:340px 18px minmax(0,1fr)}
+.casos.qclosed{grid-template-columns:0 18px minmax(0,1fr)}
+.casos.qclosed .queue{display:none}
+.queue{background:var(--bg2);border-right:1px solid var(--line2);display:flex;flex-direction:column;min-height:0;min-width:0}
+.qtoggle{background:#0a121b;border:none;border-right:1px solid var(--line);color:var(--dim);font-size:15px;padding:0}
+.qtoggle:hover{color:#fff;background:#0f1a26}
+.qhead{padding:10px 10px 8px;border-bottom:1px solid var(--line2);display:flex;flex-direction:column;gap:8px}
+.qstat{display:flex;align-items:center;gap:8px}
+.qkpis{display:flex;gap:10px;flex-wrap:wrap;font-size:10.5px;color:var(--dim)}
+.qkpis b{color:#fff;font-size:12px}
+.qfilters{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.qfilters input{flex:1 1 100%;background:var(--panel3);border:1px solid var(--line2);border-radius:6px;padding:6px 9px}
+.qfilters input:focus{outline:none;border-color:var(--cyan3)}
+.qfilters .sg button{padding:4px 8px;font-size:11px}
+.qbody{flex:1;overflow:auto;min-height:0;padding:8px 10px 14px}
+.qsec{margin-bottom:12px}
+.qsh{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--dim);margin:2px 0 6px}
+.qsh span:last-child{margin-left:auto;color:var(--dim2)}
+.qsec.amber .qsh{color:var(--warn)}
+.qrow{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;background:#1a1407;border:1px solid #fbbf2444;border-radius:7px;padding:7px 9px;margin-bottom:5px;color:var(--txt)}
+.qrow:hover{border-color:var(--warn)}
+.qrow.sel{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
+.qrow .qr1{font-size:11px;color:#fde68a}
+.qrow .qr2{font-size:10.5px;color:#d6c9a3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4}
+.dossier{min-width:0;min-height:0;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 0%,#0f2233 0%,transparent 60%),var(--bg)}
+.dhead2{padding:14px 20px 0;border-bottom:1px solid var(--line2);background:#080e15}
+.dbody{flex:1;min-height:0;overflow:auto;position:relative}
+.dbody.graphmode{overflow:hidden}
+.dwrap{max-width:1180px;margin:0 auto;padding:16px 20px 30px}
+.case{border:1px solid var(--line2);border-radius:12px;background:var(--panel);padding:13px 16px;margin-bottom:12px}
+.case.red{border-color:#fb718566;background:linear-gradient(180deg,#1a0c12,var(--panel))}
+.case.amber{border-color:#fbbf2466;background:linear-gradient(180deg,#1c1607,var(--panel))}
+.cline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ckind{font:800 10px var(--mono);letter-spacing:1.2px;color:var(--ticket)}
+.ctitle{font-family:var(--brand);font-size:21px;letter-spacing:.3px;margin:7px 0 3px;color:#fff}
+.ctitle span{font-family:var(--mono);font-size:13px;color:var(--dim);letter-spacing:0}
+.csub{font-size:11.5px;color:#a9c1cc}
+.case .signif{margin-top:10px}
+.case .qopts{flex-direction:row;flex-wrap:wrap}
+.case .qopt{flex:1 1 220px}
+.dtabs{display:flex;gap:2px;margin-top:4px;overflow-x:auto}
+.dtabs button{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--dim);font-weight:800;padding:10px 14px;white-space:nowrap;font-size:12px}
+.dtabs button:hover:not(:disabled){color:#fff}
+.dtabs button.on{color:#fff;border-bottom-color:var(--cyan)}
+.dtabs button[data-dtab=whynot].on{border-bottom-color:var(--bad)}
+.sect{margin-bottom:18px}
+.sh{font-size:10.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--cyan);margin-bottom:10px}
+.ctxgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.ctxgrid .ctxi{font-size:11.5px}
+.ctxi .link{text-decoration:none;color:#b9e6f2}
+.ctxi .link:hover{color:#fff;text-decoration:underline}
+.rcard{border:1px solid var(--line2);border-left:3px solid var(--regra);border-radius:9px;background:var(--panel);margin-bottom:8px;transition:box-shadow .3s}
+.rcard.final{border-color:#fb718566;border-left-color:var(--ticket)}
+.rcard.flash{box-shadow:0 0 0 2px var(--cyan),0 0 22px #22d3ee66}
+.rcard>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:9px;padding:9px 12px;flex-wrap:wrap}
+.rcard>summary::-webkit-details-marker{display:none}
+.rcard .sn{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#1c1230;color:#e9d5ff;font-weight:800;font-size:11px;flex-shrink:0}
+.rpill{display:inline-block;background:#1c1230;border:1px solid var(--regra);color:#e9d5ff;border-radius:10px;padding:1px 8px;font-weight:800;font-size:10.5px}
+.rconc{font-weight:800;color:#fff;flex:1;min-width:240px}
+.rsig{margin:0 12px 8px 43px;padding:6px 10px;border-left:2px solid var(--cyan);background:#0a2130;font-size:11px;color:#cdeef7;line-height:1.5;border-radius:0 6px 6px 0}
+.prems{padding:0 12px 10px 43px;display:flex;flex-direction:column;gap:4px}
+.prem{display:flex;align-items:flex-start;gap:8px;font-size:11.5px;line-height:1.45;background:var(--panel3);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+.prem .term{flex:1}
+.prem .ok{color:var(--ok);font-weight:800}
+.pb{font:800 9.5px var(--mono);letter-spacing:.6px;border:1px solid;border-radius:4px;padding:1px 6px;white-space:nowrap;flex-shrink:0}
+.pb.kb{color:var(--inicial);border-color:#94a3b866}
+.pb.tel{color:var(--entrada);border-color:#5eead466}
+.pb.resp{color:var(--resp);border-color:#34d39966}
+.pb.ded{color:var(--regra);border-color:#c084fc66}
+.pb.calc{color:var(--warn);border-color:#fbbf2466}
+.pb.neg{color:#f9a8d4;border-color:#f9a8d466}
+.sugs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.sugs .chip{cursor:pointer}
+.wnform{display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line2);border-radius:9px;padding:10px}
+.wnform select,.wnform input{background:var(--panel3);border:1px solid var(--line2);border-radius:6px;padding:7px 9px}
+.wnform input{flex:1;min-width:240px}
+.wnmissing{border:1px dashed #fb718588;background:#1a0c10;border-radius:10px;padding:12px 14px;color:#fecdd3;line-height:1.55;font-size:12px}
+.wnmissing b{color:#fff;font-size:13px}
+.wntree{background:var(--panel);border:1px solid var(--line2);border-radius:9px;padding:10px 12px;font-size:11.5px}
+.jt{margin-left:12px;border-left:1px dashed var(--line2);padding-left:9px}
+.ji{padding:2px 0}
+.jk{font-weight:800;color:var(--dim);margin-right:4px}
+.jk.r{color:var(--regra)} .jk.f{color:var(--bad)}
+.mapcard{position:absolute;right:12px;top:72px;z-index:13;width:min(380px,calc(100% - 24px));max-height:calc(100% - 150px);overflow:auto;background:#070d14f2;border:1px solid var(--line3);border-radius:11px;padding:11px 12px;box-shadow:0 14px 40px #000c;display:none}
+.dbody .prooftitle{top:12px}
+.dbody .mapopts{bottom:52px}
+
 /* consola e rodape */
 .logwrap{border-top:1px solid var(--line2);background:#060a0f;display:grid;grid-template-rows:28px minmax(0,1fr)}
 .app.log-open .logwrap{height:var(--log-h)}
@@ -323,8 +425,10 @@ footer b{color:#fff}
 @media (max-width:1400px){ .hbox>.lbl{display:none} .views button{padding:6px 7px} .globalbtn{padding:5px 7px} }
 @media (max-width:1050px){
   .main{grid-template-columns:minmax(0,1fr) 0 0}
-  .insp{position:fixed;right:0;top:56px;bottom:26px;width:min(var(--insp-w),94vw);z-index:40;box-shadow:-12px 0 40px #000b}
-  .vresize{display:none}
+  .queue{position:absolute;left:0;top:0;bottom:0;z-index:30;box-shadow:12px 0 40px #000b}
+  .casos{grid-template-columns:0 18px minmax(0,1fr)!important}
+  .casos.qclosed .queue{display:none}
+  .casos:not(.qclosed) .queue{width:min(340px,86vw)}
   .mapopts{max-width:calc(100% - 24px);top:64px}
 }
 </style>
@@ -347,14 +451,11 @@ footer b{color:#fff}
     <div class="hgrow"></div>
     <div class="views" id="views"></div>
     <button class="icon-btn" id="btnApi" title="Endereço da API">⚙︎</button>
-    <button class="inspbtn" id="btnInsp">▸ inspetor</button>
     <div class="menu" id="menu"></div>
   </header>
 
   <div class="main">
     <section class="center" id="center"></section>
-    <div class="vresize" id="vresize" title="Arrastar para redimensionar · duplo clique: alargar/reduzir"></div>
-    <aside class="insp" id="insp"></aside>
   </div>
 
   <div class="logwrap">
@@ -377,11 +478,13 @@ const S = {
   sel: null,                 // {tipo:'completo'} | {tipo:'cenario', id}
   grupos: [],                // sequencias escolhidas para a vista global
   runs: new Map(),           // chave -> {respostas:[], res:{motor: resultado}}
-  tab: 'mapa',               // mapa | prova | tickets | factos | comparar | api
+  tab: 'casos',              // casos | mapa | tickets | factos | comparar | api
+  dtab: 'como', howMode: 'cadeia', queueOpen: true, whynot: new Map(), whynotForm: {pred: '', args: ''}, mapSel: null,
   insp: {open: true, nav: [{t: 'fila'}]},   // pilha do inspetor: fila | fact | pred | acao
   rootKey: null,             // raiz da prova (pelo conteudo do facto)
   filtro: {tickets: 'abertos', ambito: 'foco', origem: 'regra', texto: '', passo: null, cat: '', lim: 0},
-  map: {showBase: false, pos: null, playing: false, speed: 1},
+  map: {showBase: false},
+  player: {playing: false, speed: 1},
   busy: 0, reqSeq: 0, intro: false,
 };
 const ENGINES = ['prolog', 'drools'];
@@ -523,18 +626,34 @@ const runKey = () => !S.sel || !S.cat ? '' : S.sel.tipo === 'completo' ? 'comple
 function curRun() {
   const k = runKey();
   if (!k) return null;
-  if (!S.runs.has(k)) S.runs.set(k, {respostas: [], res: {}});
+  if (!S.runs.has(k)) S.runs.set(k, {respostas: [], res: {}, cache: {}, pos: null});
   return S.runs.get(k);
 }
 const idsBase = () => !S.sel || !S.cat ? [] : S.sel.tipo === 'completo' ? idsCompleto() : idsCadeia(S.sel.id);
-function passosAtuais() {
+// todos os passos da execucao: os do catalogo, com cada resposta do analista inserida
+// no ponto em que foi dada (depois de "after" passos do catalogo)
+function passosLista() {
   const run = curRun();
-  return idsBase().map(id => {
+  const base = idsBase().map(id => {
     const c = S.byId.get(id);
     if (!c || !c.passo) throw new Error('o catálogo não tem o passo de ' + id);
     return c.passo;
-  }).concat(run ? run.respostas : []);
+  });
+  const out = [];
+  const resp = run ? run.respostas : [];
+  for (let i = 0; i <= base.length; i++) {
+    resp.filter(r => (r.after ?? base.length) === i).forEach(r => out.push({id: r.id, factos: r.factos}));
+    if (i < base.length) out.push(base[i]);
+  }
+  return out;
 }
+// os passos ate a posicao do player (AC11: um prefixo dos passos)
+function passosAtuais() {
+  const all = passosLista();
+  const pos = curRun()?.pos;
+  return pos == null ? all : all.slice(0, Math.max(1, Math.min(all.length, pos)));
+}
+const posAtual = () => { const run = curRun(); const n = passosLista().length; return run?.pos == null ? n : Math.min(run.pos, n); };
 const sigOf = p => JSON.stringify(p);
 function idsEmSequencias() { const s = new Set(); Object.values(S.cat?.sequencias || {}).forEach(l => l.forEach(id => s.add(id))); return s; }
 function focoPassos() {
@@ -557,10 +676,12 @@ async function correr(motivo = '', only = null) {
   const pedido = {versaoKB: S.cat.versaoKB, passos};
   const seq = ++S.reqSeq;
   lembrarSelecao();
-  S.busy++; S.map.playing = false;
+  S.busy++;
   renderNotch(); renderFooter();
-  if (!okRes()) { renderCenter(); renderInsp(); }
+  if (!okRes()) renderCenter();
   await Promise.all(engines.map(async m => {
+    const hit = run.cache[m]?.get(sig);
+    if (hit && !S.forceNet) { run.res[m] = hit; log('inferência', `${m} · ${passos.length} passos · resposta já obtida antes para este pedido`, 'info'); return; }
     log('inferência', `POST /api/${m}/infer · ${passos.length} passos${motivo ? ' · ' + motivo : ''}`, 'info');
     const r = await api(`/api/${m}/infer`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(pedido)});
     const res = {sig, pedido, ms: r.ms, status: r.status, at: new Date()};
@@ -575,17 +696,17 @@ async function correr(motivo = '', only = null) {
       toast(`${m}: ${HTTP_TXT[r.status] || 'erro'}: ${res.erro}`);
     }
     run.res[m] = res;
+    if (!res.erro) { (run.cache[m] ||= new Map()).set(sig, res); if (run.cache[m].size > 120) run.cache[m].delete(run.cache[m].keys().next().value); }
   }));
   S.busy--;
   const atual = runKey() === runKeyAt(run) && seq === S.reqSeq;
   if (atual) {
     if (S.engine !== 'both') S.view = S.engine;
     reconciliarSelecao();
-    S.map.pos = null;
-    S.intro = true;
+    if (!S.player.playing) S.intro = true;
   }
   renderAll();
-  if (atual) logDisparos(okRes());
+  if (atual && !S.player.playing) logDisparos(okRes());
 }
 function runKeyAt(run) { for (const [k, v] of S.runs) if (v === run) return k; return ''; }
 function logDisparos(res) {
@@ -659,7 +780,11 @@ const selNum = () => { const top = S.insp.nav.at(-1); return top?.t === 'fact' ?
 async function responder(q, valor) {
   const run = curRun();
   if (!run) return;
-  run.respostas.push({id: `resposta_${run.respostas.length + 1}`, factos: [{predicado: 'resposta_analista', args: [q.ativo, q.evento, q.pergunta, valor]}]});
+  // a resposta entra a seguir ao passo em que o player esta (e nao no fim)
+  const lista = passosLista(), pos = posAtual();
+  const baseAntes = lista.slice(0, pos).filter(p => S.byId.has(p.id)).length;
+  run.respostas.push({id: `resposta_${run.respostas.length + 1}`, after: baseAntes, factos: [{predicado: 'resposta_analista', args: [q.ativo, q.evento, q.pergunta, valor]}]});
+  if (run.pos != null) run.pos = pos + 1;
   log('analista', `resposta_analista(${fmt(q.ativo)}, ${fmt(q.evento)}, ${fmt(q.pergunta)}, ${fmt(valor)})`, 'q');
   await correr('resposta do analista');
   const r = okRes();
@@ -668,7 +793,9 @@ async function responder(q, valor) {
 async function desfazerResposta(i) {
   const run = curRun();
   if (!run) return;
+  const antes = passosLista().findIndex(x => x.id === run.respostas[i].id);
   const [p] = run.respostas.splice(i, 1);
+  if (run.pos != null && antes >= 0 && antes < run.pos) run.pos -= 1;
   run.respostas = run.respostas.map((x, k) => ({...x, id: `resposta_${k + 1}`}));
   log('analista', `resposta retirada: ${fmtFact(p.factos[0])}`, 'q');
   await correr('resposta retirada');
@@ -794,7 +921,6 @@ function renderMapa(center, res) {
   const M = res.idx.map, idx = res.idx;
   const L = layoutMap(M);
   const N = M.nPassos;
-  if (S.map.pos == null || S.map.pos > N) S.map.pos = N;
   const foco = S.sel?.tipo === 'cenario';
   center.insertAdjacentHTML('beforeend', `
     <div class="canvas" id="canvas"><svg id="svg" width="${L.width + 60}" height="${L.height + 40}"></svg></div>
@@ -808,7 +934,7 @@ function renderMapa(center, res) {
       <span><i style="border-color:var(--ticket)"></i>ticket</span>
       <span><i style="border-color:var(--acao);background:#f43f5e33"></i>ação</span>
       <span><i style="border-color:var(--resp)"></i>resposta do analista</span>
-      <span class="muted">rato por cima: caminho causal · clique: inspetor · duplo clique: prova</span>
+      <span class="muted">rato por cima: caminho causal · clique: detalhes · duplo clique: abrir o caso</span>
     </div>
     <div class="zoombar"><button data-z="out" title="Afastar">−</button><b id="zlbl">100%</b><button data-z="in" title="Aproximar">+</button><button data-z="fit" title="Ver tudo">⤢</button></div>`);
   const svg = $('svg');
@@ -859,35 +985,30 @@ function renderMapa(center, res) {
     els.n.set(n.id, g);
   }
   CUR = {kind: 'mapa', M, L, els, pill: gPill, svg, hl: null};
-  applyReplay(false);
+  applyReplay();
   pinnedHighlight();
   setupPanZoom($('canvas'), svg, L, 'mapa');
   S.intro = false;
 }
-function applyReplay(fresh) {
+function applyReplay() {
   if (CUR?.kind !== 'mapa') return;
   const {M, els} = CUR;
-  const pos = S.map.pos ?? M.nPassos;
   const foco = S.sel?.tipo === 'cenario' ? focoPassos() : null;
   const byNum = okRes()?.idx.byNum;
+  const prev = S.prevCounts;
   for (const n of M.nodes) {
-    const g = els.n.get(n.id), c = countUpTo(n.stepsSorted, pos);
+    const g = els.n.get(n.id);
     if (foco) g.classList.toggle('ctx', !n.insts.some(x => foco.has(byNum.get(x)?.passo)));
-    g.classList.toggle('on', c > 0);
-    g.classList.toggle('off', c === 0);
-    g.classList.toggle('fresh', fresh && c > 0 && countUpTo(n.stepsSorted, pos - 1) < c);
-    els.cnt.get(n.id).textContent = c ? (n.kind === 'acao' ? `${c} tkt` : `×${c}`) : '';
+    g.classList.add('on');
+    const grew = prev && (prev.get(n.id) || 0) < n.count;
+    g.classList.toggle('fresh', !!grew);
+    els.cnt.get(n.id).textContent = (n.kind === 'acao' ? `${n.count} tkt` : `×${n.count}`) + (grew && prev.get(n.id) != null ? ` (+${n.count - prev.get(n.id)})` : grew ? ' novo' : '');
   }
-  for (const e of M.edges) {
-    const p = els.e.get(e.id);
-    if (!p) continue;
-    const on = e.firstStep <= pos;
-    p.classList.toggle('on', on);
-    p.classList.toggle('off', !on);
-    p.classList.toggle('flow', fresh && on && e.steps.includes(pos));
-  }
+  for (const e of M.edges) { const p = els.e.get(e.id); if (p) { p.classList.add('on'); p.classList.toggle('flow', !!(prev && (prev.get(e.t) || 0) < (M.byId.get(e.t)?.count || 0))); } }
+  S.prevCounts = null;
 }
 function pinnedId() {
+  if (CUR?.kind === 'mapa' && S.mapSel) return S.mapSel;
   const top = S.insp.nav.at(-1);
   if (!top || CUR?.kind !== 'mapa') return null;
   if (top.t === 'pred' || top.t === 'acao') return top.key;
@@ -930,42 +1051,73 @@ function highlight(id) {
   svg.classList.add('dimmed');
 }
 
-/* ----- replay por passo ----- */
-async function play() {
+/* ----- player: cada posicao reenvia ao motor os passos ate esse ponto (AC11) ----- */
+async function irPara(k, narrar) {
+  const run = curRun();
+  if (!run) return;
+  const N = passosLista().length;
+  k = Math.max(1, Math.min(N, k));
+  const antes = okRes();
+  S.prevCounts = antes ? new Map(antes.idx.map.nodes.map(n => [n.id, n.count])) : null;
+  run.pos = k >= N ? null : k;
+  await correr(run.pos == null ? 'estado final' : `passo ${k}/${N}`);
   const r = okRes();
-  if (!r || S.tab !== 'mapa') return;
-  const N = r.idx.map.nPassos;
-  if (S.map.playing) { S.map.playing = false; renderNotch(); return; }
-  if ((S.map.pos ?? N) >= N) S.map.pos = 0;
-  S.map.playing = true;
-  log('replay', `inferência passo a passo · ${N} passos`, 'info');
-  applyReplay(false);
+  if (narrar && r) narrarPasso(r, antes);
+}
+function narrarPasso(r, antes) {
+  const p = r.pedido.passos.at(-1);
+  const desc = S.byId.get(p.id)?.descricao || 'resposta do analista';
+  const novos = r.resposta.factos.filter(f => f.passo === p.id && f.origem === 'regra');
+  log('passo ' + p.id, `${desc} · ${novos.length} conclusões novas`, 'info');
+  const byRule = new Map();
+  novos.forEach(f => { const k = 'R' + f.regra; if (!byRule.has(k)) byRule.set(k, new Set()); byRule.get(k).add(f.predicado); });
+  [...byRule.entries()].slice(0, 5).forEach(([k, st]) => log(k, 'dispara · ' + [...st].join(', '), 'rule'));
+  r.resposta.tickets.filter(t => r.idx.byNum.get(t.facto)?.passo === p.id).forEach(t => log('▲ ticket ' + fmt(t.prioridade), `${fmt(t.acao)} · ${fmt(t.ativo)}`, 'act'));
+  const antesQ = new Set((antes?.resposta.perguntas || []).map(q => keyOf([q.ativo, q.evento, q.pergunta])));
+  return r.resposta.perguntas.filter(q => !antesQ.has(keyOf([q.ativo, q.evento, q.pergunta])));
+}
+async function play() {
+  const run = curRun();
+  if (!run || !S.online) return;
+  if (S.player.playing) { S.player.playing = false; renderNotch(); return; }
+  const N = passosLista().length;
+  if (posAtual() >= N) await irPara(1, true);
+  S.player.playing = true;
+  log('player', `inferência passo a passo · cada passo é um pedido ao motor`, 'info');
   renderNotch();
-  while (S.map.playing && S.map.pos < N && okRes() === r && S.tab === 'mapa') {
-    await sleep(800 / S.map.speed);
-    if (!S.map.playing) break;
-    stepTo(S.map.pos + 1, true);
+  while (S.player.playing && curRun() === run && posAtual() < N) {
+    await sleep(500 / S.player.speed);
+    if (!S.player.playing) break;
+    const antes = okRes();
+    await irPara(posAtual() + 1, false);
+    const r = okRes();
+    if (!r) break;
+    const novas = narrarPasso(r, antes);
+    if (novas.length) {   // pausa automatica: o motor fez uma pergunta ao analista
+      S.player.playing = false;
+      log('⏸ pausa', `o motor fez ${novas.length} pergunta(s) no passo ${r.pedido.passos.at(-1).id}: responda para continuar`, 'q');
+      toast(`Pausa: no passo ${r.pedido.passos.at(-1).id} o motor perguntou "${novas[0].texto ?? fmt(novas[0].pergunta)}". Responda em Casos e carregue em ▶ para continuar.`, true);
+      if (novas[0].facto != null) S.insp.nav = [{t: 'fila'}, {t: 'fact', num: novas[0].facto, key: factKey(r.idx.byNum.get(novas[0].facto))}];
+      S.dtab = 'como';
+      if (S.tab === 'casos') renderCenter();
+    }
   }
-  S.map.playing = false;
+  S.player.playing = false;
   renderNotch();
 }
-function stepTo(k, narrate) {
-  const r = okRes();
-  if (!r) return;
-  const N = r.idx.map.nPassos;
-  S.map.pos = Math.max(0, Math.min(N, k));
-  applyReplay(true);
-  renderNotch();
-  if (!narrate || S.map.pos === 0) return;
-  const pid = r.pedido.passos[S.map.pos - 1]?.id;
-  const desc = S.byId.get(pid)?.descricao;
-  const novos = r.resposta.factos.filter(f => f.passo === pid && f.origem === 'regra');
-  log('passo ' + pid, `${desc ? desc + ' · ' : ''}${r.resposta.factos.filter(f => f.passo === pid && f.origem === 'entrada').length} factos de entrada · ${novos.length} concluídos`, 'info');
-  const byRule = new Map();
-  novos.forEach(f => { const k2 = 'R' + f.regra; if (!byRule.has(k2)) byRule.set(k2, new Set()); byRule.get(k2).add(f.predicado); });
-  [...byRule.entries()].slice(0, 5).forEach(([k2, s]) => log(k2, 'dispara · ' + [...s].join(', '), 'rule'));
-  r.resposta.tickets.filter(t => r.idx.byNum.get(t.facto)?.passo === pid).forEach(t => log('▲ ticket ' + fmt(t.prioridade), `${fmt(t.acao)} · ${fmt(t.ativo)}`, 'act'));
-  r.resposta.perguntas.filter(q => r.idx.byNum.get(q.facto)?.passo === pid).forEach(q => log('? pergunta', `${fmt(q.pergunta)} · ${fmt(q.ativo)}`, 'q'));
+function playerHtml(compact) {
+  if (!S.online || !S.sel) return '';
+  let N = 0; try { N = passosLista().length; } catch {}
+  const pos = posAtual();
+  const pid = (() => { try { return passosLista()[pos - 1]?.id; } catch { return null; } })();
+  const fim = pos >= N;
+  return `<div class="player ${compact ? 'compact' : ''}"><div class="ctl">
+      <button data-rp="first" title="Reset: só o primeiro passo">⏮</button><button data-rp="prev" title="Recuar um passo (←)" ${pos <= 1 ? 'disabled' : ''}>◀</button>
+      <button class="play ${S.player.playing ? 'pause' : ''}" data-rp="play" title="Play/Pause: um pedido ao motor por passo; pára sozinho quando o motor faz uma pergunta (espaço)">${S.player.playing ? '❚❚' : '▶'}</button>
+      <button data-rp="next" title="Avançar um passo (→)" ${fim ? 'disabled' : ''}>▶</button><button data-rp="last" title="Estado final (todos os passos)" ${fim ? 'disabled' : ''}>⏭</button></div>
+    <div class="pos"><b>${fim ? 'Estado final' : 'Passo ' + pos + ' / ' + N}</b><span>${esc(pid || '')}${pid ? ' · ' : ''}${esc(trunc(fim ? N + ' passos' : (S.byId.get(pid)?.descricao || 'resposta do analista'), compact ? 26 : 34))}</span></div>
+    ${compact ? '' : `<input type="range" id="rpRange" min="1" max="${N}" value="${pos}" title="Arraste e largue: pede ao motor o resultado nesse passo">`}
+    <button class="spd" data-rp="spd" title="Velocidade do play">${S.player.speed}×</button></div>`;
 }
 
 /* =====================================================================
@@ -1126,7 +1278,7 @@ function setupPanZoom(wrap, svg, L, kind, focus) {
   const vk = kind === 'prova' ? 'prova:' + S.rootKey + G.depth + G.hideInicial : 'mapa:' + runKey() + S.view + S.map.showBase;
   const st = VIEW[vk] ||= {};
   const W = L.width + 60, H = L.height + 40;
-  const TOP = kind === 'prova' ? 104 : 62, BOT = 52;
+  const TOP = kind === 'prova' ? 58 : 62, BOT = 52;
   const apply = () => { svg.style.transform = `translate(${st.x}px,${st.y}px) scale(${st.z})`; const zl = $('zlbl'); if (zl) zl.textContent = Math.round(st.z * 100) + '%'; };
   const fit = () => {
     const ww = wrap.clientWidth, wh = wrap.clientHeight;
@@ -1172,10 +1324,9 @@ function setupPanZoom(wrap, svg, L, kind, focus) {
     if (moved) { moved = false; return; }
     const n = e.target.closest('.n');
     if (kind === 'mapa') {
-      if (!n) { if (S.insp.nav.length > 1) { S.insp.nav = [{t: 'fila'}]; renderInsp(); } highlight(null); return; }
-      const id = n.dataset.n;
-      inspPush(id.startsWith('a:') ? {t: 'acao', key: id} : {t: 'pred', key: id});
-    } else if (n?.dataset.fact) selectFact(+n.dataset.fact);
+      S.mapSel = n ? n.dataset.n : null;
+      renderMapCard(); highlight(S.mapSel);
+    } else if (n?.dataset.fact) selectFact(+n.dataset.fact, 'como');
   });
   wrap.addEventListener('dblclick', e => {
     const n = e.target.closest('.n');
@@ -1192,40 +1343,26 @@ function setupPanZoom(wrap, svg, L, kind, focus) {
 }
 
 /* =====================================================================
-   Inspetor (retratil e redimensionavel)
+   VISTA CASOS: fila de acao (esquerda) + dossie do caso (centro)
+   O dossie e o centro das explicacoes: Como? (HOW), Porque nao? (WHY NOT),
+   grafo da prova e relacoes. Tudo sai da resposta do motor.
    ===================================================================== */
 function inspPush(item) {
   const top = S.insp.nav.at(-1);
-  if (top && top.t === item.t && top.key === item.key && top.num === item.num) { openInsp(true); return; }
-  S.insp.nav.push(item);
-  if (S.insp.nav.length > 30) S.insp.nav.splice(1, 1);
-  openInsp(true);
-  renderInsp();
-  pinnedHighlight();
+  if (!(top && top.t === item.t && top.key === item.key && top.num === item.num)) {
+    S.insp.nav.push(item);
+    if (S.insp.nav.length > 30) S.insp.nav.splice(1, 1);
+  }
+  if (S.tab !== 'casos') { S.tab = 'casos'; renderViews(); renderCenter(); return; }
+  renderQueue(); renderDossier();
 }
-function selectFact(num) {
+function selectFact(num, dtab) {
   const r = okRes();
+  if (dtab) S.dtab = dtab;
   inspPush({t: 'fact', num, key: factKey(r?.idx.byNum.get(num))});
-  if (S.tab === 'prova') document.querySelectorAll('#svg .n').forEach(g => g.classList.toggle('sel', g.dataset.fact == num && !g.classList.contains('k-rule')));
-  if (['tickets', 'factos'].includes(S.tab)) renderCenter();
 }
-function openProof(num) {
-  const r = okRes();
-  if (!r) return;
-  S.rootKey = factKey(r.idx.byNum.get(num));
-  inspPush({t: 'fact', num, key: S.rootKey});
-  S.tab = 'prova';
-  S.map.playing = false;
-  renderViews(); renderCenter();
-}
-function openInsp(open) {
-  S.insp.open = open;
-  LS.set('insp-open', open);
-  $('app').classList.toggle('insp-closed', !open);
-  const b = $('btnInsp');
-  b.textContent = open ? '◂ recolher' : '▸ inspetor';
-  b.classList.toggle('off', open);
-}
+function openProof(num) { S.rootKey = null; selectFact(num, 'grafo'); }
+function renderInsp() { if (S.tab === 'casos') { renderQueue(); renderDossier(); } }
 function significados(idx, f) {
   const out = [], seen = new Set();
   for (const a of atomsOf([f.predicado, f.args])) if (idx.signif.has(a) && !seen.has(a)) { seen.add(a); out.push([a, idx.signif.get(a)]); }
@@ -1242,10 +1379,10 @@ function sevStyle(idx, kind, val) {
 function rankNum(idx, kind, val) { const c = kind === 'grav' ? idx.grav : idx.prio; const r = c.rank.get(keyOf(val)); return r === undefined ? 99 : (kind === 'grav' ? -r : r); }
 function ticketRow(idx, t) {
   const f = idx.byNum.get(t.facto);
-  return `<button class="trow ${selNum() === t.facto ? 'sel' : ''}" data-fact="${t.facto}" title="Clique: explicar · duplo clique: prova">
+  return `<button class="trow ${selNum() === t.facto ? 'sel' : ''}" data-fact="${t.facto}">
     <span class="badge" style="${sevStyle(idx, 'prio', t.prioridade)}">${esc(fmt(t.prioridade))}</span>
     <span class="ta"><b>${esc(human(functor(t.acao)))}</b><span>${esc(fmt(t.ativo))} · ${esc(fmt(t.incidente))}</span></span>
-    <span class="badge ${t.fechado == null ? 'b-open' : 'b-closed'}">${esc(t.fechado == null ? (f?.passo ?? 'aberto') : 'fechado')}</span></button>`;
+    <span class="badge ${t.fechado == null ? 'b-open' : 'b-closed'}" title="${esc(t.fechado == null ? 'aberto · passo ' + (f?.passo ?? '—') : 'fechado: ' + fmt(t.fechado))}">${esc(t.fechado == null ? (f?.passo ?? 'aberto') : 'fechado')}</span></button>`;
 }
 function perguntasPend(res) {
   if (S.engine !== 'both') return res.resposta.perguntas.map(q => ({q, motores: [S.view]}));
@@ -1266,137 +1403,186 @@ function tempoDe(res, ev) {
   const f = (res.resposta.factos || []).find(x => x.predicado === 'tempo' && keyOf(x.args?.[0]) === keyOf(ev));
   return f ? ` · t=${esc(fmt(f.args[1]))}s` : '';
 }
-function qCard(res, q, motores, i) {
+function qAnswers(res, q) {
   const valido = resValido(res);
-  return `${i ? '<div class="qsep"></div>' : ''}
-    <div class="qmeta"><span class="badge" style="color:var(--warn);border-color:#fbbf2466">${esc(fmt(q.pergunta))}</span>
-      <span>ativo <b>${esc(fmt(q.ativo))}</b></span><span>evento <b>${esc(fmt(q.evento))}</b>${tempoDe(res, q.evento)}</span>
-      ${S.engine === 'both' ? `<span>${esc(motores.join(' + '))}</span>` : ''}</div>
-    <div class="qt">${esc(q.texto ?? fmt(q.pergunta))}</div>
-    <div class="qopts">${(q.opcoes || []).length ? q.opcoes.map(o => `<button class="qopt" data-q='${esc(JSON.stringify({ativo: q.ativo, evento: q.evento, pergunta: q.pergunta}))}' data-val='${esc(JSON.stringify(o.valor))}' ${S.busy || !valido ? 'disabled' : ''}>${esc(o.texto ?? fmt(o.valor))}</button>`).join('')
-      : '<span class="muted small">A base não define opções para esta pergunta.</span>'}</div>
-    ${q.facto != null ? `<div style="margin-top:7px"><button class="link small" data-proof="${q.facto}">porquê esta pergunta? → ver prova</button></div>` : ''}`;
+  return `<div class="qopts">${(q.opcoes || []).length ? q.opcoes.map(o => `<button class="qopt" data-q='${esc(JSON.stringify({ativo: q.ativo, evento: q.evento, pergunta: q.pergunta}))}' data-val='${esc(JSON.stringify(o.valor))}' ${S.busy || !valido ? 'disabled' : ''}><b>${esc(fmt(o.valor))}</b> · ${esc(o.texto ?? '')}</button>`).join('')
+    : '<span class="muted small">A base não define opções para esta pergunta.</span>'}</div>`;
 }
-function renderInsp() {
-  const el = $('insp');
-  if (!S.insp.nav.length) S.insp.nav = [{t: 'fila'}];
-  const top = S.insp.nav.at(-1);
-  const head = `<div class="ih"><span class="soc">SOC</span><h2>Auditoria & Explicação</h2><span class="hgrow"></span>
-      <button class="icon-btn" id="inspWide" title="Alargar / reduzir">${LS.get('insp-w', 430) > 520 ? '⇥ reduzir' : '⇤ alargar'}</button>
-      <button class="icon-btn" id="inspClose" title="Recolher o inspetor">✕</button></div>`;
-  if (!S.online) { el.innerHTML = head + `<div class="ib"><div class="card"><div class="ct">sem ligação</div><div class="muted small">O inspetor mostra a fila de ação e as explicações que o motor devolve.</div></div></div>`; return; }
-  const raw = resAtual(), res = okRes();
-  if (!res) {
-    el.innerHTML = head + `<div class="ib">${raw?.erro ? `<div class="errbox"><b>${esc(S.view)} · HTTP ${raw.status || '—'} (${esc(HTTP_TXT[raw.status] || 'erro')})</b><br>${esc(raw.erro)}<div style="margin-top:8px"><button class="btn small" id="btnRetry">Tentar de novo</button></div></div>`
-      : `<div class="card"><div class="ct">${S.busy ? '<span class="spin"></span> a inferir' : 'motor em espera'}</div><div class="muted small" style="line-height:1.6">${S.busy ? 'O pedido foi enviado ao motor. A fila de ação aparece aqui quando ele responder.' : 'Carregue em ▶ Inferir.'}</div></div>`}</div>`;
-    return;
-  }
-  const crumb = S.insp.nav.length > 1 ? `<div class="crumb"><button data-back="1">◀ voltar</button><span>·</span><button data-back="all">⌂ fila de ação</button></div>` : '';
-  const scroll = top.t === 'fila' ? ($('ib')?.scrollTop || 0) : 0;
-  const body = top.t === 'fila' ? inspFila(res) : top.t === 'fact' ? inspFact(res, top.num) : inspNode(res, top.key);
-  el.innerHTML = head + `<div class="ib" id="ib">${crumb}${body}</div>`;
-  if (top.t === 'fact') mountHow(res, top.num);
-  if (scroll) $('ib').scrollTop = scroll;
-}
-function inspFila(res) {
-  const r = res.resposta, idx = res.idx, run = curRun();
+const assetAtoms = res => { const s = new Set(); (res.resposta.tickets || []).forEach(t => { atomsOf(t.ativo, s); atomsOf(t.impactados, s); }); (res.resposta.incidentes || []).forEach(i => atomsOf(i.ativo, s)); return s; };
+
+/* ----- fila (esquerda) ----- */
+function renderQueue() {
+  const el = $('queue');
+  if (!el) return;
+  const res = okRes(), raw = resAtual();
+  if (!res) { el.innerHTML = `<div class="qhead"><div class="qstatwrap">${notchMini()}</div></div><div class="qbody">${raw?.erro ? `<div class="errbox"><b>HTTP ${raw.status || '—'} (${esc(HTTP_TXT[raw.status] || 'erro')})</b><br>${esc(raw.erro)}<div style="margin-top:8px"><button class="btn small" id="btnRetry">Tentar de novo</button></div></div>` : `<div class="muted small" style="padding:10px">${S.busy ? '<span class="spin"></span> a inferir…' : 'Sem inferência.'}</div>`}</div>`; return; }
+  const r = res.resposta, idx = res.idx, run = curRun(), F = S.filtro;
   const foco = S.sel?.tipo === 'cenario' ? focoPassos() : null;
   const pend = perguntasPend(res);
-  const abertos = r.tickets.filter(t => t.fechado == null);
-  const doFoco = foco ? abertos.filter(t => foco.has(idx.byNum.get(t.facto)?.passo)) : abertos;
-  const sorted = [...doFoco].sort((a, b) => rankNum(idx, 'prio', a.prioridade) - rankNum(idx, 'prio', b.prioridade) || rankNum(idx, 'grav', a.gravidade) - rankNum(idx, 'grav', b.gravidade));
-  const prios = [...new Set(r.tickets.map(t => keyOf(t.prioridade)))].map(k => JSON.parse(k)).sort((a, b) => rankNum(idx, 'prio', a) - rankNum(idx, 'prio', b));
-  return `
-    <div class="card" style="border-color:${r.estado === 'aguarda_resposta' ? '#fbbf2466' : '#34d39955'}">
-      <div class="ct" style="color:${r.estado === 'aguarda_resposta' ? 'var(--warn)' : 'var(--ok)'}">${r.estado === 'aguarda_resposta' ? '⏳ o motor aguarda o analista' : '✓ inferência concluída'}</div>
-      <div class="kpis">
-        <div class="kpi"><b>${abertos.length}</b><span>tickets abertos</span></div>
-        <div class="kpi"><b style="color:${pend.length ? 'var(--warn)' : 'inherit'}">${pend.length}</b><span>perguntas</span></div>
-        <div class="kpi"><b>${r.incidentes?.length ?? 0}</b><span>incidentes</span></div>
-        <div class="kpi"><b>${res.pedido.passos.length}</b><span>passos</span></div>
-      </div>
-      ${foco ? `<div class="small muted" style="margin-top:9px">Cenário <b style="color:var(--cyan)">${esc(S.sel.id)}</b> em foco (a cadeia inclui ${idsBase().length} passos). <button class="link" data-global="1">ver todos os tickets na vista global</button></div>` : ''}
-    </div>
-    ${pend.length ? `<div class="card amber" id="filaPerg"><div class="ct">⚠ perguntas ao analista (${pend.length})</div>${pend.map(({q, motores}, i) => qCard(res, q, motores, i)).join('')}</div>` : ''}
-    ${run.respostas.length ? `<div class="card"><div class="ct" style="color:var(--resp)">✓ respostas dadas (${run.respostas.length})</div>
-      ${run.respostas.map((p, i) => `<div class="ans"><span class="badge" style="color:var(--resp);border-color:#34d39966">${esc(p.id)}</span><span class="term hgrow">${esc(p.factos[0].args.map(fmt).join(' · '))}</span><button class="btn ghost small" data-undo="${i}" ${S.busy ? 'disabled' : ''} title="Retirar esta resposta e voltar a inferir">↶</button></div>`).join('')}</div>` : ''}
-    <div class="card red"><div class="ct">▲ tickets abertos${foco ? ` · criados em ${esc(S.sel.id)}` : ''} (${sorted.length})</div>
-      ${sorted.length ? sorted.slice(0, 80).map(t => ticketRow(idx, t)).join('') : `<div class="muted small">Nenhum ticket aberto${foco ? ' criado neste cenário' : ''}.</div>`}
-      ${sorted.length > 80 ? `<button class="link small" data-nav-tab="tickets">ver todos (${sorted.length}) →</button>` : ''}
-    </div>
-    <div class="card"><div class="ct">resumo por prioridade · ${esc(foco ? 'cadeia completa' : 'vista global')}</div>
-      ${prios.map(p => { const all = r.tickets.filter(t => keyOf(t.prioridade) === keyOf(p)); const ab = all.filter(t => t.fechado == null).length; return `<div class="sevrow"><span><span class="badge" style="${sevStyle(idx, 'prio', p)}">${esc(fmt(p))}</span></span><span><b>${ab}</b> abertos · <span class="muted">${all.length - ab} fechados</span></span></div>`; }).join('')}
+  const q = (F.fila || '').toLowerCase();
+  let ts = r.tickets.filter(t => F.tickets === 'todos' ? true : F.tickets === 'fechados' ? t.fechado != null : t.fechado == null);
+  if (foco && F.ambito === 'foco') ts = ts.filter(t => foco.has(idx.byNum.get(t.facto)?.passo));
+  if (q) ts = ts.filter(t => [t.acao, t.ativo, t.incidente, t.prioridade].map(fmt).join(' ').toLowerCase().includes(q));
+  ts.sort((a, b) => rankNum(idx, 'prio', a.prioridade) - rankNum(idx, 'prio', b.prioridade) || rankNum(idx, 'grav', a.gravidade) - rankNum(idx, 'grav', b.gravidade) || a.facto - b.facto);
+  const groups = [];
+  ts.forEach(t => { const k = fmt(t.prioridade); let g = groups.find(x => x.k === k); if (!g) groups.push(g = {k, p: t.prioridade, ts: []}); g.ts.push(t); });
+  const scroll = $('qbody')?.scrollTop || 0;
+  el.innerHTML = `<div class="qhead"><div class="qstatwrap">${notchMini()}</div>
+      <div class="qfilters">
+        <input id="filaTexto" placeholder="procurar ativo, ação, incidente…" value="${esc(F.fila || '')}">
+        <span class="sg" data-filtro="tickets">${['abertos', 'fechados', 'todos'].map(v => `<button data-v="${v}" class="${F.tickets === v ? 'on' : ''}">${v}</button>`).join('')}</span>
+        ${foco ? `<span class="sg" data-filtro="ambito"><button data-v="foco" class="${F.ambito === 'foco' ? 'on' : ''}">só ${esc(S.sel.id)}</button><button data-v="cadeia" class="${F.ambito === 'cadeia' ? 'on' : ''}">cadeia</button></span><button class="globalbtn" data-global="1" style="padding:4px 8px">🌐 todos</button>` : ''}
+      </div></div>
+    <div class="qbody" id="qbody">
+      ${pend.length ? `<div class="qsec amber"><div class="qsh">⚠ Perguntas ao analista <span>${pend.length}</span></div>
+        ${pend.slice(0, S.qAll ? 99 : 3).map(({q: pq, motores}) => `<button class="qrow ${selNum() === pq.facto && pq.facto != null ? 'sel' : ''}" ${pq.facto != null ? `data-fact="${pq.facto}"` : ''}>
+          <span class="qr1"><b>${esc(fmt(pq.pergunta))}</b> · ${esc(fmt(pq.ativo))}${S.engine === 'both' ? ` · ${esc(motores.join('+'))}` : ''}</span>
+          <span class="qr2">${esc(pq.texto ?? '')}</span></button>`).join('')}
+        ${pend.length > 3 ? `<button class="link small" data-qall="1">${S.qAll ? 'mostrar só 3' : `ver mais ${pend.length - 3} perguntas`}</button>` : ''}</div>` : ''}
+      ${run.respostas.length ? `<div class="qsec"><div class="qsh" style="color:var(--resp)">✓ Respostas dadas <span>${run.respostas.length}</span></div>
+        ${run.respostas.map((p, i) => `<div class="ans"><span class="term hgrow">${esc(p.factos[0].args.map(fmt).join(' · '))}</span><button class="btn ghost small" data-undo="${i}" ${S.busy ? 'disabled' : ''} title="Retirar esta resposta e voltar a inferir">↶</button></div>`).join('')}</div>` : ''}
+      ${groups.length ? groups.map(g => `<div class="qsec"><div class="qsh"><span class="badge" style="${sevStyle(idx, 'prio', g.p)}">${esc(g.k)}</span> tickets ${esc(F.tickets === 'todos' ? '' : F.tickets)} <span>${g.ts.length}</span></div>${g.ts.map(t => ticketRow(idx, t)).join('')}</div>`).join('')
+        : `<div class="muted small" style="padding:12px">Nenhum ticket com estes filtros.${foco && F.ambito === 'foco' ? ' <button class="link" data-set-ambito="cadeia">ver a cadeia toda</button>' : ''}</div>`}
     </div>`;
+  if (scroll) $('qbody').scrollTop = scroll;
 }
-function inspNode(res, key) {
-  const M = res.idx.map, idx = res.idx;
-  const n = M.byId.get(key);
-  if (!n) return '<div class="muted">Este elemento não existe nesta resposta.</div>';
-  const sig = idx.signif.get(n.label);
-  if (n.kind === 'acao') {
-    const ts = [...n.tickets].sort((a, b) => (a.fechado == null ? 0 : 1) - (b.fechado == null ? 0 : 1) || rankNum(idx, 'prio', a.prioridade) - rankNum(idx, 'prio', b.prioridade));
-    return `<div class="card red"><div class="ct">▲ ação pedida nos tickets</div><div class="dpred">${esc(human(n.label))}</div>
-      <div class="kv"><div>tickets</div><div>${n.tickets.length} (${n.open} abertos)</div><div>ativos</div><div>${esc([...new Set(n.tickets.map(t => fmt(t.ativo)))].join(', '))}</div></div>
-      ${sig ? `<div class="signif"><b>significado (base de conhecimento)</b>${esc(fmt(sig))}</div>` : ''}</div>
-      <div class="card"><div class="ct">tickets · clique para explicar, duplo clique para a prova</div>${ts.map(t => ticketRow(idx, t)).join('')}</div>`;
-  }
-  const insts = n.insts.map(x => idx.byNum.get(x)).filter(Boolean).reverse();
-  return `<div class="card"><div class="ct">${KICON[n.kind] || '◆'} tipo de facto</div><div class="dpred">${esc(n.label)}</div>
-      <div class="kv"><div>factos</div><div>${n.count}</div>
-      ${n.rules.size ? `<div>concluído por</div><div>${[...n.rules.entries()].map(([r, c]) => `R${esc(fmt(r))}×${c}`).join(' · ')}</div>` : `<div>origem</div><div>${esc(n.kind === 'inicial' ? 'base de conhecimento' : 'entrada (passos do pedido)')}</div>`}
-      ${n.prem.size ? `<div>premissas</div><div class="term">${esc([...n.prem].join(' ∧ '))}</div>` : ''}
-      ${n.usedRules.size ? `<div>alimenta</div><div>${[...n.usedRules].map(r => 'R' + esc(fmt(r))).join(', ')}</div>` : ''}</div>
-      ${sig ? `<div class="signif"><b>significado (base de conhecimento)</b>${esc(fmt(sig))}</div>` : ''}</div>
-    <div class="card"><div class="ct">factos (${insts.length})</div><div class="uses">${insts.slice(0, 150).map(f => `<button data-fact="${f.numero}"><span class="badge b-${esc(f.origem)}">${esc(f.passo ?? f.origem)}</span> <span class="term">${esc(trunc(fmtFact(f), 150))}</span></button>`).join('')}</div></div>`;
+function notchMini() {
+  const raw = resAtual(), res = okRes();
+  let estado;
+  if (S.busy) estado = `<span class="estado idle"><span class="spin"></span> a inferir</span>`;
+  else if (raw?.erro) estado = `<span class="estado erro">erro ${raw.status || ''}</span>`;
+  else if (res && !resValido(res)) estado = `<span class="estado idle">desatualizado</span>`;
+  else if (res) estado = `<span class="estado ${esc(res.resposta.estado)}">${esc(res.resposta.estado)}</span>`;
+  else estado = `<span class="estado idle">em espera</span>`;
+  const r = res?.resposta;
+  return `${playerHtml(true)}<div class="qstat">${estado}
+    ${S.engine === 'both' && res ? `<span class="seg">${readyEngines().map(m => `<button data-view="${m}" class="${S.view === m ? 'on' : ''}" style="padding:2px 7px">${m}</button>`).join('')}</span>` : `<b style="font-size:11px;color:${S.view === 'drools' ? 'var(--indigo)' : 'var(--cyan)'}">${esc(S.view)}</b>`}
+    <span class="hgrow"></span><button class="icon-btn" data-rerun="1" title="Voltar a correr o motor" ${S.busy || !S.online ? 'disabled' : ''}>↻</button></div>
+    ${r ? `<div class="qkpis"><span><b>${r.tickets.filter(t => t.fechado == null).length}</b> abertos</span><span><b>${r.tickets.filter(t => t.fechado != null).length}</b> fechados</span><span><b style="color:${r.perguntas.length ? 'var(--warn)' : 'inherit'}">${r.perguntas.length}</b> perguntas</span><span><b>${res.pedido.passos.length}</b> passos</span><span><b>${res.ms}</b> ms</span></div>` : ''}`;
 }
-function inspFact(res, num) {
+
+/* ----- dossie (centro) ----- */
+function defaultItem(res) {
   const idx = res.idx, r = res.resposta;
-  const f = idx.byNum.get(num);
-  if (!f) return '<div class="muted">Este facto não existe nesta resposta.</div>';
-  const t = idx.ticketByFact.get(num), q = idx.pergByFact.get(num);
-  const incKey = t ? keyOf(t.incidente) : (f.predicado === 'incidente' ? keyOf(f.args?.[0]) : null);
-  const sobre = incKey ? r.factos.filter(x => x.numero !== num && keyOf(x.args?.[0]) === incKey) : [];
-  const usados = (idx.usedBy.get(num) || []).map(n => idx.byNum.get(n)).filter(Boolean);
+  const foco = S.sel?.tipo === 'cenario' ? focoPassos() : null;
+  const t = [...r.tickets].filter(x => x.fechado == null && (!foco || foco.has(idx.byNum.get(x.facto)?.passo)))
+    .sort((a, b) => rankNum(idx, 'prio', a.prioridade) - rankNum(idx, 'prio', b.prioridade) || rankNum(idx, 'grav', a.gravidade) - rankNum(idx, 'grav', b.gravidade))[0]
+    || r.tickets[0];
+  const n = t?.facto ?? r.perguntas[0]?.facto;
+  return n != null ? {t: 'fact', num: n, key: factKey(idx.byNum.get(n))} : null;
+}
+const DTABS = [['como', '💡 Como? · HOW'], ['whynot', '🚫 Porquê não? · WHY NOT'], ['grafo', '🌳 Grafo da prova'], ['rel', '🔗 Relações']];
+function renderDossier() {
+  const el = $('dossier');
+  if (!el) return;
+  const res = okRes();
+  if (!res) { el.innerHTML = `<div class="empty"><div class="big">${S.busy ? '<span class="spin" style="width:30px;height:30px;border-width:3px"></span>' : '🗂'}</div><h2>${S.busy ? 'A inferir…' : 'Sem caso aberto'}</h2></div>`; return; }
+  let top = S.insp.nav.at(-1);
+  if (!top || top.t === 'fila') { const d = defaultItem(res); if (d) { S.insp.nav = [{t: 'fila'}, d]; top = d; } }
+  if (!top || top.t === 'fila') { el.innerHTML = `<div class="empty"><div class="big">✓</div><h2>Nada para mostrar</h2><div>O motor não criou tickets nem perguntas nesta execução.</div></div>`; return; }
+  const back = S.insp.nav.length > 2 ? `<button class="link small" data-back="1">◀ voltar</button>` : '';
+  if (top.t === 'pred' || top.t === 'acao') { el.innerHTML = `<div class="dwrap">${back}${dossierNode(res, top.key)}</div>`; return; }
+  const idx = res.idx, f = idx.byNum.get(top.num);
+  if (!f) { el.innerHTML = `<div class="dwrap">${back}<div class="muted">Este facto não existe nesta resposta.</div></div>`; return; }
+  const derived = f.origem === 'regra';
+  if (!derived && S.dtab !== 'rel' && S.dtab !== 'whynot') S.dtab = 'como';
+  el.innerHTML = `<div class="dhead2">${back}${caseHeader(res, f)}
+      <div class="dtabs">${DTABS.map(([k, l]) => `<button data-dtab="${k}" class="${S.dtab === k ? 'on' : ''}" ${!derived && k === 'grafo' ? 'disabled' : ''}>${l}</button>`).join('')}</div></div>
+    <div class="dbody ${S.dtab === 'grafo' ? 'graphmode' : ''}" id="dbody"></div>`;
+  const body = $('dbody');
+  if (S.dtab === 'como') { body.innerHTML = `<div class="dwrap">${tabComo(res, f)}</div>`; mountHow(res, f.numero); }
+  else if (S.dtab === 'whynot') body.innerHTML = `<div class="dwrap">${tabWhyNot(res, f)}</div>`;
+  else if (S.dtab === 'rel') body.innerHTML = `<div class="dwrap">${tabRel(res, f)}</div>`;
+  else { S.rootKey = factKey(f); renderProva(body, res); }
+}
+function caseHeader(res, f) {
+  const idx = res.idx, t = idx.ticketByFact.get(f.numero), q = idx.pergByFact.get(f.numero);
   const sig = significados(idx, f).concat(t?.fechado != null ? significados(idx, {predicado: '', args: [t.fechado]}) : []);
-  // contexto: evidencia de entrada e base de conhecimento que sustentam esta conclusao
-  const leaves = {entrada: new Map(), inicial: new Map()};
-  const seen = new Set();
-  const walk = n => { if (seen.has(n)) return; seen.add(n); const x = idx.byNum.get(n); if (!x) return; if (x.origem === 'regra') (x.premissas || []).forEach(p => typeof p === 'number' && walk(p)); else leaves[x.origem]?.set(n, x); };
-  if (f.origem === 'regra') walk(num);
-  const ent = [...leaves.entrada.values()].sort((a, b) => (idx.step.get(a.numero) - idx.step.get(b.numero)) || a.numero - b.numero);
+  if (t) return `<div class="case red">
+      <div class="cline"><span class="ckind">▲ TICKET</span><span class="badge" style="${sevStyle(idx, 'prio', t.prioridade)}">${esc(fmt(t.prioridade))}</span><span class="badge" style="${sevStyle(idx, 'grav', t.gravidade)}">gravidade ${esc(fmt(t.gravidade))}</span>
+        ${t.fechado == null ? '<span class="badge b-open">aberto</span>' : `<span class="badge b-closed">fechado · ${esc(fmt(t.fechado))}</span>`}<span class="hgrow"></span><span class="muted small">facto #${f.numero} · passo ${esc(f.passo ?? '—')} · R${esc(fmt(f.regra))}</span></div>
+      <div class="ctitle">${esc(human(functor(t.acao)))} <span>em ${esc(fmt(t.ativo))}</span></div>
+      <div class="csub term">incidente ${esc(fmt(t.incidente))}${Array.isArray(t.impactados) && t.impactados.length > 1 ? ' · impactados ' + esc(fmt(t.impactados)) : ''} · ação ${esc(fmt(t.acao))}</div>
+      ${sig.map(([k, v]) => `<div class="signif"><b>${esc(human(k))} · significado na base</b>${esc(fmt(v))}</div>`).join('')}</div>`;
+  if (q) {
+    const pv = perguntasPend(res).find(x => keyOf([x.q.ativo, x.q.evento, x.q.pergunta]) === keyOf([q.ativo, q.evento, q.pergunta]));
+    return `<div class="case amber">
+      <div class="cline"><span class="ckind" style="color:var(--warn)">? PERGUNTA AO ANALISTA</span><span class="badge" style="color:var(--warn);border-color:#fbbf2466">${esc(fmt(q.pergunta))}</span><span class="hgrow"></span><span class="muted small">ativo ${esc(fmt(q.ativo))} · evento ${esc(fmt(q.evento))}${tempoDe(res, q.evento)} · facto #${f.numero}</span></div>
+      <div class="ctitle" style="font-size:16px;line-height:1.45">${esc(q.texto ?? fmt(q.pergunta))}</div>
+      <div class="muted small" style="margin:6px 0 8px">O motor parou aqui e espera a resposta. A resposta entra como um passo novo (<code>resposta_analista</code>) e o motor corre outra vez com todos os passos. O porquê da pergunta está em <b>Como?</b>, abaixo.</div>
+      ${pv ? qAnswers(res, pv.q) : ''}</div>`;
+  }
+  return `<div class="case">
+    <div class="cline"><span class="ckind">◆ FACTO</span><span class="badge b-${esc(f.origem)}">${esc(f.origem)}</span><span class="hgrow"></span><span class="muted small">#${f.numero} · ${esc(f.passo ?? (f.origem === 'inicial' ? 'base de conhecimento' : 'concluído sobre a base'))}${f.regra != null ? ' · R' + esc(fmt(f.regra)) : ''}</span></div>
+    <div class="ctitle term" style="font-size:15px">${esc(fmtFact(f))}</div>
+    ${sig.map(([k, v]) => `<div class="signif"><b>${esc(human(k))} · significado na base</b>${esc(fmt(v))}</div>`).join('')}</div>`;
+}
+
+/* ----- Como? (HOW): contexto + cadeia de raciocinio, tudo a partir das premissas ----- */
+function proofSet(idx, num) {
+  const derived = [], leaves = new Map(), conds = [], seen = new Set();
+  const walk = n => {
+    if (seen.has(n)) return; seen.add(n);
+    const x = idx.byNum.get(n); if (!x) return;
+    if (x.origem !== 'regra') { leaves.set(n, x); return; }
+    derived.push(x);
+    (x.premissas || []).forEach(p => typeof p === 'number' ? walk(p) : conds.push({p, of: x}));
+  };
+  walk(num);
+  derived.sort((a, b) => idx.level.get(a.numero) - idx.level.get(b.numero) || a.numero - b.numero);
+  return {derived, leaves, conds};
+}
+const isResp = f => f.origem === 'entrada' && f.passo != null && !S.byId.has(f.passo);
+function premRow(idx, p, stepOf) {
+  if (typeof p !== 'number') {
+    if (p && p.f === 'nao') return `<div class="prem"><span class="pb neg">NEGAÇÃO</span><span class="term">não existe <b>${esc(fmt(p.args?.[0]))}</b></span><span class="ok">✓</span></div>`;
+    return `<div class="prem"><span class="pb calc">CALCULADA</span><span class="term">${esc(fmt(p))}</span><span class="ok">✓</span></div>`;
+  }
+  const x = idx.byNum.get(p);
+  if (!x) return `<div class="prem"><span class="pb">?</span><span>#${p} (não está na resposta)</span></div>`;
+  if (x.origem === 'regra') return `<div class="prem"><span class="pb ded">DEDUZIDO</span><span class="term">${esc(fmtFact(x))}</span><button class="link small" data-jump="${p}">← passo ${stepOf.get(p) ?? '?'} · R${esc(fmt(x.regra))}</button></div>`;
+  if (x.origem === 'inicial') return `<div class="prem"><span class="pb kb">FACTO BASE</span><span class="term">${esc(fmtFact(x))}</span><span class="muted small">#${p}</span></div>`;
+  return `<div class="prem"><span class="pb ${isResp(x) ? 'resp' : 'tel'}">${isResp(x) ? 'ANALISTA' : 'TELEMETRIA'}</span><span class="term">${esc(fmtFact(x))}</span><span class="muted small">${esc(x.passo)}</span></div>`;
+}
+function tabComo(res, f) {
+  const idx = res.idx, r = res.resposta;
+  if (f.origem !== 'regra') return `<div class="infobox">${f.origem === 'entrada' ? `Facto de <b>entrada</b>: chegou no passo <b>${esc(f.passo ?? '—')}</b> do pedido${isResp(f) ? ' (resposta do analista)' : ' (telemetria do cenário)'}. Não foi concluído por nenhuma regra.` : 'Facto da <b>base de conhecimento</b> (dados fixos): não foi concluído por nenhuma regra.'}
+    ${(idx.usedBy.get(f.numero) || []).length ? ` É premissa de ${(idx.usedBy.get(f.numero) || []).length} conclusões (ver <button class="link" data-dtab="rel">Relações</button>).` : ''}</div>`;
+  const {derived, leaves, conds} = proofSet(idx, f.numero);
+  const stepOf = new Map(derived.map((x, i) => [x.numero, i + 1]));
+  const ent = [...leaves.values()].filter(x => x.origem === 'entrada').sort((a, b) => idx.step.get(a.numero) - idx.step.get(b.numero) || a.numero - b.numero);
+  const base = [...leaves.values()].filter(x => x.origem === 'inicial');
+  const assets = assetAtoms(res);
+  const fAssets = [...atomsOf(f.args)].filter(a => assets.has(a));
+  const t = idx.ticketByFact.get(f.numero);
+  if (t) atomsOf(t.ativo).forEach(a => { if (!fAssets.includes(a)) fAssets.unshift(a); });
+  const mentions = x => { const s = atomsOf(x.args); return fAssets.some(a => s.has(a) || [...s].some(y => typeof y === 'string' && y.startsWith(a + '_'))); };
+  const baseOnde = base.filter(mentions), baseOutra = base.filter(x => !mentions(x));
   const evAtoms = new Set(); ent.forEach(x => atomsOf(x.args, evAtoms));
   const tempos = r.factos.filter(x => x.predicado === 'tempo' && evAtoms.has(x.args?.[0])).sort((a, b) => Number(a.args[1]) - Number(b.args[1]));
+  const lst = (xs, n = 8) => xs.slice(0, n).map(x => `<div><button class="link" data-fact="${x.numero}">${esc(trunc(fmtFact(x), 96))}</button></div>`).join('') + (xs.length > n ? `<div class="muted">+ ${xs.length - n}</div>` : '');
   const passos = [...new Set(ent.map(x => x.passo))];
-  const qv = q ? perguntasPend(res).find(x => keyOf([x.q.ativo, x.q.evento, x.q.pergunta]) === keyOf([q.ativo, q.evento, q.pergunta])) : null;
   return `
-    <div class="card ${t ? 'red' : q ? 'amber' : ''}">
-      <div class="ct">${t ? '▲ ticket' : q ? '? pergunta ao analista' : '◆ facto'}</div>
-      ${t ? `<div class="dpred">${esc(human(functor(t.acao)))} <span class="muted" style="font-weight:400">· ${esc(fmt(t.ativo))}</span></div>` : `<div class="dpred term">${esc(fmtFact(f))}</div>`}
-      <div class="kv">
-        ${t ? `<div>prioridade</div><div><span class="badge" style="${sevStyle(idx, 'prio', t.prioridade)}">${esc(fmt(t.prioridade))}</span> <span class="badge" style="${sevStyle(idx, 'grav', t.gravidade)}">${esc(fmt(t.gravidade))}</span></div>
-               <div>ação</div><div class="term"><b>${esc(fmt(t.acao))}</b></div>
-               <div>incidente</div><div class="term">${esc(fmt(t.incidente))}</div>
-               <div>impactados</div><div class="term">${esc(fmt(t.impactados))}</div>
-               <div>estado</div><div>${t.fechado == null ? '<span class="badge b-open">aberto</span>' : '<span class="badge b-closed">fechado</span> ' + esc(fmt(t.fechado))}</div>` : ''}
-        <div>facto</div><div>#${num} · <span class="badge b-${esc(f.origem)}">${esc(f.origem)}</span></div>
-        <div>passo</div><div>${esc(f.passo ?? (f.origem === 'inicial' ? 'base de conhecimento' : 'concluído sobre a base'))}</div>
-        ${f.regra != null ? `<div>regra</div><div>R${esc(fmt(f.regra))} · ${(f.premissas || []).length} premissas</div>` : ''}
-      </div>
-      ${sig.map(([k, v]) => `<div class="signif"><b>${esc(human(k))}</b>${esc(fmt(v))}</div>`).join('')}
-      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn small" data-proof="${num}">🌳 ver prova em grande</button></div>
+    <div class="sect"><div class="sh" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">🌳 cadeia de raciocínio · ${derived.length} regras disparadas, da evidência até à conclusão
+      <span class="hgrow"></span><span class="sg"><button data-howmode="cadeia" class="${S.howMode !== 'arvore' ? 'on' : ''}">cadeia</button><button data-howmode="arvore" class="${S.howMode === 'arvore' ? 'on' : ''}">árvore (como/1)</button></span>
+      ${S.howMode !== 'arvore' ? `<button class="btn ghost small" data-expand="1">▾ expandir</button><button class="btn ghost small" data-expand="0">▸ recolher</button>` : ''}</div>
+      ${S.howMode === 'arvore' ? `<div class="how" id="howBox"></div>` : derived.map((x, i) => {
+        const sg = idx.signif.get(x.predicado);
+        const last = i === derived.length - 1;
+        return `<details class="rcard ${last ? 'final' : ''}" id="step-${x.numero}" ${last || derived.length <= 8 || i >= derived.length - 3 ? 'open' : ''}>
+          <summary><span class="sn">${i + 1}</span><span class="rpill">R${esc(fmt(x.regra))}</span><span class="term rconc">${esc(fmtFact(x))}</span><span class="muted small">${(x.premissas || []).length} premissas${x.passo ? ' · ' + esc(x.passo) : ''}</span></summary>
+          ${sg ? `<div class="rsig">${esc(fmt(sg))}</div>` : ''}
+          <div class="prems">${(x.premissas || []).map(p => premRow(idx, p, stepOf)).join('')}</div></details>`;
+      }).join('')}
     </div>
-    ${qv ? `<div class="card amber"><div class="ct">responder</div>${qCard(res, qv.q, qv.motores, 0)}</div>` : ''}
-    ${f.origem === 'regra' ? `<div class="card"><div class="ct">contexto da prova</div><div class="ctx">
-      <div class="ctxi" style="border-color:var(--entrada)"><div class="h" style="color:var(--entrada)">evidência de entrada (${ent.length}) · passos ${esc(passos.join(', ') || '—')}</div>
-        ${ent.length ? ent.slice(0, 14).map(x => `<div><button class="link" data-fact="${x.numero}">${esc(trunc(fmtFact(x), 90))}</button></div>`).join('') + (ent.length > 14 ? `<div class="muted">+ ${ent.length - 14}</div>` : '') : '<div class="muted">nenhuma (concluído só sobre a base)</div>'}</div>
-      ${tempos.length ? `<div class="ctxi" style="border-color:var(--warn)"><div class="h" style="color:var(--warn)">cronologia (tempo/2)</div>${tempos.map(x => `<div>${esc(fmt(x.args[0]))} · t = ${esc(fmt(x.args[1]))} s</div>`).join('')}</div>` : ''}
-      <div class="ctxi" style="border-color:var(--inicial)"><div class="h" style="color:var(--inicial)">base de conhecimento usada (${leaves.inicial.size})</div>
-        ${[...leaves.inicial.values()].slice(0, 10).map(x => `<div><button class="link" data-fact="${x.numero}">${esc(trunc(fmtFact(x), 90))}</button></div>`).join('')}${leaves.inicial.size > 10 ? `<div class="muted">+ ${leaves.inicial.size - 10}</div>` : ''}</div>
-    </div></div>` : ''}
-    <div class="card how" id="howBox"><div class="ct">🌳 como? · prova devolvida pelo motor</div>
-      ${f.origem === 'regra' ? '' : `<div class="muted small">${f.origem === 'entrada' ? 'Facto de entrada: chegou no passo ' + esc(f.passo ?? '—') + ' do pedido.' : 'Facto da base de conhecimento (dados fixos).'}</div>`}</div>
-    ${sobre.length ? `<div class="card"><div class="ct">sobre este incidente (${sobre.length})</div><div class="uses">${sobre.map(x => `<button data-fact="${x.numero}" class="term">${esc(trunc(fmtFact(x), 140))}</button>`).join('')}</div></div>` : ''}
-    ${usados.length ? `<div class="card"><div class="ct">usado como premissa em (${usados.length})</div><div class="uses">${usados.slice(0, 60).map(x => `<button data-fact="${x.numero}" class="term">R${esc(fmt(x.regra))} → ${esc(trunc(fmtFact(x), 130))}</button>`).join('')}</div></div>` : ''}`;
+    <div class="sect"><div class="sh">👤 contexto forense · onde · o quê · quando · com que conhecimento</div>
+      <div class="ctxgrid">
+        <div class="ctxi" style="border-color:#38bdf8"><div class="h" style="color:#38bdf8">ONDE · ativo</div>${fAssets.length ? `<div><b>${esc(fAssets.join(', '))}</b></div>` + lst(baseOnde, 6) : '<div class="muted">sem ativo identificado nesta conclusão</div>'}</div>
+        <div class="ctxi" style="border-color:var(--entrada)"><div class="h" style="color:var(--entrada)">O QUÊ · evidência de entrada (${ent.length}) · passos ${esc(passos.join(', ') || '—')}</div>${ent.length ? lst(ent, 8) : '<div class="muted">nenhuma: concluído só sobre a base de conhecimento</div>'}</div>
+        <div class="ctxi" style="border-color:var(--warn)"><div class="h" style="color:var(--warn)">QUANDO · cronologia (tempo/2)</div>${tempos.length ? tempos.map(x => `<div>${esc(fmt(x.args[0]))} · t = <b>${esc(fmt(x.args[1]))} s</b></div>`).join('') : '<div class="muted">sem factos tempo/2 na evidência</div>'}
+          ${conds.length ? `<div class="h" style="color:var(--warn);margin-top:6px">condições verificadas (${conds.length})</div>` + conds.slice(0, 5).map(c => `<div class="term">${c.p && c.p.f === 'nao' ? '¬ ' + esc(fmt(c.p.args?.[0])) : '⚙ ' + esc(fmt(c.p))} ✓</div>`).join('') + (conds.length > 5 ? `<div class="muted">+ ${conds.length - 5}</div>` : '') : ''}</div>
+        <div class="ctxi" style="border-color:var(--inicial)"><div class="h" style="color:var(--inicial)">COM QUE CONHECIMENTO · base usada (${base.length})</div>${lst(baseOutra.length ? baseOutra : base, 6)}</div>
+      </div></div>`;
 }
 function factLine(f, extra = '') {
   return `<span class="badge b-${esc(f.origem)}">${esc(f.origem === 'regra' ? 'R' + fmt(f.regra) : f.origem)}${f.passo != null ? ' · ' + esc(f.passo) : ''}</span><span class="term">${esc(fmtFact(f))}</span>${extra}`;
@@ -1405,7 +1591,7 @@ function howNode(idx, num, shown) {
   const f = idx.byNum.get(num);
   if (!f) return `<div class="cond">#${num} (não está na resposta)</div>`;
   const leaf = f.origem !== 'regra' || !(f.premissas || []).length;
-  if (shown.has(num) && !leaf) return `<details class="leaf"><summary>${factLine(f, ' <span class="ref">(prova acima)</span>')}</summary></details>`;
+  if (shown.has(num) && !leaf) return `<details class="leaf"><summary>${factLine(f, ' <span class="ref">(já explicado acima)</span>')}</summary></details>`;
   shown.add(num);
   return `<details class="${leaf ? 'leaf' : ''}" data-how="${num}"><summary>${factLine(f)} <button class="link small" data-fact="${num}">#${num}</button></summary></details>`;
 }
@@ -1418,23 +1604,170 @@ function fillHow(det, idx, shown) {
     : `<div class="cond">${p && p.f === 'nao' ? '¬ não existe ' + esc(fmt(p.args?.[0])) : '⚙ ' + esc(fmt(p))}</div>`).join('') || '<div class="cond muted">sem premissas</div>');
 }
 function mountHow(res, num) {
-  const f = res.idx.byNum.get(num);
-  if (!f || f.origem !== 'regra') return;
   const box = $('howBox');
+  const f = res.idx.byNum.get(num);
+  if (!box || !f || f.origem !== 'regra') return;
   const shown = new Set([num]);
-  const top = document.createElement('div');
-  top.innerHTML = `<details open data-how="${num}" style="margin-left:0;border:none;padding-left:0"><summary>${factLine(f)}</summary></details>`;
-  box.appendChild(top);
-  const d = top.firstElementChild;
+  box.innerHTML = `<details open data-how="${num}" style="margin-left:0;border:none;padding-left:0"><summary>${factLine(f)}</summary></details>`;
+  const d = box.firstElementChild;
   fillHow(d, res.idx, shown);
   box.addEventListener('toggle', e => { if (e.target.matches('details[data-how]') && e.target.open) fillHow(e.target, res.idx, shown); }, true);
   d.querySelectorAll(':scope > details[data-how]').forEach(x => { x.open = true; });
 }
 
+/* ----- Porque nao? (WHY NOT): pergunta ao motor por POST /api/{motor}/whynot ----- */
+function whynotSugestoes(res, f) {
+  // perguntas "porque nao" que saem da propria prova: as negacoes que a regra verificou e outras conclusoes sobre o mesmo ativo
+  const idx = res.idx, out = [], seen = new Set();
+  const add = (pred, args, porque) => { if (!pred || !Array.isArray(args) || args.some(a => typeof a === 'string' && /^[A-Z]$/.test(a))) return; const k = pred + keyOf(args); if (seen.has(k)) return; seen.add(k); out.push({pred, args, porque}); };
+  if (f.origem === 'regra') proofSet(idx, f.numero).conds.forEach(c => { if (c.p && c.p.f === 'nao' && c.p.args?.[0]?.f) add(c.p.args[0].f, c.p.args[0].args, 'negação verificada na prova'); });
+  return out.slice(0, 8);
+}
+function tabWhyNot(res, f) {
+  const idx = res.idx, r = res.resposta;
+  const wn = S.whynotForm ||= {pred: '', args: ''};
+  const preds = [...new Set(r.factos.filter(x => x.origem === 'regra').map(x => x.predicado).concat(wn.pred ? [wn.pred] : []))].sort();
+  const sug = whynotSugestoes(res, f);
+  const key = wn.lastKey;
+  const st = key ? S.whynot.get(key) : null;
+  return `
+    <div class="sect"><div class="sh">🚫 porquê não? · o que faltou para o motor concluir um facto</div>
+      <div class="muted small" style="line-height:1.6;margin-bottom:10px">O motor percorre as regras que podiam concluir o facto pedido e, em cada uma, mostra as premissas que falharam, descendo pelas que outras regras poderiam concluir (<code>whynot/1</code>). O pedido leva os mesmos ${res.pedido.passos.length} passos desta execução.</div>
+      ${sug.length ? `<div class="small muted" style="margin-bottom:6px">Sugestões a partir desta prova:</div><div class="sugs">${sug.map(s => `<button class="chip" data-wn='${esc(JSON.stringify({pred: s.pred, args: s.args}))}' title="${esc(s.porque)}">${esc(trunc(s.pred + '(' + s.args.map(fmt).join(', ') + ')', 70))}</button>`).join('')}</div>` : ''}
+      <div class="wnform">
+        <select id="wnPred"><option value="">— predicado —</option>${preds.map(p => `<option ${wn.pred === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select>
+        <span class="muted">(</span><input id="wnArgs" placeholder="argumentos separados por vírgulas, ex.: web_srv_04, ev_e1" value="${esc(wn.args)}"><span class="muted">)</span>
+        <button class="btn" id="wnGo" ${wn.pred && !S.busy ? '' : 'disabled'}>Perguntar ao motor</button>
+      </div>
+      ${wn.pred ? `<div class="small muted" style="margin-top:6px">Exemplo do motor para <b>${esc(wn.pred)}</b>: <span class="term">${esc(trunc(fmtFact(r.factos.find(x => x.predicado === wn.pred) || {predicado: wn.pred, args: []}), 110))}</span></div>` : ''}
+    </div>
+    ${st ? `<div class="sect">${whynotResult(st)}</div>` : ''}`;
+}
+function parseArgs(s) {
+  return s.split(',').map(x => x.trim()).filter(x => x.length).map(x => /^-?\d+(\.\d+)?$/.test(x) ? Number(x) : x);
+}
+async function pedirWhynot(pred, args) {
+  const res = okRes();
+  if (!res) return;
+  const facto = {predicado: pred, args};
+  const key = S.view + ':' + res.sig + ':' + pred + keyOf(args);
+  S.whynotForm.lastKey = key;
+  S.whynot.set(key, {loading: true, facto});
+  renderDossier();
+  const body = {versaoKB: S.cat.versaoKB, passos: res.pedido.passos, facto};
+  log('porquê não?', `POST /api/${S.view}/whynot · ${pred}(${args.map(fmt).join(', ')})`, 'info');
+  const r = await api(`/api/${S.view}/whynot`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  S.whynot.set(key, {...r, facto, pedido: body});
+  log(r.ok ? 'porquê não?' : 'porquê não?', r.ok ? `HTTP ${r.status} em ${r.ms} ms` : `HTTP ${r.status || '—'}: ${r.erro}`, r.ok ? 'ok' : 'bad');
+  if (S.dtab === 'whynot') renderDossier();
+}
+function whynotResult(st) {
+  const alvo = `<span class="term"><b>${esc(st.facto.predicado)}(${esc(st.facto.args.map(fmt).join(', '))})</b></span>`;
+  if (st.loading) return `<div class="muted"><span class="spin"></span> a perguntar ao motor porque não concluiu ${alvo}…</div>`;
+  if (!st.ok && [404, 405, 501].includes(st.status)) return `<div class="wnmissing"><b>O backend ainda não expõe o "Porquê não?"</b>
+    <div>O endpoint <code>POST /api/${esc(S.view)}/whynot</code> respondeu HTTP ${st.status}. Está previsto no plano de arquitetura (secção 6, alteração M8 ao wrapper: <i>whynot devolve uma estrutura</i>), mas ainda não está implementado. O motor Prolog já tem <code>whynot/1</code> na consola.</div>
+    <div style="margin-top:6px">Quando o endpoint existir, este separador mostra a resposta do motor sem mudar nada no UI. Pedido que foi enviado:</div>
+    <pre class="json" style="max-height:220px">${esc(JSON.stringify({...st.pedido, passos: `[${st.pedido.passos.length} passos desta execução]`}, null, 2))}</pre></div>`;
+  if (!st.ok) return `<div class="errbox"><b>HTTP ${st.status || '—'} (${esc(HTTP_TXT[st.status] || 'erro')})</b><br>${esc(st.erro)}</div>`;
+  return `<div class="sh">resposta do motor · porque não concluiu ${alvo}</div><div class="wntree">${jsonTree(st.data, 0)}</div>
+    <details class="box" style="margin-top:10px"><summary>JSON da resposta</summary><div><pre class="json">${esc(JSON.stringify(st.data, null, 2))}</pre></div></details>`;
+}
+// mostra uma resposta JSON qualquer como arvore legivel (termos do contrato formatados)
+function jsonTree(v, d) {
+  if (v == null) return '<span class="muted">—</span>';
+  if (typeof v !== 'object') return `<span class="term">${esc(String(v))}</span>`;
+  if (!Array.isArray(v) && 'f' in v && 'args' in v && Object.keys(v).length === 2) return `<span class="term">${esc(fmt(v))}</span>`;
+  if (!Array.isArray(v) && 'predicado' in v && 'args' in v && Object.keys(v).length <= 3) return `<span class="term"><b>${esc(fmtFact(v))}</b></span>`;
+  if (Array.isArray(v)) return v.length ? `<div class="jt">${v.map(x => `<div class="ji">${jsonTree(x, d + 1)}</div>`).join('')}</div>` : '<span class="muted">[]</span>';
+  return `<div class="jt">${Object.entries(v).map(([k, x]) => `<div class="ji"><span class="jk ${/regra/i.test(k) ? 'r' : /falh|falta|nao/i.test(k) ? 'f' : ''}">${esc(k)}</span> ${k === 'regra' && (typeof x === 'number' || typeof x === 'string') ? `<span class="rpill">R${esc(x)}</span>` : jsonTree(x, d + 1)}</div>`).join('')}</div>`;
+}
+
+/* ----- Relacoes: incidente, onde e usado, metaconhecimento observado ----- */
+function tabRel(res, f) {
+  const idx = res.idx, r = res.resposta;
+  const t = idx.ticketByFact.get(f.numero);
+  const incKey = t ? keyOf(t.incidente) : (f.predicado === 'incidente' ? keyOf(f.args?.[0]) : null);
+  const sobre = incKey ? r.factos.filter(x => x.numero !== f.numero && keyOf(x.args?.[0]) === incKey) : [];
+  const usados = (idx.usedBy.get(f.numero) || []).map(n => idx.byNum.get(n)).filter(Boolean);
+  const node = idx.map.byId.get('p:' + f.predicado);
+  return `
+    ${sobre.length ? `<div class="sect"><div class="sh">sobre este incidente (${sobre.length})</div><div class="uses">${sobre.map(x => `<button data-fact="${x.numero}"><span class="badge b-regra">R${esc(fmt(x.regra))}</span> <span class="term">${esc(trunc(fmtFact(x), 150))}</span></button>`).join('')}</div></div>` : ''}
+    <div class="sect"><div class="sh">usado como premissa em (${usados.length})</div>${usados.length ? `<div class="uses">${usados.slice(0, 80).map(x => `<button data-fact="${x.numero}"><span class="badge b-regra">R${esc(fmt(x.regra))}</span> <span class="term">${esc(trunc(fmtFact(x), 140))}</span></button>`).join('')}</div>` : '<div class="muted small">Nenhuma regra usou este facto nesta execução.</div>'}</div>
+    ${node ? `<div class="sect"><div class="sh">tipo de facto <b>${esc(f.predicado)}</b> nesta execução</div>
+      <div class="kv"><div>factos</div><div>${node.count}</div>
+        ${node.rules.size ? `<div>concluído por</div><div>${[...node.rules.entries()].map(([x, c]) => `R${esc(fmt(x))}×${c}`).join(' · ')}</div>` : ''}
+        ${node.usedRules.size ? `<div>alimenta as regras</div><div>${[...node.usedRules].map(x => 'R' + esc(fmt(x))).join(', ')}</div>` : ''}</div>
+      <div class="muted small" style="margin-top:6px">Regras que este tipo de facto alimentou nesta execução (observado nas premissas). O metaconhecimento do motor (<code>facto_dispara_regras/2</code>, gerado por <code>gera_meta.pl</code>) não vem na resposta da API.</div>
+      <button class="btn ghost small" style="margin-top:8px" data-mapfocus="p:${esc(f.predicado)}">◈ ver no mapa de inferência</button></div>` : ''}`;
+}
+function dossierNode(res, key) {
+  const M = res.idx.map, idx = res.idx;
+  const n = M.byId.get(key);
+  if (!n) return '<div class="muted">Este elemento não existe nesta resposta.</div>';
+  const sig = idx.signif.get(n.label);
+  if (n.kind === 'acao') {
+    const ts = [...n.tickets].sort((a, b) => (a.fechado == null ? 0 : 1) - (b.fechado == null ? 0 : 1) || rankNum(idx, 'prio', a.prioridade) - rankNum(idx, 'prio', b.prioridade));
+    return `<div class="case red"><div class="cline"><span class="ckind">▲ AÇÃO PEDIDA NOS TICKETS</span><span class="hgrow"></span><span class="muted small">${n.tickets.length} tickets · ${n.open} abertos</span></div>
+      <div class="ctitle">${esc(human(n.label))}</div><div class="csub">ativos: ${esc([...new Set(n.tickets.map(t => fmt(t.ativo)))].join(', '))}</div>
+      ${sig ? `<div class="signif"><b>significado na base</b>${esc(fmt(sig))}</div>` : ''}</div>
+      <div class="sect"><div class="sh">tickets · escolha um para ver o Como?</div>${ts.map(t => ticketRow(idx, t)).join('')}</div>`;
+  }
+  const insts = n.insts.map(x => idx.byNum.get(x)).filter(Boolean).reverse();
+  return `<div class="case"><div class="cline"><span class="ckind">◆ TIPO DE FACTO</span><span class="hgrow"></span><span class="muted small">${n.count} factos</span></div>
+      <div class="ctitle term">${esc(n.label)}</div>
+      <div class="kv" style="margin-top:6px">${n.rules.size ? `<div>concluído por</div><div>${[...n.rules.entries()].map(([r, c]) => `R${esc(fmt(r))}×${c}`).join(' · ')}</div>` : `<div>origem</div><div>${esc(n.kind === 'inicial' ? 'base de conhecimento' : 'entrada (passos do pedido)')}</div>`}
+      ${n.prem.size ? `<div>premissas</div><div class="term">${esc([...n.prem].join(' ∧ '))}</div>` : ''}
+      ${n.usedRules.size ? `<div>alimenta</div><div>${[...n.usedRules].map(r => 'R' + esc(fmt(r))).join(', ')}</div>` : ''}</div>
+      ${sig ? `<div class="signif"><b>significado na base</b>${esc(fmt(sig))}</div>` : ''}</div>
+    <div class="sect"><div class="sh">factos (${insts.length}) · escolha um para ver o Como?</div><div class="uses">${insts.slice(0, 150).map(f => `<button data-fact="${f.numero}"><span class="badge b-${esc(f.origem)}">${esc(f.passo ?? f.origem)}</span> <span class="term">${esc(trunc(fmtFact(f), 150))}</span></button>`).join('')}</div></div>`;
+}
+
+/* ----- cartao flutuante do mapa (clique num no) ----- */
+function renderMapCard() {
+  const el = $('mapcard');
+  if (!el) return;
+  const res = okRes(), id = S.mapSel;
+  const n = id && res?.idx.map.byId.get(id);
+  if (!n) { el.style.display = 'none'; return; }
+  const idx = res.idx, sig = idx.signif.get(n.label);
+  const list = n.kind === 'acao'
+    ? [...n.tickets].sort((a, b) => (a.fechado == null ? 0 : 1) - (b.fechado == null ? 0 : 1) || rankNum(idx, 'prio', a.prioridade) - rankNum(idx, 'prio', b.prioridade)).slice(0, 8).map(t => ticketRow(idx, t)).join('')
+    : `<div class="uses">${n.insts.slice(-8).reverse().map(x => idx.byNum.get(x)).filter(Boolean).map(f => `<button data-fact="${f.numero}" class="term">${esc(trunc(fmtFact(f), 90))}</button>`).join('')}</div>`;
+  el.style.display = 'block';
+  el.innerHTML = `<div class="cline"><span class="ckind" style="color:${KCOL[n.kind]}">${KICON[n.kind] || '◆'} ${n.kind === 'acao' ? 'AÇÃO' : 'TIPO DE FACTO'}</span><span class="hgrow"></span><button class="icon-btn" data-mapclose="1" style="padding:1px 7px">✕</button></div>
+    <div class="ctitle" style="font-size:15px">${esc(human(n.label))} <span class="muted" style="font-size:12px">×${n.count}</span></div>
+    ${n.rules.size ? `<div class="small muted">concluído por ${[...n.rules.keys()].slice(0, 8).map(r => 'R' + esc(fmt(r))).join(', ')}</div>` : ''}
+    ${sig ? `<div class="signif" style="margin-top:6px">${esc(fmt(sig))}</div>` : ''}
+    <div class="small muted" style="margin:8px 0 4px">clique para abrir o caso (Como? / Porquê não?)</div>${list}`;
+}
+
 /* =====================================================================
    Vistas de tabela
    ===================================================================== */
+function renderIncidentes(center, res) {
+  const r = res.resposta, idx = res.idx, F = S.filtro;
+  const foco = S.sel?.tipo === 'cenario' ? focoPassos() : null;
+  const tByInc = new Map(r.tickets.map(t => [keyOf(t.incidente), t]));
+  let is = (r.incidentes || []).map(i => ({i, f: idx.byNum.get(i.facto), t: tByInc.get(keyOf(i.id))}));
+  if (foco && F.ambito === 'foco') is = is.filter(x => foco.has(x.f?.passo));
+  const q = (F.texto || '').toLowerCase();
+  if (q) is = is.filter(x => [x.i.id, x.i.tipo, x.i.ativo, x.i.impactados].map(fmt).join(' ').toLowerCase().includes(q));
+  center.insertAdjacentHTML('beforeend', `<div class="pane">
+    <div class="toolbar">
+      <span class="sg" data-filtro="lista"><button data-v="tickets">tickets</button><button data-v="incidentes" class="on">incidentes</button></span>
+      ${foco ? `<span class="sg" data-filtro="ambito"><button data-v="foco" class="${F.ambito === 'foco' ? 'on' : ''}">criados em ${esc(S.sel.id)}</button><button data-v="cadeia" class="${F.ambito === 'cadeia' ? 'on' : ''}">toda a cadeia</button></span>` : ''}
+      <input id="fTexto" placeholder="procurar incidente, tipo, ativo…" value="${esc(F.texto || '')}" style="min-width:220px">
+      <span class="muted small" style="margin-left:auto">${is.length} de ${(r.incidentes || []).length} incidentes · clique: abrir o caso</span>
+    </div>
+    <table class="t"><thead><tr><th>Incidente</th><th>Tipo</th><th>Ativo</th><th>Impactados</th><th>Passo</th><th>Ticket</th></tr></thead><tbody>
+    ${is.map(({i, f, t}) => `<tr class="row" data-fact="${t ? t.facto : i.facto}">
+      <td class="term">${esc(fmt(i.id))}</td><td>${esc(human(fmt(i.tipo)))}</td><td>${esc(fmt(i.ativo))}</td><td class="term">${esc(fmt(i.impactados))}</td>
+      <td>${esc(f?.passo ?? '—')}</td>
+      <td>${t ? `<span class="badge" style="${sevStyle(idx, 'prio', t.prioridade)}">${esc(fmt(t.prioridade))}</span> ${esc(human(functor(t.acao)))} ${t.fechado == null ? '<span class="badge b-open">aberto</span>' : '<span class="badge b-closed">fechado</span>'}` : '<span class="muted">—</span>'}</td></tr>`).join('')}
+    </tbody></table></div>`);
+}
 function renderTickets(center, res) {
+  if (S.filtro.lista === 'incidentes') return renderIncidentes(center, res);
   const r = res.resposta, idx = res.idx, F = S.filtro;
   const foco = S.sel?.tipo === 'cenario' ? focoPassos() : null;
   let ts = r.tickets.map(t => ({t, f: idx.byNum.get(t.facto)}));
@@ -1448,6 +1781,7 @@ function renderTickets(center, res) {
   const sel = selNum();
   center.insertAdjacentHTML('beforeend', `<div class="pane">
     <div class="toolbar">
+      <span class="sg" data-filtro="lista"><button data-v="tickets" class="on">tickets</button><button data-v="incidentes">incidentes (${(r.incidentes || []).length})</button></span>
       <span class="sg" data-filtro="tickets">${['abertos', 'fechados', 'todos'].map(v => `<button data-v="${v}" class="${F.tickets === v ? 'on' : ''}">${v}</button>`).join('')}</span>
       ${foco ? `<span class="sg" data-filtro="ambito"><button data-v="foco" class="${F.ambito === 'foco' ? 'on' : ''}">criados em ${esc(S.sel.id)}${curRun()?.respostas.length ? ' + respostas' : ''}</button><button data-v="cadeia" class="${F.ambito === 'cadeia' ? 'on' : ''}">toda a cadeia (${idsBase().length} passos)</button></span>
         <button class="globalbtn" data-global="1">🌐 todos os tickets · vista global</button>` : ''}
@@ -1516,13 +1850,25 @@ function renderComparar(center) {
       const ma = conj(la, kf), mb = conj(lb, kf);
       return {nome, na: ma.size, nb: mb.size, soA: [...ma.keys()].filter(k => !mb.has(k)).map(k => show(ma.get(k))), soB: [...mb.keys()].filter(k => !ma.has(k)).map(k => show(mb.get(k)))};
     });
+    // nivel B (AC15): para cada conclusao que existe nos dois, a mesma regra e as mesmas premissas
+    const premKey = (res, f) => (f.premissas || []).map(p => typeof p === 'number' ? factKey(res.idx.byNum.get(p)) || '#?' : keyOf(p)).sort().join(' ∧ ');
+    const mB = new Map(B.factos.filter(f => f.origem === 'regra').map(f => [kF(f), f]));
+    const difB = [];
+    for (const fa of A.factos.filter(f => f.origem === 'regra')) {
+      const fb = mB.get(kF(fa));
+      if (!fb) continue;
+      const ra = String(fa.regra), rb = String(fb.regra), pa = premKey(a, fa), pb = premKey(b, fb);
+      if (ra !== rb || pa !== pb) difB.push(`${fmtFact(fa)} · ${ENGINES[0]} R${ra}${pa !== pb ? ' [' + pa + ']' : ''} · ${ENGINES[1]} R${rb}${pa !== pb ? ' [' + pb + ']' : ''}`);
+    }
+    const comuns = [...mB.keys()].filter(k => A.factos.some(f => f.origem === 'regra' && kF(f) === k)).length;
+    sets.push({nome: 'Nível B · mesma regra e premissas (AC15)', na: comuns, nb: comuns, soA: difB, soB: [], nivelB: true});
     const total = sets.reduce((s, x) => s + x.soA.length + x.soB.length, 0);
     html = `<div class="verdict ${total ? 'diff' : 'ok'}">${total ? `⚠ ${total} diferenças entre ${ENGINES[0]} e ${ENGINES[1]} para o mesmo pedido` : `✓ Mesmo conteúdo nos dois motores para este pedido (${a.pedido.passos.length} passos)`}</div>
-      <div class="muted small" style="margin-bottom:12px">Compara-se o conteúdo dos factos, tickets e perguntas, nunca os números dos factos nem a ordem de disparo. ${ENGINES[0]}: <b>${esc(A.estado)}</b> (${a.ms} ms) · ${ENGINES[1]}: <b>${esc(B.estado)}</b> (${b.ms} ms).</div>
-      <div class="cmpgrid">${sets.map(s => `<div class="cmpcard"><h4>${esc(s.nome)}</h4><div>${ENGINES[0]}: <b>${s.na}</b> · ${ENGINES[1]}: <b>${s.nb}</b></div>
-        <div class="small" style="margin-top:4px;color:${s.soA.length + s.soB.length ? 'var(--bad)' : 'var(--ok)'}">${s.soA.length + s.soB.length ? `${s.soA.length} só no ${ENGINES[0]} · ${s.soB.length} só no ${ENGINES[1]}` : 'iguais'}</div></div>`).join('')}</div>
+      <div class="muted small" style="margin-bottom:12px">Nível A (AC14): tickets, perguntas e factos pelo conteúdo. Nível B (AC15): para cada conclusão comum, a regra e as premissas (pelo conteúdo, nunca pelos números dos factos nem pela ordem de disparo). ${ENGINES[0]}: <b>${esc(A.estado)}</b> (${a.ms} ms) · ${ENGINES[1]}: <b>${esc(B.estado)}</b> (${b.ms} ms).</div>
+      <div class="cmpgrid">${sets.map(s => `<div class="cmpcard"><h4>${esc(s.nome)}</h4><div>${s.nivelB ? `<b>${s.na}</b> conclusões nos dois motores` : `${ENGINES[0]}: <b>${s.na}</b> · ${ENGINES[1]}: <b>${s.nb}</b>`}</div>
+        <div class="small" style="margin-top:4px;color:${s.soA.length + s.soB.length ? 'var(--bad)' : 'var(--ok)'}">${s.soA.length + s.soB.length ? (s.nivelB ? `${s.soA.length} com regra ou premissas diferentes` : `${s.soA.length} só no ${ENGINES[0]} · ${s.soB.length} só no ${ENGINES[1]}`) : 'iguais'}</div></div>`).join('')}</div>
       ${sets.filter(s => s.soA.length + s.soB.length).map(s => `<details class="box"><summary>${esc(s.nome)}: ${s.soA.length + s.soB.length} diferenças</summary><div>
-        ${s.soA.length ? `<div class="small muted" style="margin:4px 0">Só no ${ENGINES[0]} (${s.soA.length})</div>${s.soA.slice(0, 300).map(x => `<div class="term small">− ${esc(x)}</div>`).join('')}` : ''}
+        ${s.soA.length ? `<div class="small muted" style="margin:4px 0">${s.nivelB ? 'Diferenças' : 'Só no ' + ENGINES[0]} (${s.soA.length})</div>${s.soA.slice(0, 300).map(x => `<div class="term small">− ${esc(x)}</div>`).join('')}` : ''}
         ${s.soB.length ? `<div class="small muted" style="margin:8px 0 4px">Só no ${ENGINES[1]} (${s.soB.length})</div>${s.soB.slice(0, 300).map(x => `<div class="term small">+ ${esc(x)}</div>`).join('')}` : ''}</div></details>`).join('')}`;
   }
   center.insertAdjacentHTML('beforeend', `<div class="pane">${html}</div>`);
@@ -1531,12 +1877,12 @@ function renderComparar(center) {
 /* =====================================================================
    Topo, notch, menu, rodape
    ===================================================================== */
-const VIEWS = [['mapa', '◈ Mapa'], ['prova', '🌳 Prova'], ['tickets', 'Tickets'], ['factos', 'Factos'], ['comparar', '⚖ Comparação'], ['api', 'API']];
+const VIEWS = [['casos', '🗂 Casos'], ['mapa', '◈ Mapa'], ['tickets', 'Tickets & incidentes'], ['factos', 'Factos'], ['comparar', '⚖ Comparação'], ['api', 'API']];
 function renderViews() {
   const r = okRes()?.resposta;
-  const cnt = {tickets: r ? r.tickets.filter(t => t.fechado == null).length : null, factos: r?.factos.length};
+  const cnt = {casos: r ? r.perguntas.length || null : null, tickets: r ? r.tickets.filter(t => t.fechado == null).length : null, factos: r?.factos.length};
   $('views').innerHTML = VIEWS.filter(([k]) => k !== 'comparar' || S.engine === 'both').map(([k, l]) =>
-    `<button class="${S.tab === k ? 'on' : ''}" data-tab="${k}" ${S.online ? '' : 'disabled'}>${l}${cnt[k] != null ? `<span class="cnt">${cnt[k]}</span>` : ''}</button>`).join('');
+    `<button class="${S.tab === k ? 'on' : ''}" data-tab="${k}" ${S.online ? '' : 'disabled'}>${l}${cnt[k] != null ? `<span class="cnt ${k === 'casos' ? 'warn' : ''}" ${k === 'casos' ? 'title="perguntas por responder"' : ''}>${cnt[k]}</span>` : ''}</button>`).join('');
 }
 function renderHeader() {
   const ready = S.online ? readyEngines() : [];
@@ -1550,7 +1896,7 @@ function renderHeader() {
   document.querySelectorAll('[data-hdot]').forEach(d => { const h = engineHealth(d.dataset.hdot); d.className = 'dot ' + (!S.online ? '' : h?.pronto ? 'ok' : 'bad'); });
   $('scenBtn').disabled = !S.online;
   let lbl = '—';
-  if (S.online && S.sel) lbl = S.sel.tipo === 'completo' ? `🌐 <b>Vista global</b> <span class="muted">· ${esc(S.grupos.join(' + '))} · ${idsCompleto().length} passos</span>`
+  if (S.online && S.sel) lbl = S.sel.tipo === 'completo' ? `🌐 <b>Vista global</b> <span class="muted">· ${idsCompleto().length} passos</span>`
     : `<code>${esc(S.sel.id)}</code> · ${esc(S.byId.get(S.sel.id)?.descricao || '')}`;
   $('scenLbl').innerHTML = lbl;
   $('globalSlot').innerHTML = S.online && S.sel?.tipo === 'cenario' ? `<button class="globalbtn" data-global="1" title="Voltar à vista global (todos os tickets)">🌐 vista global</button>` : '';
@@ -1587,11 +1933,10 @@ function renderMenu() {
 }
 function safeChain(id) { try { const c = idsCadeia(id); return c.length > 6 ? c.slice(0, 2).join(' → ') + ' → … → ' + c.slice(-2).join(' → ') + ` (${c.length})` : c.join(' → '); } catch (e) { return e.message; } }
 function renderNotch() {
+  renderQueueHeadOnly();
   const el = $('notch');
   if (!el) return;
   const raw = resAtual(), res = okRes();
-  const N = res?.idx.map.nPassos ?? 0;
-  const pos = S.map.pos ?? N;
   let estado;
   if (S.busy) estado = `<span class="estado idle"><span class="spin"></span> a inferir</span>`;
   else if (raw?.erro) estado = `<span class="estado erro">erro ${raw.status || ''}</span>`;
@@ -1599,31 +1944,32 @@ function renderNotch() {
   else if (res) estado = `<span class="estado ${esc(res.resposta.estado)}">${esc(res.resposta.estado)}</span>`;
   else estado = `<span class="estado idle">em espera</span>`;
   const pend = res ? perguntasPend(res).length : 0;
-  const pid = pos > 0 && res ? res.pedido.passos[pos - 1]?.id : null;
-  const replay = S.tab === 'mapa' && res;
+  const replay = S.tab === 'mapa' && (res || raw);
   el.innerHTML = `<span class="dot ${S.busy ? 'wait' : raw?.erro ? 'bad' : res ? 'ok' : ''}"></span>
     <b style="font-size:11px;color:${S.view === 'drools' ? 'var(--indigo)' : 'var(--cyan)'}">${esc(S.engine === 'both' ? 'prolog ⚖ drools' : S.view)}</b>
-    ${replay ? `<div class="ctl">
-        <button data-rp="first" title="Passo 0: só a base">⏮</button><button data-rp="prev" title="Passo anterior (←)">◀</button>
-        <button class="play ${S.map.playing ? 'pause' : ''}" data-rp="play" title="Reproduzir a inferência passo a passo (espaço)">${S.map.playing ? '❚❚' : '▶'}</button>
-        <button data-rp="next" title="Passo seguinte (→)">▶</button><button data-rp="last" title="Estado final">⏭</button></div>
-      <div class="pos"><b>${pos === N ? 'Estado final' : 'Passo ' + pos + ' / ' + N}</b><span>${pos === 0 ? 'só a base de conhecimento' : pos === N ? N + ' passos inferidos' : esc(pid || '') + ' · ' + esc(trunc(S.byId.get(pid)?.descricao || 'resposta do analista', 30))}</span></div>
-      <input type="range" id="rpRange" min="0" max="${N}" value="${pos}">
-      <button class="spd" data-rp="spd" title="Velocidade">${S.map.speed}×</button>`
+    ${replay ? playerHtml(false)
     : res ? `<span class="muted small">${res.pedido.passos.length} passos · ${res.ms} ms</span>` : `<button class="btn small" data-rerun="1" ${S.busy || !S.online ? 'disabled' : ''}>▶ Inferir</button>`}
     ${estado}
     ${res && S.engine === 'both' ? `<span class="seg">${readyEngines().map(m => `<button data-view="${m}" class="${S.view === m ? 'on' : ''}" style="padding:3px 8px">${m}</button>`).join('')}</span>` : ''}
-    ${pend ? `<button class="qbadge" data-fila="1" title="Responder no inspetor">⚠ ${pend} pergunta${pend > 1 ? 's' : ''}</button>` : ''}
+    ${pend ? `<button class="qbadge" data-fila="1" title="Abrir as perguntas na vista Casos">⚠ ${pend} pergunta${pend > 1 ? 's' : ''}</button>` : ''}
     <button class="icon-btn" data-rerun="1" title="Voltar a correr o motor" ${S.busy || !S.online ? 'disabled' : ''}>↻</button>`;
 }
+function renderQueueHeadOnly() { const h = document.querySelector('#queue .qhead .qstatwrap'); if (h) h.innerHTML = notchMini(); }
 function renderFooter(extra) {
   const res = okRes(), M = res?.idx.map;
   $('footer').innerHTML = S.online
     ? `<span class="pill"><span class="dot ok"></span>API online · ${esc(S.base.replace(/^https?:\/\//, ''))}</span>
        <span>KB <b>v${esc(S.cat.versaoKB)}</b></span>
-       ${M ? `<span><b>${M.ruleCount.size}</b> regras disparadas</span><span><b>${M.nodes.length}</b> nós</span><span><b>${M.edges.length}</b> ligações</span><span><b>${res.resposta.factos.length}</b> factos</span><span><b>${res.ms}</b> ms</span>` : ''}
+       ${M ? `<span><b>${M.ruleCount.size}</b> regras disparadas</span><span><b>${M.nodes.length}</b> tipos de facto</span><span><b>${M.edges.length}</b> ligações</span><span><b>${res.resposta.factos.length}</b> factos</span><span><b>${res.ms}</b> ms</span>` : ''}
        <span class="hgrow"></span><span>${esc(extra || '')}</span>`
     : `<span class="pill bad"><span class="dot bad"></span>API offline</span><span>${esc(extra || S.base)}</span>`;
+}
+function renderCasos(c) {
+  c.innerHTML = `<div class="casos ${S.queueOpen ? '' : 'qclosed'}">
+    <aside class="queue" id="queue"></aside>
+    <button class="qtoggle" id="qtoggle" title="${S.queueOpen ? 'Esconder a fila' : 'Mostrar a fila'}">${S.queueOpen ? '‹' : '›'}</button>
+    <section class="dossier" id="dossier"></section></div>`;
+  renderQueue(); renderDossier();
 }
 function renderCenter() {
   const c = $('center');
@@ -1634,21 +1980,22 @@ function renderCenter() {
       <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center"><input class="inp" id="apiInput" value="${esc(S.base || defaultBase())}"><button class="btn" id="btnConnect">Ligar</button></div></div>`;
     return;
   }
-  if (S.tab === 'comparar' && S.engine !== 'both') S.tab = 'mapa';
-  const canvasTab = ['mapa', 'prova'].includes(S.tab);
-  c.innerHTML = `<div class="notch${canvasTab ? '' : ' static'}" id="notch"></div>`;
+  if (S.tab === 'comparar' && S.engine !== 'both') S.tab = 'casos';
+  if (S.tab === 'casos') { renderCasos(c); return; }
+  c.innerHTML = `<div class="notch${S.tab === 'mapa' ? '' : ' static'}" id="notch"></div>`;
   if (S.tab === 'api') renderApi(c);
   else if (S.tab === 'comparar') renderComparar(c);
   else {
     const raw = resAtual(), res = okRes();
     if (!res) c.insertAdjacentHTML('beforeend', raw?.erro
       ? `<div class="empty"><div class="errbox" style="max-width:560px;text-align:left"><b>${esc(S.view)} · HTTP ${raw.status || '—'} (${esc(HTTP_TXT[raw.status] || 'erro')})</b><br>${esc(raw.erro)}<div style="margin-top:10px"><button class="btn small" id="btnRetry">Tentar de novo</button></div></div></div>`
-      : `<div class="empty"><div class="big">${S.busy ? '<span class="spin" style="width:30px;height:30px;border-width:3px"></span>' : '◈'}</div><h2>${S.busy ? 'A inferir…' : 'Motor em espera'}</h2><div>${S.busy ? 'O pedido foi enviado ao motor.' : 'Carregue em ▶ Inferir para enviar os passos ao motor.'}</div></div>`);
-    else ({mapa: renderMapa, prova: renderProva, tickets: renderTickets, factos: renderFactos})[S.tab](c, res);
+      : `<div class="empty"><div class="big">${S.busy ? '<span class="spin" style="width:30px;height:30px;border-width:3px"></span>' : '◈'}</div><h2>${S.busy ? 'A inferir…' : 'Motor em espera'}</h2></div>`);
+    else if (S.tab === 'mapa') { renderMapa(c, res); c.insertAdjacentHTML('beforeend', '<div class="mapcard" id="mapcard"></div>'); renderMapCard(); }
+    else ({tickets: renderTickets, factos: renderFactos})[S.tab](c, res);
   }
   renderNotch();
 }
-function renderAll() { renderHeader(); renderViews(); renderCenter(); renderInsp(); renderFooter(); }
+function renderAll() { renderHeader(); renderViews(); renderCenter(); renderFooter(); }
 
 /* =====================================================================
    Eventos
@@ -1657,8 +2004,7 @@ function selecionar(sel) {
   S.sel = sel;
   S.filtro.passo = null; S.filtro.ambito = 'foco';
   S.insp.nav = [{t: 'fila'}];
-  S.rootKey = null; S.map.pos = null; S.map.playing = false;
-  if (S.tab === 'prova') S.tab = 'mapa';
+  S.rootKey = null; S.player.playing = false; S.mapSel = null;
   $('menu').classList.remove('open');
   const run = curRun();
   const need = S.engine === 'both' ? readyEngines() : [S.engine];
@@ -1697,31 +2043,42 @@ document.addEventListener('click', async e => {
     return;
   }
   if (b.dataset.view) { lembrarSelecao(); S.view = b.dataset.view; reconciliarSelecao(); renderAll(); return; }
-  if (b.dataset.tab || b.dataset.navTab) { S.tab = b.dataset.tab || b.dataset.navTab; S.map.playing = false; if (S.tab === 'mapa') S.intro = true; renderViews(); renderCenter(); return; }
-  if (b.dataset.rerun || b.id === 'btnRetry') { correr('manual'); return; }
+  if (b.dataset.tab || b.dataset.navTab) { S.tab = b.dataset.tab || b.dataset.navTab; if (S.tab === 'mapa') S.intro = true; renderViews(); renderCenter(); return; }
+  if (b.dataset.dtab) { S.dtab = b.dataset.dtab; renderDossier(); $('dossier')?.scrollTo?.(0, 0); return; }
+  if (b.dataset.qall) { S.qAll = !S.qAll; renderQueue(); return; }
+  if (b.dataset.howmode) { S.howMode = b.dataset.howmode; renderDossier(); return; }
+  if (b.dataset.expand != null) { document.querySelectorAll('.rcard').forEach(d => d.open = b.dataset.expand === '1'); return; }
+  if (b.dataset.jump) { const t = $('step-' + b.dataset.jump); if (t) { t.open = true; t.scrollIntoView({behavior: 'smooth', block: 'center'}); t.classList.add('flash'); setTimeout(() => t.classList.remove('flash'), 1200); } return; }
+  if (b.dataset.wn) { const x = JSON.parse(b.dataset.wn); S.whynotForm = {pred: x.pred, args: x.args.map(fmt).join(', ')}; pedirWhynot(x.pred, x.args); return; }
+  if (b.id === 'wnGo') { const p = $('wnPred').value, a = $('wnArgs').value; S.whynotForm = {pred: p, args: a}; if (p) pedirWhynot(p, parseArgs(a)); return; }
+  if (b.id === 'qtoggle') { S.queueOpen = !S.queueOpen; LS.set('queue-open', S.queueOpen); renderCenter(); return; }
+  if (b.dataset.mapclose) { S.mapSel = null; renderMapCard(); highlight(null); return; }
+  if (b.dataset.mapfocus) { S.mapSel = b.dataset.mapfocus; S.tab = 'mapa'; S.intro = true; renderViews(); renderCenter(); return; }
+  if (b.dataset.rerun || b.id === 'btnRetry') { S.forceNet = true; await correr('manual'); S.forceNet = false; return; }
   if (b.dataset.rp) {
-    const r = okRes(); if (!r) return;
-    const N = r.idx.map.nPassos, pos = S.map.pos ?? N;
+    const N = passosLista().length, pos = posAtual();
     if (b.dataset.rp === 'play') play();
-    else if (b.dataset.rp === 'spd') { S.map.speed = {1: 2, 2: 4, 4: 0.5, 0.5: 1}[S.map.speed]; renderNotch(); }
-    else { S.map.playing = false; stepTo({first: 0, prev: pos - 1, next: pos + 1, last: N}[b.dataset.rp], b.dataset.rp === 'next'); }
+    else if (b.dataset.rp === 'spd') { S.player.speed = {1: 2, 2: 4, 4: 0.5, 0.5: 1}[S.player.speed]; renderNotch(); }
+    else { S.player.playing = false; irPara({first: 1, prev: pos - 1, next: pos + 1, last: N}[b.dataset.rp], b.dataset.rp === 'next'); }
     return;
   }
-  if (b.dataset.fila) { S.insp.nav = [{t: 'fila'}]; openInsp(true); renderInsp(); pinnedHighlight(); $('filaPerg')?.scrollIntoView({behavior: 'smooth', block: 'start'}); return; }
+  if (b.dataset.fila) {
+    const r = okRes(); const q = r && perguntasPend(r)[0]?.q;
+    S.tab = 'casos'; S.dtab = 'como';
+    if (q?.facto != null) S.insp.nav = [{t: 'fila'}, {t: 'fact', num: q.facto, key: factKey(r.idx.byNum.get(q.facto))}];
+    renderViews(); renderCenter(); return;
+  }
   if (b.id === 'btnConnect') { connect($('apiInput').value); return; }
   if (b.id === 'btnApi') { const v = prompt('Endereço da API (Spring Boot):', S.base || defaultBase()); if (v) connect(v); return; }
-  if (b.id === 'btnInsp') { openInsp(!S.insp.open); if (S.insp.open) renderInsp(); refit(); return; }
-  if (b.id === 'inspClose') { openInsp(false); refit(); return; }
-  if (b.id === 'inspWide') { setInspW(LS.get('insp-w', 430) > 520 ? 430 : 680); renderInsp(); refit(); return; }
-  if (b.dataset.back) { if (b.dataset.back === 'all') S.insp.nav = [{t: 'fila'}]; else S.insp.nav.pop(); renderInsp(); pinnedHighlight(); return; }
+  if (b.dataset.back) { S.insp.nav.pop(); renderQueue(); renderDossier(); return; }
   if (b.id === 'btnLog') { setLog(!$('app').classList.contains('log-open')); refit(); return; }
   if (b.id === 'logClear') { $('log').innerHTML = ''; return; }
   if (b.id === 'logCopy') { try { await navigator.clipboard.writeText($('log').innerText); toast('Consola copiada.', true); } catch { toast('O browser não deixou copiar.'); } return; }
   if (b.id === 'mBase') { S.map.showBase = b.checked; const r = okRes(); if (r) r.idx.map = buildMap(r.resposta, r.idx, r.pedido.passos.length); S.intro = true; renderCenter(); renderFooter(); return; }
-  if (b.id === 'gHide') { G.hideInicial = b.checked; renderCenter(); return; }
+  if (b.id === 'gHide') { G.hideInicial = b.checked; renderDossier(); return; }
   if (b.id === 'moreFacts') { S.filtro.lim = (S.filtro.lim || 400) + 400; renderCenter(); return; }
-  if (b.dataset.setAmbito) { S.filtro.ambito = b.dataset.setAmbito; renderCenter(); return; }
-  if (b.parentElement?.dataset.filtro) { S.filtro[b.parentElement.dataset.filtro] = b.dataset.v; S.filtro.lim = 0; renderCenter(); return; }
+  if (b.dataset.setAmbito) { S.filtro.ambito = b.dataset.setAmbito; S.tab === 'casos' ? renderQueue() : renderCenter(); return; }
+  if (b.parentElement?.dataset.filtro) { S.filtro[b.parentElement.dataset.filtro] = b.dataset.v; S.filtro.lim = 0; S.tab === 'casos' ? renderQueue() : renderCenter(); return; }
   if (b.dataset.q) { await responder(JSON.parse(b.dataset.q), JSON.parse(b.dataset.val)); return; }
   if (b.dataset.undo != null) { await desfazerResposta(+b.dataset.undo); return; }
   if (b.dataset.copy) {
@@ -1730,17 +2087,21 @@ document.addEventListener('click', async e => {
     return;
   }
   if (b.dataset.proof != null) { e.preventDefault(); openProof(+b.dataset.proof); return; }
-  if (b.dataset.fact != null) { if (b.closest('summary')) e.preventDefault(); selectFact(+b.dataset.fact); }
+  if (b.dataset.fact != null) { if (b.closest('summary')) e.preventDefault(); selectFact(+b.dataset.fact, b.closest('.mapcard') || b.closest('.trow') || b.closest('.qrow') ? 'como' : undefined); }
 });
-document.addEventListener('dblclick', e => { const tr = e.target.closest('tr[data-fact], .trow[data-fact]'); if (tr) openProof(+tr.dataset.fact); });
+document.addEventListener('dblclick', e => { const tr = e.target.closest('tr[data-fact]'); if (tr) openProof(+tr.dataset.fact); });
 document.addEventListener('input', e => {
   if (e.target.id === 'catSearch') { S.filtro.cat = e.target.value; const pos = e.target.selectionStart; renderMenu(); const s = $('catSearch'); s.focus(); s.setSelectionRange(pos, pos); }
   if (e.target.id === 'fTexto') { S.filtro.texto = e.target.value; clearTimeout(S._ft); S._ft = setTimeout(() => { const pos = e.target.selectionStart; renderCenter(); const s = $('fTexto'); if (s) { s.focus(); s.setSelectionRange(pos, pos); } }, 220); }
-  if (e.target.id === 'rpRange') { S.map.playing = false; stepTo(+e.target.value, false); }
+  if (e.target.id === 'filaTexto') { S.filtro.fila = e.target.value; clearTimeout(S._fq); S._fq = setTimeout(() => { const pos = e.target.selectionStart; renderQueue(); const s = $('filaTexto'); if (s) { s.focus(); s.setSelectionRange(pos, pos); } }, 180); }
+  if (e.target.id === 'wnArgs') S.whynotForm.args = e.target.value;
+
 });
 document.addEventListener('change', e => {
+  if (e.target.id === 'rpRange') { S.player.playing = false; irPara(+e.target.value, false); }
   if (e.target.id === 'fPasso') { S.filtro.passo = e.target.value || null; renderCenter(); }
-  if (e.target.id === 'gDepth') { G.depth = +e.target.value; renderCenter(); }
+  if (e.target.id === 'gDepth') { G.depth = +e.target.value; renderDossier(); }
+  if (e.target.id === 'wnPred') { S.whynotForm.pred = e.target.value; const r = okRes(); const ex = r?.resposta.factos.find(x => x.predicado === e.target.value); if (ex && !S.whynotForm.args) S.whynotForm.args = ex.args.map(fmt).join(', '); renderDossier(); }
 });
 document.addEventListener('toggle', e => {
   const pre = e.target.querySelector?.(':scope > div > pre[data-lazy]');
@@ -1748,35 +2109,31 @@ document.addEventListener('toggle', e => {
 }, true);
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'apiInput') connect(e.target.value);
+  if (e.key === 'Enter' && e.target.id === 'wnArgs') $('wnGo')?.click();
   if (e.target.matches('input, select, textarea')) return;
-  if (e.key === 'Escape') { $('menu').classList.remove('open'); if (S.insp.nav.length > 1) { S.insp.nav.pop(); renderInsp(); pinnedHighlight(); } }
-  if (S.tab !== 'mapa' || !okRes()) return;
-  const N = okRes().idx.map.nPassos;
-  if (e.key === ' ') { e.preventDefault(); play(); }
-  if (e.key === 'ArrowRight') { S.map.playing = false; stepTo((S.map.pos ?? N) + 1, true); }
-  if (e.key === 'ArrowLeft') { S.map.playing = false; stepTo((S.map.pos ?? N) - 1, false); }
+  if (e.key === 'Escape') { $('menu').classList.remove('open'); if (S.tab === 'casos' && S.insp.nav.length > 2) { S.insp.nav.pop(); renderQueue(); renderDossier(); } }
+  if (S.tab === 'casos' && (e.key === 'j' || e.key === 'k')) {
+    const rows = [...document.querySelectorAll('#queue [data-fact]')];
+    const i = rows.findIndex(x => x.classList.contains('sel'));
+    const nx = rows[Math.max(0, Math.min(rows.length - 1, i + (e.key === 'j' ? 1 : -1)))];
+    if (nx) { selectFact(+nx.dataset.fact, 'como'); document.querySelector('#queue .sel')?.scrollIntoView({block: 'nearest'}); }
+  }
+  if (!S.online || !S.sel || S.busy) return;
+  if (e.key === ' ' && ['mapa', 'casos'].includes(S.tab)) { e.preventDefault(); play(); }
+  if (e.key === 'ArrowRight') { S.player.playing = false; irPara(posAtual() + 1, true); }
+  if (e.key === 'ArrowLeft') { S.player.playing = false; irPara(posAtual() - 1, false); }
 });
-/* inspetor redimensionavel */
-function setInspW(w) { w = Math.max(340, Math.min(Math.round(window.innerWidth * 0.62), w)); document.documentElement.style.setProperty('--insp-w', w + 'px'); LS.set('insp-w', w); }
-function refit() { if (!['mapa', 'prova'].includes(S.tab) || !okRes()) return; setTimeout(() => { for (const k in VIEW) delete VIEW[k]; renderCenter(); }, 40); }
-(() => {
-  const h = $('vresize');
-  let d = null;
-  h.addEventListener('pointerdown', e => { d = {x: e.clientX, w: $('insp').getBoundingClientRect().width}; h.classList.add('drag'); h.setPointerCapture(e.pointerId); });
-  h.addEventListener('pointermove', e => { if (d) setInspW(d.w + (d.x - e.clientX)); });
-  h.addEventListener('pointerup', () => { if (d) { d = null; h.classList.remove('drag'); renderInsp(); refit(); } });
-  h.addEventListener('dblclick', () => { setInspW(LS.get('insp-w', 430) > 520 ? 430 : 680); renderInsp(); refit(); });
-})();
+function refit() { if (!okRes()) return; setTimeout(() => { for (const k in VIEW) delete VIEW[k]; if (S.tab === 'mapa') renderCenter(); else if (S.tab === 'casos' && S.dtab === 'grafo') renderDossier(); }, 40); }
 let rsT = null;
 window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(refit, 200); });
 
 function setLog(open) { $('app').classList.toggle('log-open', open); $('btnLog').textContent = open ? '▼ Consola de eventos' : '▲ Consola de eventos'; LS.set('log-open', open); }
 $('favicon').href = $('logo').src;
 setLog(LS.get('log-open', false));
-setInspW(LS.get('insp-w', 430));
-openInsp(LS.get('insp-open', true));
+S.queueOpen = LS.get('queue-open', true);
 renderAll();
 connect();
+
 </script>
 </body>
 </html>
