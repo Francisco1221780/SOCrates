@@ -54,5 +54,26 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>**/.gitkeep</exclude>
+                    <exclude>**/README.md*</exclude>
+                </excludes>
+            </resource>
+            <resource>
+                <directory>../../motores/prolog</directory>
+                <targetPath>prolog-dist/motores/prolog</targetPath>
+                <includes>
+                    <include>wrapper.pl</include>
+                    <include>soc_motor.pl</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>../../base_conhecimento</directory>
+                <targetPath>prolog-dist/base_conhecimento</targetPath>
+            </resource>
+        </resources>
     </build>
 </project>

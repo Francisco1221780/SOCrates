@@ -27,10 +27,12 @@ public class PrologAdapter implements MotorInferencia {
     private final PrologProperties prologProperties;
     private final JsonMapper json;
     private final Semaphore lugares;
+    private final PrologInstaller prologInstaller;
 
-    public PrologAdapter(PrologProperties prologProperties, JsonMapper json) {
+    public PrologAdapter(PrologProperties prologProperties, JsonMapper json, PrologInstaller prologInstaller) {
         this.prologProperties = prologProperties;
         this.json = json;
+        this.prologInstaller = prologInstaller;
         this.lugares = new Semaphore(prologProperties.maxProcessos(), true);
     }
 
@@ -75,10 +77,10 @@ public class PrologAdapter implements MotorInferencia {
      * @return
      */
     private String corre(String pedidoJson) {
-        if (prologProperties.home() == null) {
-            return erro("cyber.prolog.home nao configurado");
+        if (prologInstaller.home() == null) {
+            return erro(prologInstaller.erro());
         }
-        Path raiz = prologProperties.home().toAbsolutePath().normalize();
+        Path raiz = prologInstaller.home().toAbsolutePath().normalize();
         Path wrapper = raiz.resolve("motores/prolog/wrapper.pl");
         Path base = raiz.resolve("base_conhecimento");
         if (!Files.isRegularFile(wrapper) || !Files.isDirectory(base)) {

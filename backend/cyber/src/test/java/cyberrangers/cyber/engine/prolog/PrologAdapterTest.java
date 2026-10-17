@@ -7,6 +7,8 @@ import cyberrangers.cyber.config.PrologProperties;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -26,10 +28,20 @@ class PrologAdapterTest {
             """;
 
     private final JsonMapper json = JsonMapper.builder().build();
+    private final List<PrologInstaller> installers = new ArrayList<>();
 
     private PrologAdapter adapter(String swipl, Path home) {
-        return new PrologAdapter(
-                new PrologProperties(swipl, home, Duration.ofSeconds(10), 4, Duration.ofSeconds(2)), json);
+        return adapter(new PrologProperties(swipl, home, Duration.ofSeconds(10), 4, Duration.ofSeconds(2)));
+    }
+
+    private PrologAdapter adapter(PrologProperties prologProperties) {
+        return new PrologAdapter(prologProperties, json, installer(new PrologInstaller(prologProperties)));
+    }
+
+    /** Guarda o installer para o destroy() no fim do teste: fora do Spring ninguem apaga a pasta temporaria. */
+    private PrologInstaller installer(PrologInstaller installer) {
+        installers.add(installer);
+        return installer;
     }
 
     /**
@@ -58,6 +70,7 @@ class PrologAdapterTest {
      */
     @AfterEach
     void naoFicamProcessosVivos() {
+        installers.forEach(PrologInstaller::destroy);
         assertTrue(ProcessHandle.current().children().noneMatch(ProcessHandle::isAlive),
                 "ficaram processos filhos vivos depois do teste");
     }
@@ -71,17 +84,39 @@ class PrologAdapterTest {
     }
 
     /**
-     * Verifica que se o home nao estiver configurado, o wrapper.pl nao é chamado e a resposta JSON indica erro de contrato.
+     * AC6: sem cyber.prolog.home, o PrologInstaller copia o wrapper.pl e a base do classpath (prolog-dist/) para uma
+     * pasta temporaria, e o adaptador responde a partir dela como responderia a partir do repositorio.
      */
     @Test
-    void semHomeDaErroDeConfiguracao() {
+    void semHomeUsaACopiaDoClasspath() {
         JsonNode r = le(adapter("swipl", null).infere(PEDIDO));
+        assertEquals("concluido", r.path("estado").asString(), r.toString());
+        assertTrue(r.toString().contains("\"regra\":7"), r.toString());
+    }
+
+    /** Se a copia falhou, o adaptador responde com a razao do PrologInstaller, no formato de erro do contrato. */
+    @Test
+    void semPastaDoMotorDaErroDoContratoComARazao() {
+        PrologProperties prologProperties = new PrologProperties("swipl", RAIZ, Duration.ofSeconds(10), 4, Duration.ofSeconds(2));
+        PrologInstaller semPasta = new PrologInstaller(prologProperties) {
+            @Override
+            public Path home() {
+                return null;
+            }
+
+            @Override
+            public String erro() {
+                return "copia falhou";
+            }
+        };
+        JsonNode r = le(new PrologAdapter(prologProperties, json, semPasta).infere(PEDIDO));
         assertErro(r);
-        assertEquals("cyber.prolog.home nao configurado", r.path("erro").asString());
+        assertEquals("copia falhou", r.path("erro").asString());
     }
 
     /**
-     * Verifica que se o home estiver vazio, o wrapper.pl nao é chamado e a resposta JSON indica erro de contrato, com a mensagem contendo o caminho do home.
+     * Verifica que se o home for uma pasta sem wrapper.pl nem base_conhecimento, o swipl nao e lancado e a resposta
+     * JSON indica erro de contrato, com a mensagem contendo o caminho do home.
      * @param vazia
      */
     @Test
@@ -109,7 +144,8 @@ class PrologAdapterTest {
     }
 
     /**
-     * Verifica que se o home tiver o wrapper.pl e a base_conhecimento, mas o caminho tiver aspas e barras, o wrapper.pl é chamado e a resposta JSON indica erro de contrato, com a mensagem contendo o caminho do home.
+     * Verifica que se o caminho do home tiver aspas e barras invertidas, a resposta de erro (home sem wrapper.pl)
+     * continua a ser JSON valido e a mensagem traz o caminho intacto.
      * @param tmp
      * @throws Exception
      */
@@ -134,15 +170,16 @@ class PrologAdapterTest {
     }
 
     /**
-     * Verifica que se o executavel do SWI-Prolog nao existir, o wrapper.pl nao é chamado e a resposta JSON indica erro de contrato, com a mensagem contendo "swipl nao encontrado" e o nome do executavel. Verifica também que pedidos seguidos nao gastam licencas, ou seja, que o PrologAdapter nao bloqueia processos filhos vivos.
+     * Verifica que cada pedido liberta a sua licenca: com um so lugar e sem espera, tres pedidos seguidos nunca dao
+     * "ocupado". O home vazio faz cada pedido falhar logo, sem lancar o swipl.
+     * @param vazia
      */
     @Test
-    void pedidosSeguidosNaoGastamLicencas() {
-        PrologAdapter a = new PrologAdapter(
-                new PrologProperties("swipl", null, Duration.ofSeconds(10), 1, Duration.ZERO), json);
+    void pedidosSeguidosNaoGastamLicencas(@TempDir Path vazia) {
+        PrologAdapter a = adapter(new PrologProperties("swipl", vazia, Duration.ofSeconds(10), 1, Duration.ZERO));
         for (int i = 0; i < 3; i++) {
             String erro = le(a.infere(PEDIDO)).path("erro").asString();
-            assertEquals("cyber.prolog.home nao configurado", erro, "pedido " + i);
+            assertTrue(erro.contains("nao contem wrapper.pl"), "pedido " + i + ": " + erro);
         }
     }
 
