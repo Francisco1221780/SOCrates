@@ -4,16 +4,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import cyberrangers.cyber.config.PrologProperties;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 
 /**
@@ -30,15 +36,30 @@ class PrologAdapterTest {
     private final JsonMapper json = JsonMapper.builder().build();
     private final List<PrologInstaller> installers = new ArrayList<>();
 
+    /**
+     * Cria um adaptador com o executavel e o home dados, e os valores de omissao para o resto.
+     * @param swipl
+     * @param home
+     * @return
+     */
     private PrologAdapter adapter(String swipl, Path home) {
         return adapter(new PrologProperties(swipl, home, Duration.ofSeconds(10), 4, Duration.ofSeconds(2)));
     }
 
+    /**
+     * Cria um adaptador com as propriedades dadas e o seu PrologInstaller.
+     * @param prologProperties
+     * @return
+     */
     private PrologAdapter adapter(PrologProperties prologProperties) {
         return new PrologAdapter(prologProperties, json, installer(new PrologInstaller(prologProperties)));
     }
 
-    /** Guarda o installer para o destroy() no fim do teste: fora do Spring ninguem apaga a pasta temporaria. */
+    /**
+     * Guarda o installer para o destroy() no fim do teste: fora do Spring ninguem apaga a pasta temporaria.
+     * @param installer
+     * @return
+     */
     private PrologInstaller installer(PrologInstaller installer) {
         installers.add(installer);
         return installer;
@@ -84,8 +105,8 @@ class PrologAdapterTest {
     }
 
     /**
-     * AC6: sem cyber.prolog.home, o PrologInstaller copia o wrapper.pl e a base do classpath (prolog-dist/) para uma
-     * pasta temporaria, e o adaptador responde a partir dela como responderia a partir do repositorio.
+     * Verifica que sem cyber.prolog.home o PrologInstaller copia o wrapper.pl e a base do classpath (prolog-dist/)
+     * para uma pasta temporaria, e o adaptador responde a partir dela como a partir do repositorio (AC6).
      */
     @Test
     void semHomeUsaACopiaDoClasspath() {
@@ -94,7 +115,10 @@ class PrologAdapterTest {
         assertTrue(r.toString().contains("\"regra\":7"), r.toString());
     }
 
-    /** Se a copia falhou, o adaptador responde com a razao do PrologInstaller, no formato de erro do contrato. */
+    /**
+     * Verifica que se a copia falhou, o adaptador responde com a razao do PrologInstaller, no formato de erro do
+     * contrato.
+     */
     @Test
     void semPastaDoMotorDaErroDoContratoComARazao() {
         PrologProperties prologProperties = new PrologProperties("swipl", RAIZ, Duration.ofSeconds(10), 4, Duration.ofSeconds(2));
@@ -193,5 +217,174 @@ class PrologAdapterTest {
         assertEquals("prolog", r.path("motor").asString());
         assertEquals("6", r.path("versaoKB").asString());
         assertTrue(r.toString().contains("\"regra\":7"), r.toString());
+    }
+
+    /**
+     * Cria uma pasta temporaria com o wrapper.pl contendo o programa Prolog dado, e a base_conhecimento vazia.
+     * @param tmp
+     * @param programaProlog
+     * @return
+     * @throws IOException
+     */
+    private static Path homeFalsa(Path tmp, String programaProlog) throws IOException {
+        Path wrapper = tmp.resolve("motores/prolog/wrapper.pl");
+        Files.createDirectories(wrapper.getParent());
+        Files.createDirectories(tmp.resolve("base_conhecimento"));
+        Files.writeString(wrapper, ":- initialization(main, main).\n" + programaProlog + "\n");
+        return tmp;
+    }
+
+    /**
+     * Cria um adaptador com o swipl do PATH, o home dado e os limites dados.
+     * @param home
+     * @param timeout
+     * @param maxProcessos
+     * @param espera
+     * @return
+     */
+    private PrologAdapter adapter(Path home, Duration timeout, int maxProcessos, Duration espera) {
+        return adapter(new PrologProperties("swipl", home, timeout, maxProcessos, espera));
+    }
+
+    /**
+     * Verifica que ao fim do timeout o processo e terminado e a resposta e o erro "timeout", sem esperar que ele
+     * acabe (AC5).
+     * @param tmp
+     * @throws Exception
+     */
+    @Test
+    void timeoutMataOProcesso(@TempDir Path tmp) throws Exception {
+        PrologAdapter a = adapter(homeFalsa(tmp, "main :- sleep(30)."), Duration.ofMillis(500), 1, Duration.ZERO);
+        long inicio = System.nanoTime();
+        JsonNode r = le(a.infere(PEDIDO));
+        long ms = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - inicio);
+        assertErro(r);
+        assertEquals("timeout", r.path("erro").asString());
+        // a margem cobre um arranque lento do swipl na CI; o que interessa e nao ter esperado os 30 s
+        assertTrue(ms < 5_000, "demorou " + ms + " ms");
+        // o @AfterEach confirma que o processo morreu
+    }
+
+    /**
+     * Verifica que um motor que morre sem JSON da erro do contrato com o codigo de saida e a ultima linha do stderr.
+     * @param tmp
+     * @throws Exception
+     */
+    @Test
+    void motorSemJsonDaErroComOStderr(@TempDir Path tmp) throws Exception {
+        PrologAdapter a = adapter(homeFalsa(tmp, "main :- format(user_error, \"rebentou~n\", []), halt(2)."),
+                Duration.ofSeconds(10), 1, Duration.ZERO);
+        JsonNode r = le(a.infere(PEDIDO));
+        assertErro(r);
+        String erro = r.path("erro").asString();
+        assertTrue(erro.contains("sem resposta JSON"), erro);
+        assertTrue(erro.contains("codigo 2"), erro);
+        assertTrue(erro.contains("rebentou"), erro);
+    }
+
+    /**
+     * Verifica que um stdout que nao e um objeto JSON nunca chega ao cliente: da erro do contrato.
+     * @param tmp
+     * @throws Exception
+     */
+    @Test
+    void stdoutQueNaoEJsonDaErro(@TempDir Path tmp) throws Exception {
+        PrologAdapter a = adapter(homeFalsa(tmp, "main :- write(ola), nl."), Duration.ofSeconds(10), 1, Duration.ZERO);
+        JsonNode r = le(a.infere(PEDIDO));
+        assertErro(r);
+        String erro = r.path("erro").asString();
+        assertTrue(erro.contains("sem resposta JSON"), erro);
+        assertTrue(erro.contains("codigo 0"), erro);
+    }
+
+    /**
+     * Verifica que o JSON de erro do wrapper real (pedido invalido, codigo de saida 1) vai tal como veio (M9).
+     */
+    @Test
+    void erroDoWrapperVemTalComoVeio() {
+        String pedido = """
+                {"versaoKB":"5","passos":[{"id":"p1","factos":[]}]}
+                """;
+        JsonNode r = le(adapter("swipl", RAIZ).infere(pedido));
+        assertEquals("erro", r.path("estado").asString(), r.toString());
+        assertEquals("prolog", r.path("motor").asString(), r.toString());
+        // a mensagem e a do wrapper.pl (valida_pedido), nao uma do adaptador
+        assertTrue(r.path("erro").asString().contains("versaoKB desconhecida"), r.toString());
+    }
+
+    /**
+     * Verifica que com o unico lugar ocupado e sem espera, o segundo pedido da "ocupado" e o primeiro termina
+     * normalmente (AC7).
+     * @param tmp
+     * @throws Exception
+     */
+    @Test
+    void ocupadoQuandoOsLugaresEstaoCheios(@TempDir Path tmp) throws Exception {
+        String lento = "main :- sleep(2), write('{\"estado\":\"concluido\",\"motor\":\"prolog\"}'), nl.";
+        PrologAdapter a = adapter(homeFalsa(tmp, lento), Duration.ofSeconds(10), 1, Duration.ZERO);
+
+        CompletableFuture<String> primeiro = CompletableFuture.supplyAsync(() -> a.infere(PEDIDO));
+        // espera ate o swipl do primeiro pedido existir (e portanto ter o lugar), sem depender de um sleep
+        long limite = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (ProcessHandle.current().children().noneMatch(ProcessHandle::isAlive)) {
+            assertTrue(System.nanoTime() < limite, "o primeiro pedido nao lancou o swipl");
+            Thread.sleep(10);
+        }
+
+        JsonNode segundo = le(a.infere(PEDIDO));
+        assertErro(segundo);
+        assertTrue(segundo.path("erro").asString().startsWith("ocupado"), segundo.toString());
+
+        JsonNode r1 = le(primeiro.get(10, TimeUnit.SECONDS));
+        assertEquals("concluido", r1.path("estado").asString(), r1.toString());
+    }
+
+    /**
+     * Verifica que a sequencia base inteira, com cerca de 250 KB de stdout (muito acima do buffer de um pipe, 64 KiB),
+     * termina antes do timeout, porque o stdout e o stderr sao lidos em paralelo com o processo (AC4).
+     * @throws Exception
+     */
+    @Test
+    void respostaGrandeNaoBloqueia() throws Exception {
+        JsonNode catalogo;
+        try (InputStream in = getClass().getResourceAsStream("/generated/cenarios.json")) {
+            catalogo = json.readTree(in);
+        }
+        ObjectNode pedido = json.createObjectNode().put("versaoKB", "6");
+        ArrayNode passos = pedido.putArray("passos");
+        for (JsonNode id : catalogo.path("sequencias").path("base")) {
+            for (JsonNode c : catalogo.path("cenarios")) {
+                if (c.path("id").asString().equals(id.asString())) {
+                    passos.add(c.path("passo"));
+                }
+            }
+        }
+        assertTrue(passos.size() > 40, "sequencia base com " + passos.size() + " passos");
+
+        String resposta = adapter("swipl", RAIZ).infere(json.writeValueAsString(pedido));
+        assertTrue(resposta.length() > 64 * 1024, "resposta com " + resposta.length() + " caracteres");
+        JsonNode r = le(resposta);
+        assertEquals("aguarda_resposta", r.path("estado").asString(), r.path("erro").asString());
+    }
+
+    /**
+     * Verifica que um facto com acentos e simbolos vai pelo stdin e volta igual no stdout (UTF-8 nos dois sentidos,
+     * AC2).
+     */
+    @Test
+    void acentosVaoEVoltam() {
+        String pedido = """
+                {"versaoKB":"6","passos":[{"id":"p1","factos":[{"predicado":"nota","args":["ação ü €"]}]}]}
+                """;
+        JsonNode r = le(adapter("swipl", RAIZ).infere(pedido));
+        assertEquals("concluido", r.path("estado").asString(), r.toString());
+        boolean encontrado = false;
+        for (JsonNode f : r.path("factos")) {
+            if (f.path("predicado").asString().equals("nota")) {
+                assertEquals("ação ü €", f.path("args").path(0).asString());
+                encontrado = true;
+            }
+        }
+        assertTrue(encontrado, "o facto nota/1 nao voltou na resposta");
     }
 }
