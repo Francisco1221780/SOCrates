@@ -1,9 +1,6 @@
 package cyberrangers.cyber.application;
 
-import cyberrangers.cyber.domain.Pedido;
-import cyberrangers.cyber.domain.Resultado;
-import cyberrangers.cyber.domain.SaudeMotor;
-import cyberrangers.cyber.domain.TipoResultado;
+import cyberrangers.cyber.domain.*;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -203,5 +200,15 @@ public class InferenceService {
                 .put("motor", motor)
                 .put("versaoKB", base.versaoKB())
                 .put("erro", mensagem));
+    }
+
+    /**
+     * Devolve o estado do sistema, com a versao da base carregada e a lista de estados de todos os motores.
+     * @return
+     */
+    public SaudeSistema saude() {
+        List<SaudeMotor> estados = estados();
+        boolean pronto = !estados.isEmpty() && estados.stream().allMatch(SaudeMotor::pronto);
+        return new SaudeSistema(pronto, base.versaoKB(), estados);
     }
 }

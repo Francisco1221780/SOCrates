@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import cyberrangers.cyber.config.PrologProperties;
 import cyberrangers.cyber.domain.Resultado;
 import cyberrangers.cyber.domain.SaudeMotor;
+import cyberrangers.cyber.domain.SaudeSistema;
 import cyberrangers.cyber.domain.TipoResultado;
 import cyberrangers.cyber.engine.drools.DroolsAdapter;
 import cyberrangers.cyber.engine.prolog.PrologAdapter;
@@ -332,5 +333,38 @@ class InferenceServiceTest {
                 assertFalse(erro.contains(interno), caso[0] + " -> " + erro);
             }
         }
+    }
+
+    // --- saude do sistema ---------------------------------------------------------------------------------------
+
+    /**
+     * Verifica que com todos os motores prontos o sistema esta pronto, com a versao carregada e os motores por ordem.
+     */
+    @Test
+    void saudeProntaComTodosOsMotoresProntos() {
+        SaudeSistema s = servico(motor("prolog", CONCLUIDO), motor("drools", CONCLUIDO)).saude();
+        assertTrue(s.pronto());
+        assertEquals("6", s.versaoKB());
+        assertEquals(List.of("drools", "prolog"), s.motores().stream().map(SaudeMotor::motor).toList());
+    }
+
+    /**
+     * Verifica que basta um motor nao pronto para o sistema nao estar pronto, e que o estado desse motor vem na lista.
+     */
+    @Test
+    void saudeNaoProntaComUmMotorEmBaixo() {
+        SaudeSistema s = servico(motor("drools", CONCLUIDO), new MotorFalso("prolog", false, CONCLUIDO)).saude();
+        assertFalse(s.pronto());
+        assertFalse(s.motores().get(1).pronto());
+    }
+
+    /**
+     * Verifica que sem motores o sistema nao esta pronto (o allMatch de uma lista vazia daria true).
+     */
+    @Test
+    void saudeSemMotoresNaoEstaPronta() {
+        SaudeSistema s = servico().saude();
+        assertFalse(s.pronto());
+        assertTrue(s.motores().isEmpty());
     }
 }
