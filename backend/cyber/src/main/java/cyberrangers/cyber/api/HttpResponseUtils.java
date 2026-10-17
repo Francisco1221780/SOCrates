@@ -3,8 +3,11 @@ package cyberrangers.cyber.api;
 import cyberrangers.cyber.domain.TipoResultado;
 import org.springframework.http.HttpStatus;
 
-public class HttpResponseUtils {
-    public static HttpStatus codigoHttp(TipoResultado tipo) {
+final class HttpResponseUtils {
+
+    private HttpResponseUtils() {}
+
+    static HttpStatus codigoHttp(TipoResultado tipo) {
         return switch (tipo) {
             case OK -> HttpStatus.OK;
             case MOTOR_INEXISTENTE -> HttpStatus.NOT_FOUND;
