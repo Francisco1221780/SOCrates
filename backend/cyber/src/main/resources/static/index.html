@@ -8623,7 +8623,7 @@ function animatePacket(k){
   if (S.speed >= 50) return Promise.resolve();
   return new Promise(res => {
     const dot = el('circle', {r:5, class:'pkt'}, gP), tr = el('circle', {r:3, class:'pkt-trail'}, gP);
-    const dur = 850 / S.speed, t0 = performance.now();
+    const dur = 850 / (S.speed * (S.waveBoost || 1)), t0 = performance.now();
     const ease = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
     (function frame(now){
       const t = Math.min(1, (now - t0) / dur);
@@ -15931,11 +15931,18 @@ play = async function() {
     toggleCanvasEmptyOverlay(true);
     return;
   }
-  if (!S.scen) S.scen = 'c1';
+  if (!S.scen) S.scen = 'all';
 
   if (R.playing) {
     R.playing = false;
     updateButtons();
+    updateTimelineDockUI();
+    return;
+  }
+
+  // Animação em pausa a meio: retomar as ondas sem voltar a pedir ao motor
+  if (S.apiOnline && S.v62Pending && !R.finished && S.timelineSnapshots?.length) {
+    await v62RunWaves();
     return;
   }
 
@@ -16161,13 +16168,13 @@ verifyAndRetrieveFromApi = async function(manualClick = false) {
 
 
 /* =====================================================================
-   v62: GRAFO DINÂMICO GERADO A PARTIR DA RESPOSTA DO MOTOR
-   - Nada de nós/arestas pré-feitos: cada caixa é um predicado que aparece
-     na resposta (entrada, base de conhecimento ou deduzido por regras).
-   - As setas saem das premissas reais (factos[].premissas) e levam as regras.
-   - Colunas 2..6 = profundidade de inferência (nível); coluna 7 = tickets,
-     perguntas e o que deles depende. Mantém o desenho, o renderizador,
-     os contadores (entram→saem), a animação e o inspetor originais.
+   v62/v63: GRAFO DINÂMICO GERADO A PARTIR DA RESPOSTA DO MOTOR
+   - Nada pré-feito: os nós saem de factos[] da resposta.
+     ◇ facto de entrada / base de conhecimento  →  R regra(s)  →  ◆ estado  →  ▲ ação
+   - As setas saem das premissas reais (factos[].premissas).
+   - A animação usa o motor de ondas original (pacotes a voar pelas setas,
+     nós só acendem quando todas as premissas chegaram, câmara a acompanhar)
+     e a linha temporal do notch (etapas E1..En) é gerada desse grafo.
    ===================================================================== */
 const V62 = { active: false, model: null, stageTitles: STAGES.map(s => s.title) };
 
@@ -16175,6 +16182,7 @@ function v62NodeId(f) {
   if (f.origem === 'inicial') return 'kb';
   return (f.origem === 'entrada' ? 'in_' : 'd_') + f.predicado;
 }
+const v62Human = p => String(p).replace(/_/g, ' ');
 
 function v62Rules(nums) {
   const ns = [...new Set(nums)].filter(n => n != null).map(Number).sort((a, b) => a - b);
@@ -16187,8 +16195,14 @@ function v62Rules(nums) {
   }
   return out.join(', ');
 }
+// Código curto para o título da caixa (o completo fica no texto de ajuda)
+function v62RulesShort(nums) {
+  const full = v62Rules(nums);
+  if (full.length <= 12) return full;
+  const ns = [...new Set(nums)].map(Number).sort((a, b) => a - b);
+  return `R${ns[0]}…R${ns[ns.length - 1]}·${ns.length}`;
+}
 
-// Divide os níveis (já ordenados) em k grupos contíguos com o menor máximo possível
 function v62Partition(counts, k) {
   const n = counts.length;
   if (n <= k) return counts.map((_, i) => i);
@@ -16196,13 +16210,9 @@ function v62Partition(counts, k) {
   const best = Array.from({ length: k + 1 }, () => Array(n + 1).fill(Infinity));
   const cut = Array.from({ length: k + 1 }, () => Array(n + 1).fill(0));
   best[0][0] = 0;
-  for (let g = 1; g <= k; g++) {
-    for (let i = 1; i <= n; i++) {
-      for (let j = g - 1; j < i; j++) {
-        const v = Math.max(best[g - 1][j], pre[i] - pre[j]);
-        if (v < best[g][i]) { best[g][i] = v; cut[g][i] = j; }
-      }
-    }
+  for (let g = 1; g <= k; g++) for (let i = 1; i <= n; i++) for (let j = g - 1; j < i; j++) {
+    const v = Math.max(best[g - 1][j], pre[i] - pre[j]);
+    if (v < best[g][i]) { best[g][i] = v; cut[g][i] = j; }
   }
   const grp = Array(n).fill(0);
   let i = n;
@@ -16221,20 +16231,35 @@ function v62Signif(factos) {
 function v62SetCatOptions() {
   const sel = $('catFilterSelect');
   if (!sel) return;
-  const cats = [['all', 'Filtro: Todos os grupos'], ['entrada', 'Factos de entrada'], ['kb', 'Base de conhecimento'], ['deduzido', 'Deduzidos (estados intermédios)'], ['acao', 'Tickets, perguntas e ações']];
+  const cats = [['all', 'Filtro: Todos os grupos'], ['entrada', 'Factos de entrada'], ['kb', 'Base de conhecimento'], ['regra', 'Regras'], ['deduzido', 'Estados intermédios'], ['acao', 'Tickets, perguntas e ações']];
   sel.innerHTML = cats.map(([v, t]) => `<option value="${v}" ${S.cat === v ? 'selected' : ''}>${t}</option>`).join('');
 }
 
-function v62Commit(nodes, edges, titles) {
+function v62ScenTitle(key) {
+  if (!key || key === 'all') return '🌐 Vista Global';
+  const c = (window._LAST_CENARIOS_LIST || []).find(x => x.id === key);
+  return c ? `${c.id.toUpperCase()} · ${c.descricao || ''}` : key;
+}
+
+function v62Commit(nodes, edges, titles, scenEdges, res) {
   NODES = nodes;
   EDGES = edges;
-  SCEN = {};
   titles.forEach((t, i) => { if (STAGES[i]) STAGES[i].title = t; });
   V62.active = true;
   if (S.cat && S.cat !== 'all' && !nodes.some(n => n.cat === S.cat)) S.cat = 'all';
   rebuildGraphIndexes();
   NODES.forEach(n => { n.x = colX(n.col); });
   v62SetCatOptions();
+  const key = S.scen || 'all';
+  SCEN = {};
+  SCEN[key] = {
+    title: v62ScenTitle(key),
+    desc: res ? `Resposta do motor: ${(res.factos || []).length} factos · ${nodes.length} nós · ${edges.length} ligações.` : 'Aguarda execução do motor (▶ Play).',
+    result: res ? `${(res.tickets || []).length} ticket(s) · ${(res.perguntas || []).length} pergunta(s) · ${res.estado}` : '—',
+    nodes: nodes.map(n => n.id),
+    edges: scenEdges || [],
+    blocked: {}
+  };
 }
 
 // Grafo de espera (antes do ▶): só as entradas que vão ser enviadas + a base de conhecimento
@@ -16247,57 +16272,63 @@ function v62BuildStandby(passos) {
   }));
   const nodes = [{
     id: 'kb', t: 'fact', col: 1, y: 136, cat: 'kb', label: 'base de conhecimento',
-    sub: `KB v${S.detectedKbVersion || '?'} · carregada no motor`, preds: [], count: 0,
+    sub: `KB v${S.detectedKbVersion || '?'} · no motor`, preds: [], count: 0,
     human: 'Factos iniciais da base de conhecimento (origem "inicial"). O número aparece depois de o motor responder.'
   }];
   let i = 1;
   ins.forEach((e, id) => nodes.push({
-    id, t: 'fact', col: 1, y: 136 + 70 * i++, cat: 'entrada', label: e.pred,
-    sub: `${e.n} facto(s) · ${e.steps.size} passo(s)`, preds: [`${e.pred}/${e.ar}`], count: e.n,
-    human: `Facto de entrada ${e.pred}/${e.ar}, enviado nos passos do pedido.`
+    id, t: 'fact', col: 1, y: 136 + 70 * i++, cat: 'entrada', label: v62Human(e.pred),
+    sub: `${e.pred}/${e.ar} · ${e.n} facto(s)`, preds: [`${e.pred}/${e.ar}`], count: e.n,
+    human: `Facto de entrada ${e.pred}/${e.ar}: ${e.n} facto(s) em ${e.steps.size} passo(s) do pedido.`
   }));
   const titles = V62.stageTitles.map((t, idx) => idx === 0 || idx === 6 ? t : 'DEDUÇÃO · aguarda ▶');
-  v62Commit(nodes, [], titles);
+  v62Commit(nodes, [], titles, [], null);
 }
 
 function v62BuildFromResult(res) {
   const F = res.factos || [];
   const byNum = new Map(F.map(f => [f.numero, f]));
   const signif = v62Signif(F);
-  const N = new Map();
-  const get = (id, f) => {
-    if (!N.has(id)) N.set(id, { id, pred: f.predicado, ar: (f.args || []).length, origem: f.origem, facts: [], rules: new Set(), first: f.numero, predSet: new Set() });
-    return N.get(id);
-  };
+
+  // 1. Predicados (nós de facto/estado) e grupos de regras (um nó R por conclusão)
+  const P = new Map();
   F.forEach(f => {
-    const nd = get(v62NodeId(f), f);
+    const id = v62NodeId(f);
+    if (!P.has(id)) P.set(id, { id, pred: f.predicado, ar: (f.args || []).length, facts: [], rules: new Set(), first: f.numero, predSet: new Set() });
+    const nd = P.get(id);
     nd.facts.push(f);
     nd.predSet.add(`${f.predicado}/${(f.args || []).length}`);
     if (f.origem === 'regra' && f.regra != null) nd.rules.add(f.regra);
   });
 
-  // Arestas: premissa → conclusão, com as regras que as ligam
+  // 2. Ligações reais: premissa → R(conclusão) → conclusão
   const E = new Map();
+  const addE = (a, b, rule) => {
+    const k = a + '->' + b;
+    if (!E.has(k)) E.set(k, { a, b, rules: new Set(), n: 0 });
+    const e = E.get(k); if (rule != null) e.rules.add(rule); e.n++;
+  };
   F.forEach(f => {
     if (f.origem !== 'regra') return;
-    const b = v62NodeId(f);
+    const d = v62NodeId(f), r = 'r_' + f.predicado;
+    addE(r, d, f.regra);
     (f.premissas || []).forEach(p => {
       if (typeof p !== 'number' || !byNum.has(p)) return;
       const a = v62NodeId(byNum.get(p));
-      if (a === b) return;
-      const k = a + '->' + b;
-      if (!E.has(k)) E.set(k, { a, b, rules: new Set(), n: 0 });
-      const e = E.get(k); e.rules.add(f.regra); e.n++;
+      if (a === d) return; // premissa do próprio predicado (recursão): não desenhar laço
+      addE(a, r, f.regra);
     });
   });
+  const ids = new Set(P.keys());
+  P.forEach((nd, id) => { if (id.startsWith('d_')) ids.add('r_' + nd.pred); });
   const PAR = {}, CH = {};
-  N.forEach((_, id) => { PAR[id] = []; CH[id] = []; });
+  ids.forEach(id => { PAR[id] = []; CH[id] = []; });
   E.forEach(e => { PAR[e.b].push(e.a); CH[e.a].push(e.b); });
 
-  // Nível = cadeia mais longa de regras desde as entradas (ciclos ignorados)
+  // 3. Nível = cadeia mais longa desde as entradas (ciclos ignorados)
   const lvl = {}, st = {};
   const L = id => {
-    if (!id.startsWith('d_')) return 0;
+    if (!(id.startsWith('d_') || id.startsWith('r_'))) return 0;
     if (st[id] === 2) return lvl[id];
     if (st[id] === 1) return 0;
     st[id] = 1;
@@ -16306,139 +16337,185 @@ function v62BuildFromResult(res) {
     lvl[id] = v; st[id] = 2;
     return v;
   };
-  N.forEach((_, id) => L(id));
+  ids.forEach(id => L(id));
 
-  // Coluna 7: o que a API devolve como tickets e perguntas + o que só deles depende
+  // 4. Coluna 7: o que a API devolve como tickets e perguntas + o que só deles depende
   const actionIds = new Set();
   [...(res.tickets || []), ...(res.perguntas || [])].forEach(t => { const f = byNum.get(t.facto); if (f) actionIds.add(v62NodeId(f)); });
   const minAct = actionIds.size ? Math.min(...[...actionIds].map(id => lvl[id] || 1)) : Infinity;
-  N.forEach((_, id) => {
-    if (!id.startsWith('d_') || actionIds.has(id)) return;
-    const isSink = CH[id].length === 0;
-    if (isSink && (lvl[id] || 0) >= minAct && PAR[id].some(p => actionIds.has(p) || (lvl[p] || 0) >= minAct)) actionIds.add(id);
+  [...ids].filter(id => id.startsWith('d_') && !actionIds.has(id)).forEach(id => {
+    const prem = PAR['r_' + id.slice(2)] || [];
+    if (CH[id].length === 0 && (lvl[id] || 0) >= minAct && prem.some(p => actionIds.has(p) || (lvl[p] || 0) >= minAct)) actionIds.add(id);
   });
 
-  const mids = [...N.keys()].filter(id => id.startsWith('d_') && !actionIds.has(id));
+  const mids = [...ids].filter(id => (id.startsWith('d_') || id.startsWith('r_')) && !actionIds.has(id));
   const levels = [...new Set(mids.map(id => lvl[id]))].sort((a, b) => a - b);
   const grp = v62Partition(levels.map(l => mids.filter(id => lvl[id] === l).length), 5);
   const colOfLevel = {}; levels.forEach((l, i) => { colOfLevel[l] = 2 + grp[i]; });
   const col = {};
-  N.forEach((_, id) => {
-    if (!id.startsWith('d_')) col[id] = 1;
+  ids.forEach(id => {
+    if (id === 'kb' || id.startsWith('in_')) col[id] = 1;
     else if (actionIds.has(id)) col[id] = 7;
     else col[id] = colOfLevel[lvl[id]];
   });
 
-  // Ordem vertical: entradas pela ordem em que chegam; restantes por baricentro (ida, volta, ida)
+  // 5. Ordem vertical por baricentro (entradas pela ordem de chegada)
   const pos = {};
-  const byCol = c => [...N.keys()].filter(id => col[id] === c);
-  const c1 = byCol(1).sort((a, b) => (a === 'kb' ? -1 : b === 'kb' ? 1 : N.get(a).first - N.get(b).first));
+  const byCol = c => [...ids].filter(id => col[id] === c);
+  const c1 = byCol(1).sort((a, b) => (a === 'kb' ? -1 : b === 'kb' ? 1 : P.get(a).first - P.get(b).first));
   c1.forEach((id, i) => { pos[id] = c1.length > 1 ? i / (c1.length - 1) : 0.5; });
   const sweep = (cols, useChildren) => cols.forEach(c => {
-    const ids = byCol(c);
+    const arr = byCol(c);
     const bc = id => {
-      const ref = [...PAR[id], ...(useChildren ? CH[id] : [])].filter(x => pos[x] !== undefined && x !== 'kb');
+      const ref = [...PAR[id], ...(useChildren ? CH[id] : [])].filter(x => pos[x] !== undefined && x !== 'kb' && x !== id);
       return ref.length ? ref.reduce((s, x) => s + pos[x], 0) / ref.length : (pos[id] ?? 0.5);
     };
-    ids.sort((a, b) => bc(a) - bc(b) || (lvl[a] - lvl[b]) || a.localeCompare(b));
-    ids.forEach((id, i) => { pos[id] = ids.length > 1 ? i / (ids.length - 1) : 0.5; });
+    const key0 = {}; arr.forEach(id => { key0[id] = bc(id); });
+    arr.sort((a, b) => key0[a] - key0[b] || (lvl[a] - lvl[b]) || a.localeCompare(b));
+    arr.forEach((id, i) => { pos[id] = arr.length > 1 ? i / (arr.length - 1) : 0.5; });
   });
   sweep([2, 3, 4, 5, 6, 7], false);
   sweep([6, 5, 4, 3, 2], true);
   sweep([2, 3, 4, 5, 6, 7], false);
 
+  // 6. Nós no esquema original {id,t,col,y,cat,label,sub,human,code,preds,and}
   const nodes = [];
-  N.forEach((nd, id) => {
+  ids.forEach(id => {
+    const y = 136 + Math.round((pos[id] ?? 0) * 1000);
+    if (id.startsWith('r_')) {
+      const pred = id.slice(2), d = P.get('d_' + pred);
+      const rules = [...d.rules];
+      nodes.push({
+        id, t: 'rule', and: true, col: col[id], y, cat: 'regra',
+        label: v62Human(pred), code: v62RulesShort(rules), codeFull: v62Rules(rules),
+        sub: `${d.facts.length} disparo(s) → ${pred}`,
+        human: `${v62Rules(rules)} concluem ${pred}/${d.ar}${signif[pred] ? ': ' + signif[pred] : ''} (nível ${lvl[id]} de inferência).`,
+        preds: [...d.predSet], count: d.facts.length, level: lvl[id], rules
+      });
+      return;
+    }
+    const nd = P.get(id);
     const isKb = id === 'kb', isIn = id.startsWith('in_');
-    const code = isKb || isIn ? '' : v62Rules([...nd.rules]);
-    const nPreds = isKb ? new Set(nd.facts.map(f => f.predicado)).size : 0;
-    const nLvl = lvl[id] || 0;
-    let sub, human;
+    let t, cat, label, sub, human;
     if (isKb) {
-      sub = `${nd.facts.length} factos iniciais · ${nPreds} predicados`;
+      t = 'fact'; cat = 'kb'; label = 'base de conhecimento';
+      sub = `${nd.facts.length} factos · ${new Set(nd.facts.map(f => f.predicado)).size} predicados`;
       human = 'Factos iniciais da base de conhecimento (origem "inicial" na resposta do motor): inventário, catálogo e parâmetros usados como premissas.';
     } else if (isIn) {
-      const steps = new Set(nd.facts.map(f => f.passo)).size;
-      sub = `${nd.facts.length} facto(s) · ${steps} passo(s)${CH[id].length ? '' : ' · sem uso'}`;
-      human = signif[nd.pred] || `Facto de entrada ${nd.pred}/${nd.ar}, enviado nos passos do pedido.${CH[id].length ? '' : ' Nenhuma regra o usou como premissa nesta execução.'}`;
+      t = 'fact'; cat = 'entrada'; label = v62Human(nd.pred);
+      sub = `${nd.pred}/${nd.ar} · ${nd.facts.length} facto(s)`;
+      human = `Facto de entrada ${nd.pred}/${nd.ar}: ${nd.facts.length} facto(s) em ${new Set(nd.facts.map(f => f.passo)).size} passo(s).${CH[id].length ? '' : ' Nenhuma regra o usou como premissa nesta execução.'}`;
     } else {
-      sub = `${nd.facts.length} facto(s) · ${code}`;
-      human = (signif[nd.pred] ? signif[nd.pred] + ' ' : '') + `Deduzido por ${code} · nível ${nLvl} de inferência.`;
+      t = col[id] === 7 ? 'action' : 'state'; cat = col[id] === 7 ? 'acao' : 'deduzido'; label = v62Human(nd.pred);
+      sub = `${nd.pred}/${nd.ar} · ${nd.facts.length} facto(s)`;
+      human = (signif[nd.pred] ? signif[nd.pred] + ' ' : '') + `Deduzido por ${v62Rules([...nd.rules])}.`;
     }
     nodes.push({
-      id, t: isKb || isIn ? 'fact' : (col[id] === 7 ? 'action' : 'state'),
-      col: col[id], y: 136 + Math.round((pos[id] ?? 0) * 1000), cat: isKb ? 'kb' : isIn ? 'entrada' : (col[id] === 7 ? 'acao' : 'deduzido'),
-      label: isKb ? 'base de conhecimento' : nd.pred, sub, human, code,
-      preds: [...nd.predSet], count: nd.facts.length, level: nLvl, rules: [...nd.rules],
-      prolog: nd.facts[0] ? (typeof v61Fact === 'function' ? v61Fact(nd.facts[0]) : nd.pred) : ''
+      id, t, col: col[id], y, cat, label, sub, human, code: '',
+      preds: [...nd.predSet], count: nd.facts.length, level: lvl[id] || 0, rules: [...nd.rules],
+      prolog: nd.facts[0] && typeof v61Fact === 'function' ? v61Fact(nd.facts[0]) : nd.pred
     });
   });
-  const edges = [...E.values()].map(e => [e.a, e.b, `${v62Rules([...e.rules])} · ${e.n} ligação(ões)`]);
+
+  const edges = [...E.values()].map(e => {
+    const A = e.a.startsWith('r_') ? v62Rules([...e.rules]) : (e.a === 'kb' ? 'base de conhecimento' : e.a.replace(/^(in_|d_)/, ''));
+    return [e.a, e.b, `${A} · ${e.n} ligação(ões)`];
+  });
+  // Para a animação: só as ligações que avançam (sem ciclos)
+  const scenEdges = [...E.values()].filter(e => (lvl[e.b] || 0) > (lvl[e.a] || 0)).map(e => key(e.a, e.b));
 
   const titles = V62.stageTitles.slice();
   for (let c = 2; c <= 6; c++) {
     const ls = levels.filter(l => colOfLevel[l] === c);
     titles[c - 1] = ls.length ? `DEDUÇÃO · NÍVEL ${ls[0]}${ls.length > 1 ? '–' + ls[ls.length - 1] : ''}` : 'DEDUÇÃO · —';
   }
-  v62Commit(nodes, edges, titles);
-  V62.model = { res, byNum, nodeOf: f => v62NodeId(f) };
+  v62Commit(nodes, edges, titles, scenEdges, res);
+  V62.model = { res };
 }
 
-// Caminho de um ticket: todos os nós por onde passam as premissas do facto do ticket
 function v62ChainOf(res, num) {
   const byNum = new Map((res.factos || []).map(f => [f.numero, f]));
-  const seen = new Set(), ids = new Set();
+  const seen = new Set(), out = new Set();
   const go = n => {
     if (seen.has(n)) return; seen.add(n);
     const f = byNum.get(n); if (!f) return;
-    ids.add(v62NodeId(f));
-    if (f.origem === 'regra') (f.premissas || []).forEach(p => { if (typeof p === 'number') go(p); });
+    out.add(v62NodeId(f));
+    if (f.origem === 'regra') {
+      out.add('r_' + f.predicado);
+      (f.premissas || []).forEach(p => { if (typeof p === 'number') go(p); });
+    }
   };
   go(num);
-  return [...ids];
+  return [...out];
 }
 
-// Espaçamento: colunas centradas na altura da coluna mais cheia
+// Espaçamento: colunas centradas na altura da coluna mais cheia, usando a proporção do ecrã
 const _v62Spacing = enforceCleanFullGraphSpacing;
 enforceCleanFullGraphSpacing = function() {
   if (!V62.active) return _v62Spacing();
-  const TOP_Y = 136, STEP = 70, MAXSTEP = 132;
+  const TOP_Y = 136, STEP = 68, MAXSTEP = 140;
   const cols = {};
   NODES.forEach(n => { (cols[n.col] = cols[n.col] || []).push(n); });
   const maxCount = Math.max(1, ...Object.values(cols).map(a => a.length));
-  const span = (maxCount - 1) * STEP;
-  Object.entries(cols).forEach(([c, arr]) => {
+  const c = $('canvas')?.getBoundingClientRect();
+  const usedCols = Object.keys(cols).length || 1;
+  const graphW = colX(Math.max(...Object.keys(cols).map(Number), 1)) + W;
+  const ratio = c && c.width > 0 ? Math.max(0.25, (c.height - 70) / c.width) : 0.5;
+  const span = Math.max((maxCount - 1) * STEP, graphW * ratio - 120);
+  Object.entries(cols).forEach(([cc, arr]) => {
     arr.sort((a, b) => (ORIGINAL[a.id]?.y ?? a.y) - (ORIGINAL[b.id]?.y ?? b.y));
     const step = arr.length > 1 ? Math.min(MAXSTEP, span / (arr.length - 1)) : 0;
     const start = TOP_Y + (span - (arr.length - 1) * step) / 2;
-    arr.forEach((n, i) => { n.x = colX(+c); n.y = Math.round(start + i * step); });
+    arr.forEach((n, i) => { n.x = colX(+cc); n.y = Math.round(start + i * step); });
   });
 };
 
-// Linha "como?" dentro da caixa: de onde vem / para onde vai, a partir das arestas reais
+// Linha "como?" de cada caixa, no formato original, a partir das ligações reais
 deriveNodeCausalProvenanceLine = function(node) {
   if (!node || !V62.active) return '';
-  const lbl = id => (byId[id] ? (id === 'kb' ? 'KB' : byId[id].label) : id);
-  if (node.t === 'fact') {
-    const outs = (OUT[node.id] || []).map(e => lbl(e.id));
-    return outs.length ? `↳ alimenta: ${outs.slice(0, 3).join(', ')}${outs.length > 3 ? ` +${outs.length - 3}` : ''}` : '';
-  }
-  const ins = (IN[node.id] || []).map(e => lbl(e.id));
-  if (!ins.length) return '';
-  return `← ${ins.slice(0, 3).join(' + ')}${ins.length > 3 ? ` +${ins.length - 3}` : ''}`;
+  const lbl = id => (id === 'kb' ? 'KB' : (byId[id] ? (byId[id].t === 'rule' ? byId[id].code : id.replace(/^(in_|d_)/, '')) : id));
+  const ins = (IN[node.id] || []).map(e => e.id), outs = (OUT[node.id] || []).map(e => e.id);
+  const list = (arr, j, n = 3) => arr.slice(0, n).map(lbl).join(j) + (arr.length > n ? ` +${arr.length - n}` : '');
+  if (node.t === 'fact') return outs.length ? `↳ Dispara: ${list(outs, ', ', 4)}` : '↳ sem uso nesta execução';
+  if (node.t === 'rule') return ins.length ? `← Premissas: ${list(ins, ' ∧ ')}` : '';
+  const via = ins.map(id => byId[id]?.code || lbl(id));
+  const p = node.id.replace(/^d_/, '');
+  if (node.t === 'action') return via.length ? `⚡ Causado por: ${via[0]}(${p})` : '';
+  return via.length ? `← Deduzido via: ${via[0]}(${p})` : '';
 };
 
-// Sem textos fixos por nó: o subtítulo de cada caixa vem do próprio modelo
+// Sem textos fixos por nó
 deriveDynamicNodeOverlayForScenario = function() { return { subs: {}, timePills: {} }; };
+// Os cenários e marcos temporais antigos (pré-feitos) deixam de ser usados
+Object.keys(SCENARIO_TIMESTAMPS).forEach(k => delete SCENARIO_TIMESTAMPS[k]);
+const _v62Ensure = ensureGlobalBatchScenarioExists;
+ensureGlobalBatchScenarioExists = function() { if (!V62.active && !S.apiOnline) _v62Ensure(); };
+const _v62Upgrade = upgradeCanonicalScenariosToFullChains;
+upgradeCanonicalScenariosToFullChains = function() { if (!V62.active && !S.apiOnline) _v62Upgrade(); };
+
+// Linha temporal do notch: etapas reais do grafo (sem segundos inventados)
+const _v62Timeline = computeScenarioTimeline;
+computeScenarioTimeline = function(k) {
+  const snaps = _v62Timeline(k);
+  if (V62.active) snaps.forEach((s, i) => {
+    s.sec = 0;
+    s.pinIcon = i === 0 ? '📥' : '⚡';
+    const novos = i > 0 ? [...s.lit].filter(id => !snaps[i - 1].lit.has(id)).map(id => byId[id]).filter(Boolean) : [];
+    const regras = novos.filter(n => n.t === 'rule').length;
+    s.pinLabel = i === 0 ? 'Entradas' : `Etapa ${i + 1} · ${novos.length} nó(s)${regras ? ` · ${regras} grupo(s) de regras` : ''}`;
+  });
+  return snaps;
+};
 
 // Selo de comparação nos nós (modo Comparador): número de factos de cada motor por caixa
 function v62DualBadges() {
   const scen = S.scen || 'all';
   const pl = S.engineResults?.prolog?.[scen], dr = S.engineResults?.drools?.[scen];
   if (!pl || !dr) return;
-  const count = r => { const m = {}; (r.factos || []).forEach(f => { const id = v62NodeId(f); m[id] = (m[id] || 0) + 1; }); return m; };
+  const count = r => { const m = {}; (r.factos || []).forEach(f => { const id = v62NodeId(f); m[id] = (m[id] || 0) + 1; if (f.origem === 'regra') m['r_' + f.predicado] = (m['r_' + f.predicado] || 0) + 1; }); return m; };
   const a = count(pl), b = count(dr);
   gN.querySelectorAll('.node').forEach(gNode => {
+    if (gNode.classList.contains('sg-hide')) return;
     const nid = gNode.getAttribute('data-id');
     const x = a[nid] || 0, y = b[nid] || 0;
     const same = x === y;
@@ -16452,98 +16529,38 @@ function v62DualBadges() {
 
 const _v62ResetStandby = resetGraphToStandby;
 resetGraphToStandby = function(reason = '') {
+  S.v62Pending = false;
+  gP.innerHTML = '';
   if (S.apiOnline) {
     const passos = (S.lastExecutedPassos && S.lastExecutedPassos.length) ? S.lastExecutedPassos : (DYNAMIC_SCENARIO_PASSOS[S.scen] || []);
     v62BuildStandby(passos);
+    S.timelineSnapshots = [];
+    S.timelineStep = 0;
   }
   _v62ResetStandby(reason);
-  if (S.apiOnline) {
-    if (typeof animateCameraToVisibleGraph === 'function') animateCameraToVisibleGraph(300);
-  }
+  if (S.apiOnline) animateCameraToVisibleGraph(300);
 };
 
-applyRealEngineResultToGraph = async function(liveResult, activeEng, shouldAnimate = true) {
-  if (!liveResult) return;
-  v62BuildFromResult(liveResult);
+function v62ShowPending() {
+  const res = V62.model && V62.model.res;
+  if (res && res.estado === 'aguarda_resposta' && res.perguntas?.length) showEngineQuestionPrompt(S.currentPendingQuestion || res.perguntas[0]);
+}
 
-  const factos = liveResult.factos || [];
-  const byNum = new Map(factos.map(f => [f.numero, f]));
-  const firedRules = new Set(factos.filter(f => f.origem === 'regra' && f.regra != null).map(f => f.regra));
-  const allIds = new Set(NODES.map(n => n.id));
-  const allEdges = new Set(EDGES.map(([a, b]) => key(a, b)));
-
-  // Tickets do painel direito: só dados da API
-  const tickets = liveResult.tickets || [];
-  TICKETS = tickets.map((t, idx) => {
-    const prioUpper = String(t.prioridade || '').toUpperCase() || '—';
-    const acaoName = typeof t.acao === 'string' ? t.acao : (t.acao && t.acao.f ? (typeof v61Fmt === 'function' ? v61Fmt(t.acao) : t.acao.f) : '—');
-    const tFacto = byNum.get(t.facto);
-    const reg = tFacto && tFacto.regra != null ? 'R' + tFacto.regra : '—';
-    const incTxt = t.incidente ? (typeof v61Fmt === 'function' ? v61Fmt(t.incidente) : JSON.stringify(t.incidente)) : '';
-    const tktId = t.incidente && t.incidente.args ? `TKT-${t.incidente.args.map(a => typeof a === 'object' ? (a.args ? a.args.join('_') : a.f) : a).join('-')}` : `TKT-${idx + 1}`;
-    const chain = v62ChainOf(liveResult, t.facto).sort((a, b) => (byId[a]?.col || 0) - (byId[b]?.col || 0));
-    return {
-      facto: t.facto, id: tktId, prio: prioUpper, alvo: t.ativo || '—', acao: acaoName, scen: S.scen,
-      fechado: t.fechado, regra: reg, regraId: v62NodeId(tFacto || { origem: 'regra', predicado: 'ticket' }),
-      regraChain: chain.length ? chain : [...allIds],
-      sev: t.gravidade || '—', criticidade: 0,
-      desc: `${acaoName} no ativo ${t.ativo || '—'}${t.fechado ? ' [FECHADO]' : ''}`,
-      racional: `Deduzido pelo motor ${String(activeEng).toUpperCase()} (regra ${reg}, gravidade ${t.gravidade || '—'}, prioridade ${prioUpper}).`,
-      prolog: tFacto && typeof v61Fact === 'function' ? v61Fact(tFacto) : incTxt
-    };
-  });
-
-  R.blocked = new Set();
-  R.flying = new Set();
-  if (shouldAnimate) {
-    R.lit = new Set();
-    R.done = new Set();
-    R.fired = 0;
-    R.activeCols = new Set();
-    render();
-    if (typeof animateCameraToVisibleGraph === 'function') animateCameraToVisibleGraph(320);
-    const seenRules = new Set();
-    for (let c = 1; c <= 7; c++) {
-      const colNodes = NODES.filter(n => n.col === c);
-      if (!colNodes.length) continue;
-      const colIds = new Set(colNodes.map(n => n.id));
-      // setas a voar para esta coluna
-      EDGES.forEach(([a, b]) => { if (colIds.has(b) && R.lit.has(a)) R.flying.add(key(a, b)); });
-      R.activeCols.add(c);
-      if (R.flying.size) { render(); await sleep(260 / S.speed); }
-      colNodes.forEach(n => {
-        R.lit.add(n.id);
-        (n.rules || []).forEach(r => seenRules.add(r));
-        if (n.t === 'state') log(n.code || n.label, `${n.label} · ${n.count} facto(s) · nível ${n.level}`, 'st');
-        else if (n.t === 'action') log('▲ ' + (n.code || ''), `${n.label} · ${n.count} facto(s)`, 'ac');
-      });
-      R.fired = seenRules.size;
-      R.flying.forEach(k => R.done.add(k));
-      R.flying = new Set();
-      EDGES.forEach(([a, b]) => { if (R.lit.has(a) && R.lit.has(b)) R.done.add(key(a, b)); });
-      render();
-      await sleep(180 / S.speed);
-    }
-  } else {
-    R.lit = allIds;
-    R.done = allEdges;
-    R.fired = firedRules.size;
-    render();
-  }
-
-  R.finished = true;
-  R.playing = false;
-
-  const engLabel = activeEng === 'drools' ? 'Drools 8' : 'SWI-Prolog';
+// Depois de a animação terminar (ou de saltar para a última etapa)
+function v62AfterRun() {
+  const run = S.v62Run;
+  if (!run) return;
+  S.v62Pending = false;
+  const res = run.res;
+  const nRegras = new Set((res.factos || []).filter(f => f.origem === 'regra').map(f => f.regra)).size;
+  const engLabel = run.eng === 'drools' ? 'Drools 8' : 'SWI-Prolog';
   const banner = $('canvasEngineBanner');
   if (banner) {
-    banner.className = 'active-engine-banner ' + (activeEng === 'drools' ? 'drools' : 'prolog');
-    banner.innerHTML = `<span>⚙️ MOTOR: <b>${engLabel.toUpperCase()}</b> · ${firedRules.size} regras disparadas · ${NODES.length} predicados · ${factos.length} factos (${esc(liveResult.estado)})</span>`;
+    banner.className = 'active-engine-banner ' + (run.eng === 'drools' ? 'drools' : 'prolog');
+    banner.innerHTML = `<span>⚙️ MOTOR: <b>${engLabel.toUpperCase()}</b> · ${nRegras} regras disparadas · ${(res.factos || []).length} factos (${esc(res.estado)})</span>`;
   }
-  log('grafo', `Grafo gerado da resposta: ${NODES.length} predicados, ${EDGES.length} ligações, ${firedRules.size} regras.`, 'ok');
-
-  if (liveResult.estado === 'aguarda_resposta' && liveResult.perguntas?.length > 0) {
-    const p = liveResult.perguntas[0];
+  if (res.estado === 'aguarda_resposta' && res.perguntas?.length) {
+    const p = res.perguntas[0];
     log('pergunta pendente', `[${p.pergunta || '?'}] ${p.texto || ''}`, 'st');
     showEngineQuestionPrompt(p);
   } else {
@@ -16554,10 +16571,127 @@ applyRealEngineResultToGraph = async function(liveResult, activeEng, shouldAnima
   updateButtons();
   updateTimelineDockUI();
   inspect();
+}
+
+// Corre as ondas do motor original até ao fim (pode ser pausado e retomado no ▶ do notch)
+async function v62RunWaves() {
+  S.v62Pending = true;
+  R.playing = true;
+  updateButtons(); updateTimelineDockUI();
+  while (R.playing && !R.finished) {
+    if (R.busy) await sleep(50); else await wave();
+  }
+  R.playing = false;
+  if (R.finished) { animateCameraToVisibleGraph(380); v62AfterRun(); }
+  updateButtons(); updateTimelineDockUI();
+}
+
+applyRealEngineResultToGraph = async function(liveResult, activeEng, shouldAnimate = true) {
+  if (!liveResult) return;
+  R.playing = false;
+  gP.innerHTML = '';
+  v62BuildFromResult(liveResult);
+  S.v62Run = { res: liveResult, eng: activeEng };
+
+  const factos = liveResult.factos || [];
+  const byNum = new Map(factos.map(f => [f.numero, f]));
+
+  // Tickets do painel direito: só dados da API
+  TICKETS = (liveResult.tickets || []).map((t, idx) => {
+    const prioUpper = String(t.prioridade || '').toUpperCase() || '—';
+    const acaoName = typeof t.acao === 'string' ? t.acao : (t.acao && t.acao.f ? (typeof v61Fmt === 'function' ? v61Fmt(t.acao) : t.acao.f) : '—');
+    const tFacto = byNum.get(t.facto);
+    const reg = tFacto && tFacto.regra != null ? 'R' + tFacto.regra : '—';
+    const tktId = t.incidente && t.incidente.args ? `TKT-${t.incidente.args.map(a => typeof a === 'object' ? (a.args ? a.args.join('_') : a.f) : a).join('-')}` : `TKT-${idx + 1}`;
+    const chain = v62ChainOf(liveResult, t.facto).sort((a, b) => (byId[a]?.col || 0) - (byId[b]?.col || 0) || (byId[a]?.y || 0) - (byId[b]?.y || 0));
+    return {
+      facto: t.facto, id: tktId, prio: prioUpper, alvo: t.ativo || '—', acao: acaoName, scen: S.scen,
+      fechado: t.fechado, regra: reg, regraId: tFacto ? 'r_' + tFacto.predicado : '',
+      regraChain: chain.length ? chain : NODES.map(n => n.id),
+      sev: t.gravidade || '—', criticidade: 0,
+      desc: `${acaoName} no ativo ${t.ativo || '—'}${t.fechado ? ' [FECHADO]' : ''}`,
+      racional: `Deduzido pelo motor ${String(activeEng).toUpperCase()} (regra ${reg}, gravidade ${t.gravidade || '—'}, prioridade ${prioUpper}).`,
+      prolog: tFacto && typeof v61Fact === 'function' ? v61Fact(tFacto) : ''
+    };
+  });
+
+  // Estado inicial das ondas: só as entradas e a base acesas
+  const sc = SCEN[S.scen || 'all'];
+  const targets = new Set(sc.edges.map(k => k.split('->')[1]));
+  R.lit = new Set(sc.nodes.filter(id => !targets.has(id)));
+  R.done = new Set(); R.flying = new Set(); R.blocked = new Set();
+  R.fired = 0; R.finished = false; R.busy = false; R.activeCols = new Set([1]);
+  S.timelineSnapshots = computeScenarioTimeline(S.scen || 'all');
+  const nWaves = Math.max(1, S.timelineSnapshots.length - 1);
+  S.waveBoost = Math.max(1, nWaves / 10); // um lote grande demora o mesmo que um cenário de ~10 etapas
+  log('grafo', `Grafo gerado da resposta: ${NODES.length} nós, ${EDGES.length} ligações, ${nWaves} etapas de inferência.`, 'ok');
+
+  if (shouldAnimate) {
+    S.timelineStep = 0;
+    render();
+    animateCameraToVisibleGraph(360);
+    await v62RunWaves();
+  } else {
+    applyTimelineSnapshot(S.timelineSnapshots.length - 1);
+    v62AfterRun();
+  }
 };
 
+// Ao percorrer a linha temporal: na última etapa volta a mostrar a pergunta pendente
+const _v62ApplySnap = applyTimelineSnapshot;
+applyTimelineSnapshot = function(idx, allowModal) {
+  // Se uma onda ainda está a meio, esperar que termine antes de saltar (evita nós acesos fora de tempo)
+  if (R.busy) {
+    R.playing = false;
+    const tm = setInterval(() => { if (!R.busy) { clearInterval(tm); applyTimelineSnapshot(idx, allowModal); } }, 40);
+    return;
+  }
+  gP.innerHTML = '';
+  _v62ApplySnap(idx, allowModal);
+  if (!V62.active || !S.v62Run) return;
+  const snaps = S.timelineSnapshots || [];
+  const last = snaps.length - 1;
+  if (S.timelineStep >= last) {
+    R.finished = true;
+    if (S.v62Pending) v62AfterRun(); else v62ShowPending();
+  } else {
+    R.finished = false;
+    S.v62Pending = true;
+  }
+  if ($('logRes')) $('logRes').textContent = S.timelineStep >= last ? '→ ' + (SCEN[S.scen || 'all']?.result || '') : `⏱ Etapa ${S.timelineStep + 1}/${snaps.length}`;
+  updateButtons(); updateTimelineDockUI();
+};
 
-// Foco: nós fora do fluxo filtrado ficam escondidos (como no modo cenário original); setas da KB discretas
+// Cor ambiente do motor ativo (Prolog esmeralda · Drools índigo · Comparador âmbar)
+function v62ApplyEngineTheme() {
+  const appEl = $('app');
+  if (!appEl) return;
+  appEl.classList.remove('engine-prolog', 'engine-drools', 'engine-both');
+  appEl.classList.add('engine-' + (S.engine || 'prolog'));
+  const dot = document.querySelector('.di-engine-dot');
+  if (dot) { dot.classList.toggle('drools', S.engine === 'drools'); }
+}
+const _v62SetEngine = setEngineMode;
+setEngineMode = function(eng) {
+  _v62SetEngine(eng);
+  v62ApplyEngineTheme();
+};
+
+// Ajustar a câmara sempre que a área do grafo muda (janela, painel lateral recolhido/alargado)
+(function() {
+  const cv = $('canvas');
+  if (!cv || typeof ResizeObserver === 'undefined') return;
+  let tm = null, lastW = 0, lastH = 0;
+  new ResizeObserver(entries => {
+    const r = entries[0].contentRect;
+    if (Math.abs(r.width - lastW) < 4 && Math.abs(r.height - lastH) < 4) return;
+    lastW = r.width; lastH = r.height;
+    clearTimeout(tm);
+    tm = setTimeout(() => { if (NODES.length) { render(); animateCameraToVisibleGraph(280); } }, 140);
+  }).observe(cv);
+})();
+
+// Foco: nós fora do fluxo filtrado ficam escondidos; setas da KB discretas
 (function(){
   const st = document.createElement('style');
   st.textContent = '.edge.kb-edge{opacity:.22}.edge.kb-edge.lit{opacity:.35}';
@@ -16584,6 +16718,7 @@ simulateApiRetrieveForTesting = function() {
   }
   log('sistema', 'Modo local desativado: todos os dados vêm da API.', 'war');
 };
+
 
 // Arrancar a verificação inicial após todos os handlers estarem declarados
 verifyAndRetrieveFromApi(false);
