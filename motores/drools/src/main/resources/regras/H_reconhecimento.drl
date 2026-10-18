@@ -1,0 +1,78 @@
+package regras;
+
+// H. RECONHECIMENTO E ACESSO A SEGUIR (soc_regras.txt, base v6, R35-R37)
+//
+// R35: varrimento de 100 ou mais portos e 5 ou mais logins falhados dentro da janela reconhecimento_falhas
+//      -> suspeita e origem hostil
+// R36: ativo sob suspeita -> telemetria detalhada, escuta ativa e incidente de vigilancia
+// R37: ativo sob suspeita e login com sucesso da mesma origem dentro da janela -> acesso suspeito
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.modelo.Variavel;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R35: reconhecimento(Ev,Alvo,Origem) e avalia(portos_sondados(Ev,>=,100)) e avalia(falhas_login(Ev,>=,5))
+//      e janela(reconhecimento_falhas,Janela) e avalia(falhas_janela(Ev,=<,Janela))
+//      -> suspeita(Alvo,Ev) + origem_hostil(Origem,Ev)
+rule "R35"
+when
+    $r  : Facto(functor == "reconhecimento/3", $ev : arg(0), $alvo : arg(1), $origem : arg(2))
+    $ps : Facto(functor == "portos_sondados/2", arg(0) == $ev, $nPortos : arg(1))
+    eval(((Number) $nPortos).longValue() >= 100)
+    $fl : Facto(functor == "falhas_login/2", arg(0) == $ev, $nFalhas : arg(1))
+    eval(((Number) $nFalhas).longValue() >= 5)
+    $jw : Facto(functor == "janela/2", arg(0) == "reconhecimento_falhas", $janela : arg(1))
+    $fj : Facto(functor == "falhas_janela/2", arg(0) == $ev, $nJanela : arg(1))
+    eval(((Number) $nJanela).longValue() <= ((Number) $janela).longValue())
+then
+    List<Premissa> p = List.of(
+        Premissa.de($r),
+        Premissa.calculada("portos_sondados", $ev, ">=", 100L),
+        Premissa.calculada("falhas_login", $ev, ">=", 5L),
+        Premissa.de($jw),
+        Premissa.calculada("falhas_janela", $ev, "=<", $janela)
+    );
+    base.cria(kcontext, 35, p, Facto.de("suspeita", $alvo, $ev));
+    base.cria(kcontext, 35, p, Facto.de("origem_hostil", $origem, $ev));
+end
+
+// R36: suspeita(Alvo,Ev) -> acao(Alvo,telemetria_verbosa) + acao(Alvo,escuta_ativa)
+//      + incidente(inc(vigilancia,Ev),vigilancia,Alvo,[Alvo])
+rule "R36"
+when
+    $s : Facto(functor == "suspeita/2", $alvo : arg(0), $ev : arg(1))
+then
+    List<Premissa> p = List.of(Premissa.de($s));
+    Termo inc = Termo.de("inc", "vigilancia", $ev);
+    base.cria(kcontext, 36, p, Facto.de("acao", $alvo, "telemetria_verbosa"));
+    base.cria(kcontext, 36, p, Facto.de("acao", $alvo, "escuta_ativa"));
+    base.cria(kcontext, 36, p, Facto.de("incidente", inc, "vigilancia", $alvo, List.of($alvo)));
+end
+
+// R37: suspeita(Alvo,Ev) e origem(Ev,Ip) e login_ok(EvLogin,Alvo,Ip,_)
+//      e janela(login_apos_reconhecimento,Janela) e depois(EvLogin,Ev,Janela)
+//      -> acesso_suspeito(Alvo,EvLogin) + acao(Alvo,revogar_credenciais) + acao(Alvo,cortar_sessoes)
+//         + incidente(inc(acesso_suspeito,EvLogin),acesso_suspeito,Alvo,[Alvo])
+rule "R37"
+when
+    $s  : Facto(functor == "suspeita/2", $alvo : arg(0), $ev : arg(1))
+    $o  : Facto(functor == "origem/2", arg(0) == $ev, $ip : arg(1))
+    $lk : Facto(functor == "login_ok/4", $evLogin : arg(0), arg(1) == $alvo, arg(2) == $ip)
+    $jw : Facto(functor == "janela/2", arg(0) == "login_apos_reconhecimento", $janela : arg(1))
+    eval(CondicoesCalculadas.depois($evLogin, $ev, $janela, base))
+then
+    List<Premissa> p = List.of(
+        Premissa.de($s), Premissa.de($o), Premissa.de($lk), Premissa.de($jw),
+        Premissa.calculada("depois", $evLogin, $ev, $janela)
+    );
+    Termo inc = Termo.de("inc", "acesso_suspeito", $evLogin);
+    base.cria(kcontext, 37, p, Facto.de("acesso_suspeito", $alvo, $evLogin));
+    base.cria(kcontext, 37, p, Facto.de("acao", $alvo, "revogar_credenciais"));
+    base.cria(kcontext, 37, p, Facto.de("acao", $alvo, "cortar_sessoes"));
+    base.cria(kcontext, 37, p, Facto.de("incidente", inc, "acesso_suspeito", $alvo, List.of($alvo)));
+end

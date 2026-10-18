@@ -1,5 +1,5 @@
-% Testes automaticos do lado Prolog: o wrapper.pl (issue #9), os JSON gerados pelo gera_json.pl (issue #10) e as
-% referencias do motor geradas pelo gera_referencias.pl.
+% Testes automaticos do lado Prolog: o wrapper.pl (issue #9), os JSON gerados pelo gera_json.pl (issue #10), as
+% referencias do motor geradas pelo gera_referencias.pl e o metaconhecimento gerado pelo gera_meta.pl.
 % Correm-se a partir de qualquer pasta (os caminhos sao relativos a este ficheiro):
 %   swipl -g run_tests -t halt motores/prolog/testes/testes.pl
 % O codigo de saida e 0 se todos passarem e diferente de zero se algum falhar (e o que a CI usa).
@@ -236,3 +236,22 @@ test(referencias_em_dia) :-
 	).
 
 :- end_tests(referencias).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% METACONHECIMENTO (facto_dispara_regras/2 no soc_suporte.txt, gerado pelo gera_meta.pl)
+
+:- begin_tests(gera_meta).
+
+% AC13: o metaconhecimento do soc_suporte.txt e o que as regras dao hoje.
+test(ac13_meta_em_dia) :-
+	current_prolog_flag(executable, Swipl),
+	caminho('motores/prolog/ferramentas/gera_meta.pl', G),
+	process_create(Swipl, [G, '--verificar'], [stdout(null), stderr(pipe(E)), process(Pid)]),
+	read_string(E, _, Msg), close(E),
+	process_wait(Pid, exit(Codigo)),
+	(   Codigo == 0 -> true
+	;   format(user_error, "~s", [Msg]), fail
+	).
+
+:- end_tests(gera_meta).

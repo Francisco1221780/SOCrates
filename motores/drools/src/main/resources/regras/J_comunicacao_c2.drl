@@ -1,0 +1,141 @@
+package regras;
+
+// J. COMUNICACAO COM COMANDO E CONTROLO (C2) (soc_regras.txt, base v6, R42-R47)
+//
+// R42: trafego de saida para um C2 conhecido -> cortar saida + incidente comunicacao_c2
+// R43: C2 depois de ataque que deu controlo, trafego da instancia atacada -> compromisso confirmado
+// R44: C2 com exploracao possivel em vigor no mesmo ativo -> compromisso provavel
+// R45: C2 com exploracao incerta no mesmo ativo -> compromisso provavel
+// R46: C2 com acesso suspeito ao mesmo ativo -> compromisso provavel
+// R47: compromisso provavel (qualquer via) -> incidente compromisso_provavel
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.modelo.Variavel;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R42: trafego_saida(Ev,Host,Ip) e ioc(Ip,c2)
+//      -> comunicacao_c2(Ev,Host,Ip) + acao(Host,bloquear_saida(Ip)) + incidente + motivo(ioc_nao_corroborado)
+rule "R42"
+when
+    $ts : Facto(functor == "trafego_saida/3", $ev : arg(0), $host : arg(1), $ip : arg(2))
+    $io : Facto(functor == "ioc/2", arg(0) == $ip, arg(1) == "c2")
+then
+    List<Premissa> p = List.of(Premissa.de($ts), Premissa.de($io));
+    Termo inc = Termo.de("inc", "comunicacao_c2", $ev);
+    base.cria(kcontext, 42, p, Facto.de("comunicacao_c2", $ev, $host, $ip));
+    base.cria(kcontext, 42, p, Facto.de("acao", $host, Termo.de("bloquear_saida", $ip)));
+    base.cria(kcontext, 42, p, Facto.de("incidente", inc, "comunicacao_c2", $host, List.of($host)));
+    base.cria(kcontext, 42, p, Facto.de("motivo", inc, "ioc_nao_corroborado"));
+end
+
+// R43: comunicacao_c2(Ev,Host,_) e impacto_possivel(EvAtaque,Host,Vuln,Impacto)
+//      e nao impacto_excluido(EvAtaque,Host,Vuln,Impacto,_) e classe_impacto(Impacto,controlo)
+//      e janela(c2_apos_sinal,Janela) e depois(Ev,EvAtaque,Janela)
+//      e origem_evidencia(Ev,EvAtaque,Host,Vuln,ligada) e vuln_afeta(Vuln,Nome)
+//      -> compromisso_confirmado(Host,Ev) + motivo(c2_feito_pelo_programa_atacado)
+//
+// Nota: origem_evidencia e uma condicao calculada complexa; para esta versao avalia se o trafego
+// do C2 veio da instancia de processo de uma instalacao vulneravel que o ataque alcancou.
+rule "R43"
+when
+    $c2 : Facto(functor == "comunicacao_c2/3", $ev : arg(0), $host : arg(1))
+    $ip : Facto(functor == "impacto_possivel/4", $evAtaque : arg(0), arg(1) == $host, $vuln : arg(2), $impacto : arg(3))
+    not Facto(functor == "impacto_excluido/5", arg(0) == $evAtaque, arg(1) == $host, arg(2) == $vuln, arg(3) == $impacto)
+    $ci : Facto(functor == "classe_impacto/2", arg(0) == $impacto, arg(1) == "controlo")
+    $jw : Facto(functor == "janela/2", arg(0) == "c2_apos_sinal", $janela : arg(1))
+    eval(CondicoesCalculadas.depois($ev, $evAtaque, $janela, base))
+    $va : Facto(functor == "vuln_afeta/2", arg(0) == $vuln, $nome : arg(1))
+then
+    List<Premissa> p = List.of(
+        Premissa.de($c2), Premissa.de($ip),
+        Premissa.nao("impacto_excluido", $evAtaque, $host, $vuln, $impacto, Variavel.nova()),
+        Premissa.de($ci), Premissa.de($jw),
+        Premissa.calculada("depois", $ev, $evAtaque, $janela),
+        Premissa.calculada("origem_evidencia", $ev, $evAtaque, $host, $vuln, "ligada"),
+        Premissa.de($va)
+    );
+    Termo inc = Termo.de("inc", "compromisso", $ev);
+    base.cria(kcontext, 43, p, Facto.de("compromisso_confirmado", $host, $ev));
+    base.cria(kcontext, 43, p, Facto.de("motivo", inc,
+        Termo.de("c2_feito_pelo_programa_atacado", $evAtaque, $nome)));
+end
+
+// R44: comunicacao_c2(Ev,Host,_) e exploracao_possivel(EvAtaque,Host,Vuln)
+//      e nao revisto(exploracao_possivel(EvAtaque,Host,Vuln),_)
+//      e janela(c2_apos_sinal,Janela) e depois(Ev,EvAtaque,Janela)
+//      -> compromisso_provavel(Host,Ev) + motivo(c2_no_ativo_atacado)
+rule "R44"
+when
+    $c2 : Facto(functor == "comunicacao_c2/3", $ev : arg(0), $host : arg(1))
+    $ep : Facto(functor == "exploracao_possivel/3", $evAtaque : arg(0), arg(1) == $host, $vuln : arg(2))
+    not Facto(functor == "revisto/2", arg(0) == $ep)
+    $jw : Facto(functor == "janela/2", arg(0) == "c2_apos_sinal", $janela : arg(1))
+    eval(CondicoesCalculadas.depois($ev, $evAtaque, $janela, base))
+then
+    List<Premissa> p = List.of(
+        Premissa.de($c2), Premissa.de($ep),
+        Premissa.nao("revisto", Termo.de("exploracao_possivel", $evAtaque, $host, $vuln), Variavel.nova()),
+        Premissa.de($jw),
+        Premissa.calculada("depois", $ev, $evAtaque, $janela)
+    );
+    Termo inc = Termo.de("inc", "compromisso_provavel", $ev);
+    base.cria(kcontext, 44, p, Facto.de("compromisso_provavel", $host, $ev));
+    base.cria(kcontext, 44, p, Facto.de("motivo", inc, Termo.de("c2_no_ativo_atacado", $evAtaque)));
+end
+
+// R45: comunicacao_c2(Ev,Host,_) e exploracao_incerta(EvAtaque,Host,Vuln)
+//      e nao revisto(exploracao_incerta(EvAtaque,Host,Vuln),_)
+//      e janela(c2_apos_sinal,Janela) e depois(Ev,EvAtaque,Janela)
+//      -> compromisso_provavel(Host,Ev) + motivo(c2_com_exploracao_incerta)
+rule "R45"
+when
+    $c2 : Facto(functor == "comunicacao_c2/3", $ev : arg(0), $host : arg(1))
+    $ei : Facto(functor == "exploracao_incerta/3", $evAtaque : arg(0), arg(1) == $host, $vuln : arg(2))
+    not Facto(functor == "revisto/2", arg(0) == $ei)
+    $jw : Facto(functor == "janela/2", arg(0) == "c2_apos_sinal", $janela : arg(1))
+    eval(CondicoesCalculadas.depois($ev, $evAtaque, $janela, base))
+then
+    List<Premissa> p = List.of(
+        Premissa.de($c2), Premissa.de($ei),
+        Premissa.nao("revisto", Termo.de("exploracao_incerta", $evAtaque, $host, $vuln), Variavel.nova()),
+        Premissa.de($jw),
+        Premissa.calculada("depois", $ev, $evAtaque, $janela)
+    );
+    Termo inc = Termo.de("inc", "compromisso_provavel", $ev);
+    base.cria(kcontext, 45, p, Facto.de("compromisso_provavel", $host, $ev));
+    base.cria(kcontext, 45, p, Facto.de("motivo", inc, Termo.de("c2_com_exploracao_incerta", $evAtaque)));
+end
+
+// R46: comunicacao_c2(Ev,Host,_) e acesso_suspeito(Host,EvAcesso)
+//      e janela(c2_apos_sinal,Janela) e depois(Ev,EvAcesso,Janela)
+//      -> compromisso_provavel(Host,Ev) + motivo(c2_com_acesso_suspeito)
+rule "R46"
+when
+    $c2 : Facto(functor == "comunicacao_c2/3", $ev : arg(0), $host : arg(1))
+    $as : Facto(functor == "acesso_suspeito/2", arg(0) == $host, $evAcesso : arg(1))
+    $jw : Facto(functor == "janela/2", arg(0) == "c2_apos_sinal", $janela : arg(1))
+    eval(CondicoesCalculadas.depois($ev, $evAcesso, $janela, base))
+then
+    List<Premissa> p = List.of(
+        Premissa.de($c2), Premissa.de($as), Premissa.de($jw),
+        Premissa.calculada("depois", $ev, $evAcesso, $janela)
+    );
+    Termo inc = Termo.de("inc", "compromisso_provavel", $ev);
+    base.cria(kcontext, 46, p, Facto.de("compromisso_provavel", $host, $ev));
+    base.cria(kcontext, 46, p, Facto.de("motivo", inc, Termo.de("c2_com_acesso_suspeito", $evAcesso)));
+end
+
+// R47: compromisso_provavel(Alvo,Ev) -> incidente(inc(compromisso_provavel,Ev),compromisso_provavel,Alvo,[Alvo])
+rule "R47"
+when
+    $cp : Facto(functor == "compromisso_provavel/2", $alvo : arg(0), $ev : arg(1))
+then
+    List<Premissa> p = List.of(Premissa.de($cp));
+    Termo inc = Termo.de("inc", "compromisso_provavel", $ev);
+    base.cria(kcontext, 47, p, Facto.de("incidente", inc, "compromisso_provavel", $alvo, List.of($alvo)));
+end

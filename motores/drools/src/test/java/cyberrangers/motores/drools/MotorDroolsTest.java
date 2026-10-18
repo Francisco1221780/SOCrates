@@ -202,7 +202,7 @@ class MotorDroolsTest {
         assertTrue(primeiro.get("regra").isNull());
         assertEquals(0, primeiro.get("premissas").size());
         assertEquals("zona", primeiro.get("predicado").asText());
-        JsonNode entrada = porNumero(r, 315);
+        JsonNode entrada = porNumero(r, 331);
         assertEquals("entrada", entrada.get("origem").asText());
         assertEquals("p1", entrada.get("passo").asText());
         assertEquals("[\"estado\",\"motor\",\"versaoKB\",\"perguntas\",\"incidentes\",\"tickets\",\"factos\",\"erro\"]",

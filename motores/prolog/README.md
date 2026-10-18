@@ -80,6 +80,7 @@ Código de saída 0 se todos passarem. Correm igual em Windows, Mac e Linux, e n
 | `ac18_json_em_dia` | `gera_json.pl --verificar`: os JSON gerados estão em dia com os `.txt` da base |
 | `cenarios_coerentes` | No `cenarios.json`, as dependências e as alternativas existem, e as sequências respeitam-nas |
 | `referencias_em_dia` | `gera_referencias.pl --verificar`: as referências em `referencia_prolog/` são o que o wrapper dá hoje |
+| `ac13_meta_em_dia` | `gera_meta.pl --verificar`: o `facto_dispara_regras/2` do `soc_suporte.txt` é o que as regras dão hoje |
 
 Estado: o motor (`soc_motor.pl`, ainda com o menu no mesmo ficheiro), os resultados de referência da v6, o wrapper e os
 testes estão aqui.

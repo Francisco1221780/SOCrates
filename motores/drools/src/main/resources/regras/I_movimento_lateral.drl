@@ -1,0 +1,97 @@
+package regras;
+
+// I. POLITICAS DE ACESSO E MOVIMENTO LATERAL (soc_regras.txt, base v6, R38-R41)
+//
+// R38: login com sucesso a partir de uma origem que a politica nao autoriza, e a politica esta completa
+//      -> violacao_politica
+// R39: login da DMZ para a rede interna, sem autorizacao, politica incompleta -> acesso_por_confirmar
+// R40: violacao de politica da DMZ para a rede interna -> movimento_lateral
+// R41: movimento lateral a partir de ativo com compromisso confirmado antes do login -> compromisso_provavel do destino
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.modelo.Variavel;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R38: login_ok(Ev,Destino,Origem,Servico) e nao permitido(Destino,Servico,Origem)
+//      e cobertura_politica(Destino,Servico,completa) -> violacao_politica(Ev,Destino,Origem)
+rule "R38"
+when
+    $lk : Facto(functor == "login_ok/4", $ev : arg(0), $destino : arg(1), $origem : arg(2), $servico : arg(3))
+    not Facto(functor == "permitido/3", arg(0) == $destino, arg(1) == $servico, arg(2) == $origem)
+    $cp : Facto(functor == "cobertura_politica/3", arg(0) == $destino, arg(1) == $servico, arg(2) == "completa")
+then
+    List<Premissa> p = List.of(
+        Premissa.de($lk),
+        Premissa.nao("permitido", $destino, $servico, $origem),
+        Premissa.de($cp)
+    );
+    base.cria(kcontext, 38, p, Facto.de("violacao_politica", $ev, $destino, $origem));
+end
+
+// R39: login_ok(Ev,Destino,Origem,Servico) e nao permitido(Destino,Servico,Origem)
+//      e nao cobertura_politica(Destino,Servico,completa) e zona(Origem,dmz) e zona(Destino,rede_interna)
+//      -> acesso_por_confirmar + motivo + incidente
+rule "R39"
+when
+    $lk : Facto(functor == "login_ok/4", $ev : arg(0), $destino : arg(1), $origem : arg(2), $servico : arg(3))
+    not Facto(functor == "permitido/3", arg(0) == $destino, arg(1) == $servico, arg(2) == $origem)
+    not Facto(functor == "cobertura_politica/3", arg(0) == $destino, arg(1) == $servico, arg(2) == "completa")
+    $zo : Facto(functor == "zona/2", arg(0) == $origem, arg(1) == "dmz")
+    $zd : Facto(functor == "zona/2", arg(0) == $destino, arg(1) == "rede_interna")
+then
+    List<Premissa> p = List.of(
+        Premissa.de($lk),
+        Premissa.nao("permitido", $destino, $servico, $origem),
+        Premissa.nao("cobertura_politica", $destino, $servico, "completa"),
+        Premissa.de($zo),
+        Premissa.de($zd)
+    );
+    Termo inc = Termo.de("inc", "politica_por_confirmar", $ev);
+    base.cria(kcontext, 39, p, Facto.de("acesso_por_confirmar", $ev, $destino, $origem));
+    base.cria(kcontext, 39, p, Facto.de("motivo", inc, Termo.de("sem_regra_para", $servico, $origem)));
+    base.cria(kcontext, 39, p, Facto.de("incidente", inc, "politica_por_confirmar", $destino, List.of($destino)));
+end
+
+// R40: violacao_politica(Ev,Destino,Origem) e zona(Origem,dmz) e zona(Destino,rede_interna)
+//      -> movimento_lateral + acao(revogar_credenciais) + acao(cortar_sessoes) + incidente
+rule "R40"
+when
+    $vp : Facto(functor == "violacao_politica/3", $ev : arg(0), $destino : arg(1), $origem : arg(2))
+    $zo : Facto(functor == "zona/2", arg(0) == $origem, arg(1) == "dmz")
+    $zd : Facto(functor == "zona/2", arg(0) == $destino, arg(1) == "rede_interna")
+then
+    List<Premissa> p = List.of(Premissa.de($vp), Premissa.de($zo), Premissa.de($zd));
+    Termo inc = Termo.de("inc", "movimento_lateral", $ev);
+    base.cria(kcontext, 40, p, Facto.de("movimento_lateral", $ev, $destino, $origem));
+    base.cria(kcontext, 40, p, Facto.de("acao", $destino, "revogar_credenciais"));
+    base.cria(kcontext, 40, p, Facto.de("acao", $destino, "cortar_sessoes"));
+    base.cria(kcontext, 40, p, Facto.de("incidente", inc, "movimento_lateral", $destino, List.of($destino)));
+end
+
+// R41: movimento_lateral(Ev,Destino,Origem) e compromisso_confirmado(Origem,EvOrigem)
+//      e janela(movimento_lateral_apos_compromisso,Janela) e depois(Ev,EvOrigem,Janela)
+//      e nao recuperado(Origem,EvOrigem)
+//      -> compromisso_provavel(Destino,Ev) + motivo
+rule "R41"
+when
+    $ml : Facto(functor == "movimento_lateral/3", $ev : arg(0), $destino : arg(1), $origem : arg(2))
+    $cc : Facto(functor == "compromisso_confirmado/2", arg(0) == $origem, $evOrigem : arg(1))
+    $jw : Facto(functor == "janela/2", arg(0) == "movimento_lateral_apos_compromisso", $janela : arg(1))
+    eval(CondicoesCalculadas.depois($ev, $evOrigem, $janela, base))
+    not Facto(functor == "recuperado/2", arg(0) == $origem, arg(1) == $evOrigem)
+then
+    List<Premissa> p = List.of(
+        Premissa.de($ml), Premissa.de($cc), Premissa.de($jw),
+        Premissa.calculada("depois", $ev, $evOrigem, $janela),
+        Premissa.nao("recuperado", $origem, $evOrigem)
+    );
+    Termo inc = Termo.de("inc", "compromisso_provavel", $ev);
+    base.cria(kcontext, 41, p, Facto.de("compromisso_provavel", $destino, $ev));
+    base.cria(kcontext, 41, p, Facto.de("motivo", inc,
+        Termo.de("login_a_partir_de_ativo_comprometido", $origem, $evOrigem)));
+end

@@ -1,0 +1,323 @@
+package regras;
+
+// L. CICLO DE VIDA DOS INCIDENTES E CONCLUSOES HISTORICAS (soc_regras.txt, base v6, R53-R73)
+//
+// As conclusoes nunca se apagam: ficam marcadas com revisto/superado/resolvido.
+// Uma conclusao historica nao alimenta regras novas.
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.modelo.Variavel;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R53: substitui(Tipo,TipoFraco) e incidente(inc(TipoFraco,Ev),...) e incidente(inc(Tipo,Ev),...)
+//      -> superado(inc(TipoFraco,Ev),inc(Tipo,Ev))
+rule "R53"
+when
+    $sub : Facto(functor == "substitui/2", $tipo : arg(0), $tipoFraco : arg(1))
+    $if  : Facto(functor == "incidente/4", $incFraco : arg(0), arg(1) == $tipoFraco, $ev1 : arg(2))
+    $is  : Facto(functor == "incidente/4", $incForte : arg(0), arg(1) == $tipo)
+    eval($incFraco instanceof Termo && $incForte instanceof Termo
+        && ((Termo)$incFraco).args().get(1).equals(((Termo)$incForte).args().get(1)))
+then
+    List<Premissa> p = List.of(Premissa.de($sub), Premissa.de($if), Premissa.de($is));
+    base.cria(kcontext, 53, p, Facto.de("superado", $incFraco, $incForte));
+end
+
+// R54: motivo(inc(compromisso,EvC2),c2_feito_pelo_programa_atacado(EvAtaque,_))
+//      e substitui(compromisso,Tipo) e incidente(inc(Tipo,EvAtaque),...)
+//      -> superado(inc(Tipo,EvAtaque),inc(compromisso,EvC2))
+rule "R54"
+when
+    $m   : Facto(functor == "motivo/2", $incComp : arg(0), $mot : arg(1))
+    eval($incComp instanceof Termo && "inc".equals(((Termo)$incComp).f())
+        && "compromisso".equals(((Termo)$incComp).args().get(0)))
+    eval($mot instanceof Termo && "c2_feito_pelo_programa_atacado".equals(((Termo)$mot).f()))
+    $sub : Facto(functor == "substitui/2", arg(0) == "compromisso", $tipo : arg(1))
+    $inc : Facto(functor == "incidente/4", $incFraco : arg(0), arg(1) == $tipo)
+    eval($incFraco instanceof Termo
+        && ((Termo)$incFraco).args().get(1).equals(((Termo)$mot).args().get(0)))
+then
+    List<Premissa> p = List.of(Premissa.de($m), Premissa.de($sub), Premissa.de($inc));
+    base.cria(kcontext, 54, p, Facto.de("superado", $incFraco, $incComp));
+end
+
+// R55: incidente(inc(inspecao_manual,Ev),...) e impacto_confirmado(Alvo,Ev,_)
+//      -> resolvido(inc(inspecao_manual,Ev),evidencia_confirmada)
+rule "R55"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), arg(1) == "inspecao_manual", $alvo : arg(2))
+    $ic  : Facto(functor == "impacto_confirmado/3", arg(0) == $alvo)
+    eval($incId instanceof Termo && ((Termo)$incId).args().get(1).equals($ic.arg(1)))
+then
+    List<Premissa> p = List.of(Premissa.de($inc), Premissa.de($ic));
+    base.cria(kcontext, 55, p, Facto.de("resolvido", $incId, "evidencia_confirmada"));
+end
+
+// R56: incidente(inc(inspecao_manual,Ev),...,Alvo,...) e sem_evidencia_observada(Ev,Alvo)
+//      -> resolvido(inc(inspecao_manual,Ev),sem_evidencia_observada)
+rule "R56"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), arg(1) == "inspecao_manual", $alvo : arg(2))
+    $seo : Facto(functor == "sem_evidencia_observada/2", $alvo2 : arg(1))
+    eval($incId instanceof Termo && ((Termo)$incId).args().get(1).equals($seo.arg(0))
+        && $alvo.equals($alvo2))
+then
+    List<Premissa> p = List.of(Premissa.de($inc), Premissa.de($seo));
+    base.cria(kcontext, 56, p, Facto.de("resolvido", $incId, "sem_evidencia_observada"));
+end
+
+// R57: motivo(inc(configuracao_por_confirmar,Ev),condicao_desconhecida(Inst,Cond)) e configuracao(Inst,Cond,_)
+//      -> resolvido(inc(configuracao_por_confirmar,Ev),configuracao_conhecida)
+rule "R57"
+when
+    $m   : Facto(functor == "motivo/2", $incId : arg(0), $mot : arg(1))
+    eval($incId instanceof Termo && "inc".equals(((Termo)$incId).f())
+        && "configuracao_por_confirmar".equals(((Termo)$incId).args().get(0)))
+    eval($mot instanceof Termo && "condicao_desconhecida".equals(((Termo)$mot).f()))
+    $cfg : Facto(functor == "configuracao/3")
+    eval(((Termo)$mot).args().get(0).equals($cfg.arg(0)) && ((Termo)$mot).args().get(1).equals($cfg.arg(1)))
+then
+    List<Premissa> p = List.of(Premissa.de($m), Premissa.de($cfg));
+    base.cria(kcontext, 57, p, Facto.de("resolvido", $incId, "configuracao_conhecida"));
+end
+
+// R58: motivo(inc(versao_por_confirmar,Ev),instalacao_sem_versao_valida(Inst)) e versao(Inst,V) e versao_valida(V)
+//      -> resolvido(inc(versao_por_confirmar,Ev),versao_registada)
+rule "R58"
+when
+    $m  : Facto(functor == "motivo/2", $incId : arg(0), $mot : arg(1))
+    eval($incId instanceof Termo && "inc".equals(((Termo)$incId).f())
+        && "versao_por_confirmar".equals(((Termo)$incId).args().get(0)))
+    eval($mot instanceof Termo && "instalacao_sem_versao_valida".equals(((Termo)$mot).f()))
+    $v  : Facto(functor == "versao/2")
+    eval(((Termo)$mot).args().get(0).equals($v.arg(0))
+        && CondicoesCalculadas.versaoValida($v.arg(1)))
+then
+    List<Premissa> p = List.of(
+        Premissa.de($m), Premissa.de($v),
+        Premissa.calculada("versao_valida", $v.arg(1))
+    );
+    base.cria(kcontext, 58, p, Facto.de("resolvido", $incId, "versao_registada"));
+end
+
+// R59: motivo(inc(catalogo_incompleto,Ev),sem_intervalos(Vuln)) e intervalo_afetado(Vuln,_,_)
+//      -> resolvido(inc(catalogo_incompleto,Ev),catalogo_completado)
+rule "R59"
+when
+    $m  : Facto(functor == "motivo/2", $incId : arg(0), $mot : arg(1))
+    eval($incId instanceof Termo && "inc".equals(((Termo)$incId).f())
+        && "catalogo_incompleto".equals(((Termo)$incId).args().get(0)))
+    eval($mot instanceof Termo && "sem_intervalos".equals(((Termo)$mot).f()))
+    $ia : Facto(functor == "intervalo_afetado/3")
+    eval(((Termo)$mot).args().get(0).equals($ia.arg(0)))
+then
+    List<Premissa> p = List.of(Premissa.de($m), Premissa.de($ia));
+    base.cria(kcontext, 59, p, Facto.de("resolvido", $incId, "catalogo_completado"));
+end
+
+// R60: incidente(inc(inventario_rede_incompleto,Ev),...,Alvo,...) e cobertura(Alvo,rede,completa)
+//      -> resolvido(inc(inventario_rede_incompleto,Ev),inventario_recolhido)
+rule "R60"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), arg(1) == "inventario_rede_incompleto", $alvo : arg(2))
+    $cob : Facto(functor == "cobertura/3", arg(0) == $alvo, arg(1) == "rede", arg(2) == "completa")
+then
+    List<Premissa> p = List.of(Premissa.de($inc), Premissa.de($cob));
+    base.cria(kcontext, 60, p, Facto.de("resolvido", $incId, "inventario_recolhido"));
+end
+
+// R61: incidente(inc(sbom_incompleto,Ev),...,Alvo,...) e cobertura(Alvo,sbom,completa)
+//      -> resolvido(inc(sbom_incompleto,Ev),inventario_recolhido)
+rule "R61"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), arg(1) == "sbom_incompleto", $alvo : arg(2))
+    $cob : Facto(functor == "cobertura/3", arg(0) == $alvo, arg(1) == "sbom", arg(2) == "completa")
+then
+    List<Premissa> p = List.of(Premissa.de($inc), Premissa.de($cob));
+    base.cria(kcontext, 61, p, Facto.de("resolvido", $incId, "inventario_recolhido"));
+end
+
+// R62: incidente(inc(politica_por_confirmar,Ev),...) e login_ok(Ev,Destino,Origem,Servico) e permitido(Destino,Servico,Origem)
+//      -> resolvido(inc(politica_por_confirmar,Ev),acesso_autorizado)
+rule "R62"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), arg(1) == "politica_por_confirmar")
+    $lk  : Facto(functor == "login_ok/4", $destino : arg(1), $origem : arg(2), $servico : arg(3))
+    eval($incId instanceof Termo && ((Termo)$incId).args().get(1).equals($lk.arg(0)))
+    $pm  : Facto(functor == "permitido/3", arg(0) == $destino, arg(1) == $servico, arg(2) == $origem)
+then
+    List<Premissa> p = List.of(Premissa.de($inc), Premissa.de($lk), Premissa.de($pm));
+    base.cria(kcontext, 62, p, Facto.de("resolvido", $incId, "acesso_autorizado"));
+end
+
+// R63: compromisso_confirmado(Alvo,Ev) e recuperado(Alvo,Ev)
+//      -> resolvido(inc(compromisso,Ev),maquina_recuperada)
+rule "R63"
+when
+    $cc : Facto(functor == "compromisso_confirmado/2", $alvo : arg(0), $ev : arg(1))
+    $rec : Facto(functor == "recuperado/2", arg(0) == $alvo, arg(1) == $ev)
+then
+    List<Premissa> p = List.of(Premissa.de($cc), Premissa.de($rec));
+    Termo inc = Termo.de("inc", "compromisso", $ev);
+    base.cria(kcontext, 63, p, Facto.de("resolvido", inc, "maquina_recuperada"));
+end
+
+// R64: exploracao_incerta(Ev,Alvo,Vuln) e exploracao_possivel(Ev,Alvo,Vuln)
+//      -> revisto(exploracao_incerta(Ev,Alvo,Vuln),esclarecida(exploracao_possivel))
+rule "R64"
+when
+    $ei : Facto(functor == "exploracao_incerta/3", $ev : arg(0), $alvo : arg(1), $vuln : arg(2))
+    $ep : Facto(functor == "exploracao_possivel/3", arg(0) == $ev, arg(1) == $alvo, arg(2) == $vuln)
+then
+    List<Premissa> p = List.of(Premissa.de($ei), Premissa.de($ep));
+    base.cria(kcontext, 64, p, Facto.de("revisto", $ei, Termo.de("esclarecida", "exploracao_possivel")));
+end
+
+// R65: exploracao_incerta(Ev,Alvo,Vuln) e tentativa_sem_impacto(Ev,Alvo,_)
+//      -> revisto(exploracao_incerta(Ev,Alvo,Vuln),esclarecida(tentativa_sem_impacto))
+rule "R65"
+when
+    $ei  : Facto(functor == "exploracao_incerta/3", $ev : arg(0), $alvo : arg(1), $vuln : arg(2))
+    $tsi : Facto(functor == "tentativa_sem_impacto/3", arg(0) == $ev, arg(1) == $alvo)
+then
+    List<Premissa> p = List.of(Premissa.de($ei), Premissa.de($tsi));
+    base.cria(kcontext, 65, p, Facto.de("revisto", $ei, Termo.de("esclarecida", "tentativa_sem_impacto")));
+end
+
+// R66: vetor_aberto(Ev,Alvo,Inst,Vuln) e fora_do_destino(Ev,Inst)
+//      -> revisto(vetor_aberto(Ev,Alvo,Inst,Vuln),porto_de_destino)
+rule "R66"
+when
+    $va : Facto(functor == "vetor_aberto/4", $ev : arg(0), $alvo : arg(1), $inst : arg(2), $vuln : arg(3))
+    eval(CondicoesCalculadas.foraDoDestino($ev, $inst, base))
+then
+    List<Premissa> p = List.of(
+        Premissa.de($va),
+        Premissa.calculada("fora_do_destino", $ev, $inst)
+    );
+    base.cria(kcontext, 66, p, Facto.de("revisto", $va, "porto_de_destino"));
+end
+
+// R67: exploracao_possivel(Ev,Alvo,Vuln) e revisto(vetor_aberto(Ev,Alvo,_,Vuln),_)
+//      e sem_vetor_exploravel(Ev,Alvo,Vuln)
+//      -> revisto(exploracao_possivel(Ev,Alvo,Vuln),sem_vetor_ate_instalacao_vulneravel)
+rule "R67"
+when
+    $ep : Facto(functor == "exploracao_possivel/3", $ev : arg(0), $alvo : arg(1), $vuln : arg(2))
+    $rv : Facto(functor == "revisto/2", $vaRev : arg(0))
+    eval($vaRev instanceof Facto && "vetor_aberto/4".equals(((Facto)$vaRev).getFunctor())
+        && ((Facto)$vaRev).arg(0).equals($ev)
+        && ((Facto)$vaRev).arg(1).equals($alvo)
+        && ((Facto)$vaRev).arg(3).equals($vuln))
+    eval(CondicoesCalculadas.semVetorExploravel($ev, $alvo, $vuln, base))
+then
+    List<Premissa> p = List.of(
+        Premissa.de($ep), Premissa.de($rv),
+        Premissa.calculada("sem_vetor_exploravel", $ev, $alvo, $vuln)
+    );
+    base.cria(kcontext, 67, p, Facto.de("revisto", $ep, "sem_vetor_ate_instalacao_vulneravel"));
+end
+
+// R68: incidente(inc(exploracao_possivel,Ev),...,Alvo,...) e revisto(exploracao_possivel(Ev,Alvo,_),_)
+//      -> resolvido(inc(exploracao_possivel,Ev),exploracao_revista)
+rule "R68"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), arg(1) == "exploracao_possivel", $alvo : arg(2))
+    $rv  : Facto(functor == "revisto/2", $epRev : arg(0))
+    eval($epRev instanceof Facto && "exploracao_possivel/3".equals(((Facto)$epRev).getFunctor()))
+    eval($incId instanceof Termo
+        && ((Termo)$incId).args().get(1).equals(((Facto)$epRev).arg(0))
+        && $alvo.equals(((Facto)$epRev).arg(1)))
+then
+    List<Premissa> p = List.of(Premissa.de($inc), Premissa.de($rv));
+    base.cria(kcontext, 68, p, Facto.de("resolvido", $incId, "exploracao_revista"));
+end
+
+// R69: motivo(inc(Tipo,Ev),evidencia_tardia(EvHost)) e evento_host(EvHost,Alvo,_)
+//      e alerta_ids(Outro,Alvo,_) e entre(Outro,Ev,EvHost)
+//      -> revisto(motivo(inc(Tipo,Ev),evidencia_tardia(EvHost)),ataque_intermedio(Outro))
+rule "R69"
+when
+    $m  : Facto(functor == "motivo/2", $incId : arg(0), $mot : arg(1))
+    eval($mot instanceof Termo && "evidencia_tardia".equals(((Termo)$mot).f()))
+    $eh : Facto(functor == "evento_host/3", $evHost : arg(0), $alvo : arg(1))
+    eval($evHost.equals(((Termo)$mot).args().get(0)))
+    $ai : Facto(functor == "alerta_ids/3", $outro : arg(0), arg(1) == $alvo)
+    eval($incId instanceof Termo
+        && CondicoesCalculadas.entre($outro, ((Termo)$incId).args().get(1), $evHost, base))
+then
+    List<Premissa> p = List.of(Premissa.de($m), Premissa.de($eh), Premissa.de($ai),
+        Premissa.calculada("entre", $outro, ((Termo)$incId).args().get(1), $evHost));
+    base.cria(kcontext, 69, p, Facto.de("revisto", $m, Termo.de("ataque_intermedio", $outro)));
+end
+
+// R70: motivo(inc(Tipo,Ev),c2_com_exploracao_incerta(EvAtaque)) e revisto(exploracao_incerta(EvAtaque,_,_),_)
+//      -> revisto(motivo(...),base_esclarecida(EvAtaque))
+rule "R70"
+when
+    $m  : Facto(functor == "motivo/2", $incId : arg(0), $mot : arg(1))
+    eval($mot instanceof Termo && "c2_com_exploracao_incerta".equals(((Termo)$mot).f()))
+    $rv : Facto(functor == "revisto/2", $eiRev : arg(0))
+    eval($eiRev instanceof Facto && "exploracao_incerta/3".equals(((Facto)$eiRev).getFunctor())
+        && ((Facto)$eiRev).arg(0).equals(((Termo)$mot).args().get(0)))
+then
+    Object evAtaque = ((Termo) $m.arg(1)).args().get(0);
+    List<Premissa> p = List.of(Premissa.de($m), Premissa.de($rv));
+    base.cria(kcontext, 70, p, Facto.de("revisto", $m, Termo.de("base_esclarecida", evAtaque)));
+end
+
+// R71: motivo(inc(Tipo,Ev),c2_no_ativo_atacado(EvAtaque)) e revisto(exploracao_possivel(EvAtaque,_,_),_)
+//      -> revisto(motivo(...),base_revista(EvAtaque))
+rule "R71"
+when
+    $m  : Facto(functor == "motivo/2", $incId : arg(0), $mot : arg(1))
+    eval($mot instanceof Termo && "c2_no_ativo_atacado".equals(((Termo)$mot).f()))
+    $rv : Facto(functor == "revisto/2", $epRev : arg(0))
+    eval($epRev instanceof Facto && "exploracao_possivel/3".equals(((Facto)$epRev).getFunctor())
+        && ((Facto)$epRev).arg(0).equals(((Termo)$mot).args().get(0)))
+then
+    Object evAtaque = ((Termo) $m.arg(1)).args().get(0);
+    List<Premissa> p = List.of(Premissa.de($m), Premissa.de($rv));
+    base.cria(kcontext, 71, p, Facto.de("revisto", $m, Termo.de("base_revista", evAtaque)));
+end
+
+// R72: motivo(inc(Tipo,Ev),origem_da_evidencia_por_confirmar(EvHost,Razao))
+//      e motivo(inc(impacto_ambiguo,Ev),evidencia_de_outro_processo(EvHost,Qual))
+//      -> revisto(motivo(...),origem_identificada(Qual))
+rule "R72"
+when
+    $m1 : Facto(functor == "motivo/2", $incId : arg(0), $mot1 : arg(1))
+    eval($mot1 instanceof Termo && "origem_da_evidencia_por_confirmar".equals(((Termo)$mot1).f()))
+    $m2 : Facto(functor == "motivo/2", $mot2 : arg(1))
+    eval($mot2 instanceof Termo && "evidencia_de_outro_processo".equals(((Termo)$mot2).f())
+        && ((Termo)$mot2).args().get(0).equals(((Termo)$mot1).args().get(0)))
+    eval($m2.arg(0) instanceof Termo && "inc".equals(((Termo)$m2.arg(0)).f())
+        && "impacto_ambiguo".equals(((Termo)$m2.arg(0)).args().get(0))
+        && $incId instanceof Termo
+        && ((Termo)$m2.arg(0)).args().get(1).equals(((Termo)$incId).args().get(1)))
+then
+    Object qual = ((Termo) $m2.arg(1)).args().get(1);
+    List<Premissa> p = List.of(Premissa.de($m1), Premissa.de($m2));
+    base.cria(kcontext, 72, p, Facto.de("revisto", $m1, Termo.de("origem_identificada", qual)));
+end
+
+// R73: revisto(motivo(Inc,_),_) e todos_motivos_revistos(Inc)
+//      -> resolvido(Inc,motivos_revistos)
+rule "R73"
+when
+    $rv : Facto(functor == "revisto/2", $motRev : arg(0))
+    eval($motRev instanceof Facto && "motivo/2".equals(((Facto)$motRev).getFunctor()))
+    eval(CondicoesCalculadas.todosMotivosRevistos(((Facto)$motRev).arg(0), base))
+then
+    Object inc = ((Facto) $rv.arg(0)).arg(0);
+    List<Premissa> p = List.of(
+        Premissa.de($rv),
+        Premissa.calculada("todos_motivos_revistos", inc)
+    );
+    base.cria(kcontext, 73, p, Facto.de("resolvido", inc, "motivos_revistos"));
+end

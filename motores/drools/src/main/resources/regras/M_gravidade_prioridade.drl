@@ -1,0 +1,203 @@
+package regras;
+
+// M. GRAVIDADE, PRIORIDADE E TICKETS (soc_regras.txt, base v6, R74-R88)
+//
+// R74: criticidade >= 8 -> ativo critico
+// R75: criticidade < 8  -> ativo normal
+// R76: confianca alta   -> gravidade = severidade do tipo
+// R77: confianca baixa  -> gravidade = nivel abaixo da severidade
+// R78: impactados = [_] -> impacto local
+// R79: impactados = [_,_|_] -> impacto alargado
+// R80: gravidade + classe_ativo -> prioridade_base (matriz)
+// R81: impacto local -> prioridade = prioridade_base
+// R82: impacto alargado -> prioridade sobe um nivel (prioridade_acima)
+// R83: incidente com prioridade -> ticket
+// R84: prioridade p1 -> escalacao para nivel 2
+// R85: ticket de incidente superado -> ticket fechado (superado_por)
+// R86: ticket de incidente resolvido -> ticket fechado
+// R87: ticket fechado de provavel -> pergunta de confirmacao retirada
+// R88: ticket fechado de inspecao manual -> perguntas de evidencia retiradas
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.modelo.Variavel;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R74: avalia(criticidade(Ativo,>=,8)) -> classe_ativo(Ativo,critico)
+rule "R74"
+when
+    $c : Facto(functor == "criticidade/2", $ativo : arg(0), $n : arg(1))
+    eval(((Number) $n).longValue() >= 8)
+then
+    List<Premissa> p = List.of(Premissa.calculada("criticidade", $ativo, ">=", 8L));
+    base.cria(kcontext, 74, p, Facto.de("classe_ativo", $ativo, "critico"));
+end
+
+// R75: avalia(criticidade(Ativo,<,8)) -> classe_ativo(Ativo,normal)
+rule "R75"
+when
+    $c : Facto(functor == "criticidade/2", $ativo : arg(0), $n : arg(1))
+    eval(((Number) $n).longValue() < 8)
+then
+    List<Premissa> p = List.of(Premissa.calculada("criticidade", $ativo, "<", 8L));
+    base.cria(kcontext, 75, p, Facto.de("classe_ativo", $ativo, "normal"));
+end
+
+// R76: incidente(Inc,Tipo,_,_) e severidade(Tipo,S) e confianca(Tipo,alta) -> gravidade(Inc,S)
+rule "R76"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), $tipo : arg(1))
+    $sv  : Facto(functor == "severidade/2", arg(0) == $tipo, $s : arg(1))
+    $cn  : Facto(functor == "confianca/2", arg(0) == $tipo, arg(1) == "alta")
+then
+    List<Premissa> p = List.of(Premissa.de($inc), Premissa.de($sv), Premissa.de($cn));
+    base.cria(kcontext, 76, p, Facto.de("gravidade", $incId, $s));
+end
+
+// R77: incidente(Inc,Tipo,_,_) e severidade(Tipo,S) e confianca(Tipo,baixa) e nivel_abaixo(S,G)
+//      -> gravidade(Inc,G)
+rule "R77"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), $tipo : arg(1))
+    $sv  : Facto(functor == "severidade/2", arg(0) == $tipo, $s : arg(1))
+    $cn  : Facto(functor == "confianca/2", arg(0) == $tipo, arg(1) == "baixa")
+    $na  : Facto(functor == "nivel_abaixo/2", arg(0) == $s, $g : arg(1))
+then
+    List<Premissa> p = List.of(Premissa.de($inc), Premissa.de($sv), Premissa.de($cn), Premissa.de($na));
+    base.cria(kcontext, 77, p, Facto.de("gravidade", $incId, $g));
+end
+
+// R78: incidente(Inc,_,_,[_]) -> impacto(Inc,local)
+// A lista de impactados tem um so elemento: arg(3) e uma lista de tamanho 1.
+rule "R78"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), $impactados : arg(3))
+    eval($impactados instanceof java.util.List && ((java.util.List<?>)$impactados).size() == 1)
+then
+    List<Premissa> p = List.of(Premissa.de($inc));
+    base.cria(kcontext, 78, p, Facto.de("impacto", $incId, "local"));
+end
+
+// R79: incidente(Inc,_,_,[_,_|_]) -> impacto(Inc,alargado)
+// A lista de impactados tem dois ou mais elementos.
+rule "R79"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), $impactados : arg(3))
+    eval($impactados instanceof java.util.List && ((java.util.List<?>)$impactados).size() >= 2)
+then
+    List<Premissa> p = List.of(Premissa.de($inc));
+    base.cria(kcontext, 79, p, Facto.de("impacto", $incId, "alargado"));
+end
+
+// R80: incidente(Inc,_,Ativo,_) e gravidade(Inc,G) e classe_ativo(Ativo,C) e matriz_prioridade(G,C,P)
+//      -> prioridade_base(Inc,P)
+rule "R80"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), $ativo : arg(2))
+    $gv  : Facto(functor == "gravidade/2", arg(0) == $incId, $g : arg(1))
+    $ca  : Facto(functor == "classe_ativo/2", arg(0) == $ativo, $c : arg(1))
+    $mp  : Facto(functor == "matriz_prioridade/3", arg(0) == $g, arg(1) == $c, $p : arg(2))
+then
+    List<Premissa> p = List.of(Premissa.de($inc), Premissa.de($gv), Premissa.de($ca), Premissa.de($mp));
+    base.cria(kcontext, 80, p, Facto.de("prioridade_base", $incId, $p));
+end
+
+// R81: prioridade_base(Inc,P) e impacto(Inc,local) -> prioridade(Inc,P)
+rule "R81"
+when
+    $pb : Facto(functor == "prioridade_base/2", $incId : arg(0), $p : arg(1))
+    $im : Facto(functor == "impacto/2", arg(0) == $incId, arg(1) == "local")
+then
+    List<Premissa> p = List.of(Premissa.de($pb), Premissa.de($im));
+    base.cria(kcontext, 81, p, Facto.de("prioridade", $incId, $p));
+end
+
+// R82: prioridade_base(Inc,P0) e impacto(Inc,alargado) e prioridade_acima(P0,P) -> prioridade(Inc,P)
+rule "R82"
+when
+    $pb : Facto(functor == "prioridade_base/2", $incId : arg(0), $p0 : arg(1))
+    $im : Facto(functor == "impacto/2", arg(0) == $incId, arg(1) == "alargado")
+    $pa : Facto(functor == "prioridade_acima/2", arg(0) == $p0, $p : arg(1))
+then
+    List<Premissa> p = List.of(Premissa.de($pb), Premissa.de($im), Premissa.de($pa));
+    base.cria(kcontext, 82, p, Facto.de("prioridade", $incId, $p));
+end
+
+// R83: incidente(Inc,Tipo,Ativo,Impactados) e resposta(Tipo,Acao) e gravidade(Inc,G) e prioridade(Inc,P)
+//      -> ticket(Inc,Ativo,Acao,G,P,Impactados)
+rule "R83"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), $tipo : arg(1), $ativo : arg(2), $impactados : arg(3))
+    $rsp : Facto(functor == "resposta/2", arg(0) == $tipo, $acao : arg(1))
+    $gv  : Facto(functor == "gravidade/2", arg(0) == $incId, $g : arg(1))
+    $pr  : Facto(functor == "prioridade/2", arg(0) == $incId, $p : arg(1))
+then
+    List<Premissa> p = List.of(Premissa.de($inc), Premissa.de($rsp), Premissa.de($gv), Premissa.de($pr));
+    base.cria(kcontext, 83, p, Facto.de("ticket", $incId, $ativo, $acao, $g, $p, $impactados));
+end
+
+// R84: prioridade(Inc,p1) e incidente(Inc,_,Ativo,_) -> acao(Ativo,escalar_nivel2)
+rule "R84"
+when
+    $pr  : Facto(functor == "prioridade/2", $incId : arg(0), arg(1) == "p1")
+    $inc : Facto(functor == "incidente/4", arg(0) == $incId, $ativo : arg(2))
+then
+    List<Premissa> p = List.of(Premissa.de($pr), Premissa.de($inc));
+    base.cria(kcontext, 84, p, Facto.de("acao", $ativo, "escalar_nivel2"));
+end
+
+// R85: ticket(Inc,_,_,_,_,_) e superado(Inc,Por) -> ticket_fechado(Inc,superado_por(Por))
+rule "R85"
+when
+    $tk : Facto(functor == "ticket/6", $incId : arg(0))
+    $sp : Facto(functor == "superado/2", arg(0) == $incId, $por : arg(1))
+then
+    List<Premissa> p = List.of(Premissa.de($tk), Premissa.de($sp));
+    base.cria(kcontext, 85, p, Facto.de("ticket_fechado", $incId, Termo.de("superado_por", $por)));
+end
+
+// R86: ticket(Inc,_,_,_,_,_) e resolvido(Inc,Motivo) -> ticket_fechado(Inc,Motivo)
+rule "R86"
+when
+    $tk : Facto(functor == "ticket/6", $incId : arg(0))
+    $rv : Facto(functor == "resolvido/2", arg(0) == $incId, $motivo : arg(1))
+then
+    List<Premissa> p = List.of(Premissa.de($tk), Premissa.de($rv));
+    base.cria(kcontext, 86, p, Facto.de("ticket_fechado", $incId, $motivo));
+end
+
+// R87: pergunta_analista(Alvo,Ev,Pergunta) e pergunta_confirmacao(Tipo,Pergunta)
+//      e ticket_fechado(inc(Tipo,Ev),_) -> pergunta_retirada(Alvo,Ev,Pergunta)
+rule "R87"
+when
+    $pa : Facto(functor == "pergunta_analista/3", $alvo : arg(0), $ev : arg(1), $pergunta : arg(2))
+    $pc : Facto(functor == "pergunta_confirmacao/2", $tipo : arg(0), arg(1) == $pergunta)
+    $tf : Facto(functor == "ticket_fechado/2", $tfIncId : arg(0))
+    eval($tfIncId instanceof Termo
+        && "inc".equals(((Termo)$tfIncId).f())
+        && ((Termo)$tfIncId).args().get(0).equals($tipo)
+        && ((Termo)$tfIncId).args().get(1).equals($ev))
+then
+    List<Premissa> p = List.of(Premissa.de($pa), Premissa.de($pc), Premissa.de($tf));
+    base.cria(kcontext, 87, p, Facto.de("pergunta_retirada", $alvo, $ev, $pergunta));
+end
+
+// R88: pergunta_analista(Alvo,Ev,Pergunta) e pergunta_evidencia(_,Pergunta)
+//      e ticket_fechado(inc(inspecao_manual,Ev),_) -> pergunta_retirada(Alvo,Ev,Pergunta)
+rule "R88"
+when
+    $pa : Facto(functor == "pergunta_analista/3", $alvo : arg(0), $ev : arg(1), $pergunta : arg(2))
+    $pe : Facto(functor == "pergunta_evidencia/2", arg(1) == $pergunta)
+    $tf : Facto(functor == "ticket_fechado/2", $tfIncId : arg(0))
+    eval($tfIncId instanceof Termo
+        && "inc".equals(((Termo)$tfIncId).f())
+        && "inspecao_manual".equals(((Termo)$tfIncId).args().get(0))
+        && ((Termo)$tfIncId).args().get(1).equals($ev))
+then
+    List<Premissa> p = List.of(Premissa.de($pa), Premissa.de($pe), Premissa.de($tf));
+    base.cria(kcontext, 88, p, Facto.de("pergunta_retirada", $alvo, $ev, $pergunta));
+end

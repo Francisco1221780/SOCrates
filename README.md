@@ -54,7 +54,7 @@ ninguém assumir uma peça que ainda não corre.
 | `wrapper.pl` (`motores/prolog/`) | Feito: pedido e resposta JSON, passos, erros (issue #9) |
 | `PrologAdapter` e `PrologInstaller` | Feito (issue #11): lança o `wrapper.pl` num processo `swipl` por pedido, com timeout, limite de processos e cópia dos ficheiros Prolog dentro do jar |
 | Controllers, validação do pedido, UI, comparador | Por fazer |
-| Scripts de geração (`gera_meta.pl`, `gera_json.pl`) | Feito: `gera_json.pl` gera `factos_iniciais.json` e `cenarios.json` (issue #10) |
+| Scripts de geração (`gera_meta.pl`, `gera_json.pl`) | Feito: `gera_json.pl` gera `factos_iniciais.json` e `cenarios.json` (issue #10); `gera_meta.pl --verificar` diz se o metaconhecimento está em dia (AC13) |
 
 ---
 

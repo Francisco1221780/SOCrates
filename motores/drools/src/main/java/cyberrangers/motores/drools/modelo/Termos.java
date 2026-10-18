@@ -26,7 +26,7 @@ final class Termos {
 
     private static Object normaliza(Object o) {
         if (o instanceof String || o instanceof Long || o instanceof Double
-                || o instanceof Termo || o instanceof Variavel) {
+                || o instanceof Termo || o instanceof Variavel || o instanceof Facto) {
             return o;
         }
         if (o instanceof Integer || o instanceof Short || o instanceof Byte) {
