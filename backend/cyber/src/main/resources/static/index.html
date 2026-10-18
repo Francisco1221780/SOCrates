@@ -13812,6 +13812,373 @@ render = function() {
 // ---------------------------------------------------------------------
 // 6. INSPETOR V5.3 (BANNER C7 NO TOPO, CAMINHO CAUSAL, EXPLICACOES LIMPAS E ABA API/JSON)
 // ---------------------------------------------------------------------
+/* =====================================================================
+   V6.1: EXPLICAÇÕES E COMPARAÇÃO DE MOTORES COM DADOS REAIS DA API
+   - Explicações (Quem/Onde/O quê/Quando, árvore "Como?", "Porquê não?")
+     construídas só com factos[].regra/premissas da resposta do motor
+   - Comparação Prolog vs Drools com as duas respostas reais (nível A e B)
+   - Mesmo markup e mesmas classes do módulo original
+   ===================================================================== */
+function v61Fmt(t) {
+  if (t === null || t === undefined) return 'null';
+  if (Array.isArray(t)) return '[' + t.map(v61Fmt).join(', ') + ']';
+  if (typeof t === 'object' && 'f' in t) return t.f + '(' + (t.args || []).map(v61Fmt).join(', ') + ')';
+  if (typeof t === 'object') return JSON.stringify(t);
+  return String(t);
+}
+const v61Fact = f => f.predicado + '(' + (f.args || []).map(v61Fmt).join(', ') + ')';
+const v61Key = f => f ? f.predicado + JSON.stringify(f.args) : '';
+function v61Atoms(t, out = new Set()) {
+  if (Array.isArray(t)) t.forEach(x => v61Atoms(x, out));
+  else if (t && typeof t === 'object') { if (t.f) out.add(t.f); (t.args || []).forEach(x => v61Atoms(x, out)); }
+  else if (typeof t === 'string') out.add(t);
+  return out;
+}
+// indice de uma resposta do motor (guardado na propria resposta)
+function v61Idx(res) {
+  if (!res || !Array.isArray(res.factos)) return null;
+  if (res._v61) return res._v61;
+  const byNum = new Map(), usedBy = new Map(), signif = new Map(), level = new Map();
+  res.factos.forEach(f => {
+    byNum.set(f.numero, f);
+    (f.premissas || []).forEach(p => { if (typeof p === 'number') { if (!usedBy.has(p)) usedBy.set(p, []); usedBy.get(p).push(f.numero); } });
+    if (f.predicado === 'significado' && typeof f.args?.[0] === 'string') signif.set(f.args[0], f.args[1]);
+  });
+  const lv = n => {
+    if (level.has(n)) return level.get(n);
+    const f = byNum.get(n);
+    if (!f || f.origem !== 'regra') { level.set(n, 0); return 0; }
+    level.set(n, 1);
+    let m = 0;
+    (f.premissas || []).forEach(p => { if (typeof p === 'number' && byNum.has(p)) m = Math.max(m, lv(p)); });
+    level.set(n, m + 1); return m + 1;
+  };
+  res.factos.forEach(f => lv(f.numero));
+  const ordem = pred => { const next = new Map(); res.factos.forEach(f => { if (f.predicado === pred && f.args?.length === 2) next.set(JSON.stringify(f.args[0]), JSON.stringify(f.args[1])); }); const r = new Map(); for (const k of next.keys()) { let n = 0, x = k; const seen = new Set(); while (next.has(x) && next.get(x) !== x && !seen.has(x)) { seen.add(x); x = next.get(x); n++; } r.set(k, n); } return r; };
+  return (res._v61 = {byNum, usedBy, signif, level, prio: ordem('prioridade_acima'),
+    ticketByFact: new Map((res.tickets || []).map(t => [t.facto, t])),
+    pergByFact: new Map((res.perguntas || []).map(q => [q.facto, q]))});
+}
+const v61Eng = () => (S.engine === 'drools' ? 'drools' : 'prolog');
+const v61Res = (eng = v61Eng()) => S.engineResults?.[eng]?.[S.scen || 'all'] || null;
+const v61PrioRank = (ix, p) => { const r = ix.prio.get(JSON.stringify(p)); return r === undefined ? 99 : r; };
+
+// conclusoes que se podem explicar: tickets (abertos primeiro, por prioridade) e perguntas pendentes
+function v61Conclusoes(res, ix) {
+  const ts = [...(res.tickets || [])].sort((a, b) => (a.fechado == null ? 0 : 1) - (b.fechado == null ? 0 : 1) || v61PrioRank(ix, a.prioridade) - v61PrioRank(ix, b.prioridade) || a.facto - b.facto);
+  const out = ts.map(t => ({n: t.facto, lbl: `${String(v61Fmt(t.prioridade)).toUpperCase()} · ${v61Fmt(typeof t.acao === 'object' ? t.acao.f : t.acao)} · ${v61Fmt(t.ativo)}${t.fechado != null ? ' · fechado' : ''}`}));
+  (res.perguntas || []).forEach(q => out.unshift({n: q.facto, lbl: `⚠ PERGUNTA · ${v61Fmt(q.pergunta)} · ${v61Fmt(q.ativo)}`}));
+  return out;
+}
+function v61ProvaDe(ix, num) {
+  const derived = [], leaves = new Map(), conds = [], seen = new Set();
+  const walk = n => {
+    if (seen.has(n)) return; seen.add(n);
+    const x = ix.byNum.get(n); if (!x) return;
+    if (x.origem !== 'regra') { leaves.set(n, x); return; }
+    derived.push(x);
+    (x.premissas || []).forEach(p => typeof p === 'number' ? walk(p) : conds.push({p, of: x}));
+  };
+  walk(num);
+  derived.sort((a, b) => ix.level.get(a.numero) - ix.level.get(b.numero) || a.numero - b.numero);
+  return {derived, leaves, conds};
+}
+const v61IsResp = f => f.origem === 'entrada' && f.passo != null && !(window._LAST_CENARIOS_LIST || []).some(c => c.id === f.passo);
+
+function buildRealExplanationHtml() {
+  const res = v61Res(), ix = v61Idx(res);
+  if (!res || !ix) return null;
+  const concl = v61Conclusoes(res, ix);
+  if (S.v61Exp == null || !ix.byNum.has(S.v61Exp)) S.v61Exp = concl[0]?.n ?? null;
+  const f = S.v61Exp != null ? ix.byNum.get(S.v61Exp) : null;
+  const scenLbl = (S.scen || 'all') === 'all' ? 'VISTA GLOBAL' : S.scen.toUpperCase();
+  const cab = `
+    <div class="icard">
+      <span class="ict">conclusão sob auditoria pericial (${esc(scenLbl)} · ${esc(v61Eng().toUpperCase())})</span>
+      <select id="v61ExpSel" style="display:block;width:100%;max-width:100%;box-sizing:border-box;background:#050b11;border:1px solid var(--line2);color:#fff;border-radius:5px;padding:6px 8px;font-family:var(--mono);font-size:11px;margin-bottom:6px">
+        ${concl.map(c => `<option value="${c.n}" ${c.n === S.v61Exp ? 'selected' : ''}>${esc(c.lbl)}</option>`).join('')}
+      </select>
+      ${f ? `<div style="font-size:12px;font-weight:700;color:var(--cyan);font-family:var(--mono);word-break:break-word">${esc(v61Fact(f))}</div>
+      ${[...v61Atoms([f.predicado, f.args])].filter(a => ix.signif.has(a)).map(a => `<div style="font-size:10.5px;color:#bae6fd;margin-top:5px;padding:5px 8px;background:#040c14;border-left:2px solid var(--cyan);border-radius:3px"><b style="color:var(--cyan)">${esc(a)}</b> · ${esc(v61Fmt(ix.signif.get(a)))}</div>`).join('')}` : '<div style="font-size:11px;color:var(--dim)">O motor não produziu tickets nem perguntas nesta execução.</div>'}
+    </div>`;
+  if (!f) return cab;
+  const {derived, leaves, conds} = v61ProvaDe(ix, f.numero);
+  const ent = [...leaves.values()].filter(x => x.origem === 'entrada');
+  const base = [...leaves.values()].filter(x => x.origem === 'inicial');
+  const t = ix.ticketByFact.get(f.numero), q = ix.pergByFact.get(f.numero);
+  const ativos = new Set();
+  (res.tickets || []).forEach(x => { v61Atoms(x.ativo, ativos); v61Atoms(x.impactados, ativos); });
+  const alvo = [...v61Atoms(t ? t.ativo : q ? q.ativo : f.args)].filter(a => ativos.has(a));
+  const doAtivo = x => { const s = v61Atoms(x.args); return alvo.some(a => s.has(a) || [...s].some(y => typeof y === 'string' && y.startsWith(a + '_'))); };
+  const fx = x => `${esc(v61Fact(x))} <span style="color:var(--dim)">(#${x.numero})</span>`;
+  const lista = (xs, n) => xs.length ? xs.slice(0, n).map(fx).join(' · ') + (xs.length > n ? ` <span style="color:var(--dim)">+${xs.length - n}</span>` : '') : '<span style="color:var(--dim)">—</span>';
+  const evAtoms = new Set(); ent.forEach(x => v61Atoms(x.args, evAtoms));
+  const tempos = res.factos.filter(x => x.predicado === 'tempo' && evAtoms.has(x.args?.[0])).sort((a, b) => Number(a.args[1]) - Number(b.args[1]));
+  const temporais = conds.filter(c => !(c.p && c.p.f === 'nao'));
+  const passosEv = [...new Set(ent.map(x => x.passo))];
+  const ctx = `
+    <div class="icard">
+      <span class="ict">👤 contexto forense (quem · onde · o quê · quando)</span>
+      <div class="forensic-ctx-grid">
+        <div class="fctx-item who"><div class="fctx-head"><span style="color:#fb7185">QUEM · Origem / Evidência</span><span>Telemetria · ${esc(passosEv.join(', ') || '—')}</span></div>
+          <div style="color:#e2eef3">${lista(ent.filter(x => !doAtivo(x) && x.predicado !== 'tempo'), 6)}</div></div>
+        <div class="fctx-item where"><div class="fctx-head"><span style="color:#38bdf8">ONDE · Ativo Alvo</span><span>${esc(alvo.join(', ') || '—')}</span></div>
+          <div style="color:#e2eef3">${lista(base.filter(doAtivo).concat(ent.filter(x => doAtivo(x) && x.predicado !== 'tempo')), 7)}</div></div>
+        <div class="fctx-item what"><div class="fctx-head"><span style="color:#c084fc">O QUÊ · Conhecimento da Base</span><span>${base.length} factos</span></div>
+          <div style="color:#e2eef3">${lista(base.filter(x => !doAtivo(x)), 6)}</div></div>
+        <div class="fctx-item when"><div class="fctx-head"><span style="color:#fbbf24">QUANDO · Cronologia & Condições</span><span>tempo/2</span></div>
+          <div style="color:#e2eef3">${tempos.length ? tempos.map(x => `${esc(v61Fmt(x.args[0]))} em t = ${esc(v61Fmt(x.args[1]))} s`).join(' · ') : '<span style="color:var(--dim)">sem tempo/2 na evidência</span>'}
+          ${temporais.length ? '<br>' + temporais.slice(0, 4).map(c => esc(v61Fmt(c.p)) + ' → TRUE').join(' · ') : ''}</div></div>
+      </div>
+    </div>`;
+  const badge = {kb: 'FACTO KB', in: 'TELEMETRIA', resp: 'ANALISTA', calc: 'CALCULADA', naf: 'NEGAÇÃO \\+', ded: 'DEDUZIDO'};
+  const passoDe = new Map(derived.map((x, i) => [x.numero, i + 1]));
+  const prem = p => {
+    if (typeof p !== 'number') {
+      if (p && p.f === 'nao') return `<div class="how-premise-row"><span class="prem-badge naf">${badge.naf}</span><span style="color:#e2eef3">\\+ ${esc(v61Fmt(p.args?.[0]))} → TRUE</span></div>`;
+      return `<div class="how-premise-row"><span class="prem-badge calc">${badge.calc}</span><span style="color:#e2eef3">${esc(v61Fmt(p))} → TRUE</span></div>`;
+    }
+    const x = ix.byNum.get(p);
+    if (!x) return `<div class="how-premise-row"><span class="prem-badge kb">?</span><span>#${p}</span></div>`;
+    const k = x.origem === 'regra' ? 'ded' : x.origem === 'inicial' ? 'kb' : v61IsResp(x) ? 'calc' : 'in';
+    const lbl = x.origem === 'entrada' && v61IsResp(x) ? badge.resp : badge[k];
+    return `<div class="how-premise-row"><span class="prem-badge ${k}">${lbl}</span><span style="color:#e2eef3">facto(${x.numero}, ${esc(v61Fact(x))})${x.origem === 'regra' ? ` <a href="#" class="v61-jump" data-n="${x.numero}" style="color:#7dd3fc">← passo ${passoDe.get(x.numero) ?? '?'} · R${esc(v61Fmt(x.regra))}</a>` : x.origem === 'entrada' ? ` <span style="color:var(--dim)">[${esc(x.passo)}]</span>` : ''}</span></div>`;
+  };
+  const how = `
+    <div class="icard">
+      <span class="ict">🌳 árvore completa "como?" (how · prova positiva)</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px">
+        <span style="font-size:10.5px;color:var(--dim)">${derived.length} regras disparadas, da evidência até à conclusão (justifica/3 do motor):</span>
+        <div style="display:flex;gap:4px">
+          <button class="btn-xs" onclick="toggleAllHowTreeDetails(true)">▾ Expandir Todos</button>
+          <button class="btn-xs" onclick="toggleAllHowTreeDetails(false)">▸ Recolher Todos</button>
+        </div>
+      </div>
+      <div class="tree-box">
+        ${derived.map((x, i) => `
+          <details class="how-tree-details" id="v61step-${x.numero}" ${i >= derived.length - 3 ? 'open' : ''}>
+            <summary><div class="how-sum-body">
+              <div class="how-sum-top"><span class="origin-pill regra">${i + 1} · R${esc(v61Fmt(x.regra))}</span>
+                <span style="font-size:9px;color:var(--dim);font-family:var(--mono)">${(x.premissas || []).length} premissa(s)${x.passo ? ' · ' + esc(x.passo) : ''}</span></div>
+              <div class="how-sum-goal">${esc(v61Fact(x))}</div></div></summary>
+            <div class="how-tree-children">
+              ${ix.signif.has(x.predicado) ? `<div style="font-size:10.5px;color:#bae6fd;margin:4px 0 6px">${esc(v61Fmt(ix.signif.get(x.predicado)))}</div>` : ''}
+              ${(x.premissas || []).map(prem).join('')}
+            </div>
+          </details>`).join('')}
+      </div>
+    </div>`;
+  // porque nao: as negacoes verificadas na prova (hipoteses que o motor confirmou que NAO se concluiram)
+  const negs = conds.filter(c => c.p && c.p.f === 'nao' && c.p.args?.[0]);
+  const wnRes = S.v61Whynot || {};
+  const whynot = `
+    <div class="icard">
+      <span class="ict">🚫 diagnóstico formal "porquê não?" (why-not · refutação)</span>
+      <div style="font-size:10.5px;color:var(--dim);margin-bottom:8px">
+        Hipóteses alternativas que as regras desta prova exigiram que <b>não</b> se verificassem (negação por falha) e que, de facto, não foram concluídas:
+      </div>
+      <div>
+        ${negs.length ? negs.slice(0, 12).map((c, i) => {
+          const alvoNeg = c.p.args[0];
+          const outros = (c.of.premissas || []).filter(p => p !== c.p).slice(0, 4);
+          const k = 'wn' + c.of.numero + '_' + i;
+          const st = wnRes[k];
+          return `<div class="whynot-formal-card">
+            <div class="wn-card-head"><span class="origin-pill regra">R${esc(v61Fmt(c.of.regra))}</span><div class="wn-card-goal">✕ ${esc(v61Fmt(alvoNeg))}</div></div>
+            ${outros.map(p => `<div class="wn-check-row pass">✓ ${typeof p === 'number' ? esc(v61Fact(ix.byNum.get(p) || {predicado: '#' + p, args: []})) : esc(v61Fmt(p))}</div>`).join('')}
+            <div class="wn-check-row fail">✕ ${esc(v61Fmt(alvoNeg))} não está na memória de trabalho: nenhuma regra o concluiu, por isso a condição <b>\\+ ${esc(alvoNeg.f || '')}</b> da R${esc(v61Fmt(c.of.regra))} verificou-se.</div>
+            <div style="margin-top:5px"><button class="btn-xs v61-whynot" data-k="${k}" data-f='${esc(JSON.stringify(alvoNeg))}' style="border-color:#fb7185;color:#fda4af">🔍 Perguntar ao motor porque não (whynot)</button></div>
+            ${st ? v61WhynotResultHtml(st) : ''}
+          </div>`;
+        }).join('') : '<div style="font-size:10.5px;color:var(--dim)">Esta prova não tem negações. Pode perguntar ao motor por qualquer outro facto:</div>'}
+        <div style="display:flex;gap:4px;margin-top:8px">
+          <input id="v61WnInput" placeholder="ex.: compromisso_confirmado(web_srv_04, ev_e1)" value="${esc(S.v61WnTxt || '')}" style="flex:1;background:#050b11;border:1px solid var(--line2);color:#fff;border-radius:4px;padding:5px 7px;font-family:var(--mono);font-size:10.5px">
+          <button class="btn-xs" id="v61WnGo" style="border-color:#fb7185;color:#fda4af">Porquê não?</button>
+        </div>
+        ${wnRes.livre ? v61WhynotResultHtml(wnRes.livre) : ''}
+      </div>
+    </div>`;
+  return cab + ctx + how + whynot;
+}
+function v61WhynotResultHtml(st) {
+  if (st.loading) return `<div class="wn-check-row" style="color:var(--dim)">a perguntar ao motor…</div>`;
+  if (!st.ok && [404, 405, 501].includes(st.status)) return `<div class="wn-check-row fail" style="font-weight:400">O backend ainda não expõe <code>POST /api/${esc(v61Eng())}/whynot</code> (HTTP ${st.status}). Está previsto no plano (M8, issue #7). O motor Prolog já tem <code>whynot/1</code> na consola; quando o endpoint existir, a árvore do motor aparece aqui.</div>`;
+  if (!st.ok) return `<div class="wn-check-row fail">HTTP ${st.status || '—'}: ${esc(st.erro || '')}</div>`;
+  return `<pre style="font-size:10px;color:#fda4af;max-height:220px;overflow:auto;margin-top:5px">${esc(JSON.stringify(st.data, null, 2))}</pre>`;
+}
+function v61ParseTermo(txt) {
+  const m = String(txt).trim().match(/^([a-z][\w]*)\s*\((.*)\)\s*$/);
+  if (!m) return null;
+  const args = m[2].split(',').map(s => s.trim()).filter(Boolean).map(s => /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : s);
+  return {f: m[1], args};
+}
+async function v61PedirWhynot(k, termo) {
+  S.v61Whynot = S.v61Whynot || {};
+  S.v61Whynot[k] = {loading: true};
+  inspect();
+  const eng = v61Eng();
+  const body = {versaoKB: S.detectedKbVersion, passos: S.lastExecutedPassos || [], facto: {predicado: termo.f, args: termo.args || []}};
+  log('porquê não?', `POST /api/${eng}/whynot · ${v61Fmt(termo)}`, 'c');
+  try {
+    const r = await fetch(`${S.apiBaseUrl}/api/${eng}/whynot`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+    const txt = await r.text();
+    let data = null; try { data = JSON.parse(txt); } catch {}
+    S.v61Whynot[k] = {ok: r.ok, status: r.status, data, erro: data?.erro || txt.slice(0, 200)};
+    log('porquê não?', `HTTP ${r.status}`, r.ok ? 'ok' : 'bl');
+  } catch (e) {
+    S.v61Whynot[k] = {ok: false, status: 0, erro: e.message};
+  }
+  inspect();
+}
+
+/* ----- comparação Prolog vs Drools (respostas reais, mesmo pedido) ----- */
+function v61Comparar() {
+  const A = S.engineResults?.prolog?.[S.scen || 'all'], B = S.engineResults?.drools?.[S.scen || 'all'];
+  if (!A || !B) return null;
+  const sa = JSON.stringify(A._passos || null), sb = JSON.stringify(B._passos || null);
+  const ia = v61Idx(A), ib = v61Idx(B);
+  const kF = v61Key;
+  const conj = (l, kf) => { const m = new Map(); (l || []).forEach(x => m.set(kf(x), x)); return m; };
+  const linhas = [
+    ['Tickets', A.tickets, B.tickets, t => JSON.stringify([t.incidente, t.ativo, t.acao, t.gravidade, t.prioridade, t.impactados, t.fechado]), t => `${v61Fmt(t.prioridade)} · ${v61Fmt(t.acao)} · ${v61Fmt(t.ativo)}${t.fechado != null ? ' · fechado' : ''}`],
+    ['Perguntas', A.perguntas, B.perguntas, q => JSON.stringify([q.ativo, q.evento, q.pergunta]), q => `${v61Fmt(q.pergunta)} · ${v61Fmt(q.ativo)}`],
+    ['Incidentes', A.incidentes, B.incidentes, i => JSON.stringify(i.id), i => v61Fmt(i.id)],
+    ['Factos concluídos', (A.factos || []).filter(f => f.origem === 'regra'), (B.factos || []).filter(f => f.origem === 'regra'), kF, v61Fact],
+    ['Factos de entrada', (A.factos || []).filter(f => f.origem === 'entrada'), (B.factos || []).filter(f => f.origem === 'entrada'), kF, v61Fact],
+  ].map(([nome, la, lb, kf, show]) => {
+    const ma = conj(la, kf), mb = conj(lb, kf);
+    return {nome, na: ma.size, nb: mb.size, soA: [...ma.keys()].filter(k => !mb.has(k)).map(k => show(ma.get(k))), soB: [...mb.keys()].filter(k => !ma.has(k)).map(k => show(mb.get(k)))};
+  });
+  // nivel B: para cada conclusao comum, a mesma regra e as mesmas premissas (pelo conteudo)
+  const pk = (ix, f) => (f.premissas || []).map(p => typeof p === 'number' ? kF(ix.byNum.get(p)) : JSON.stringify(p)).sort().join(' ∧ ');
+  const mb = new Map((B.factos || []).filter(f => f.origem === 'regra').map(f => [kF(f), f]));
+  let comuns = 0; const difB = [];
+  (A.factos || []).filter(f => f.origem === 'regra').forEach(fa => {
+    const fb = mb.get(kF(fa)); if (!fb) return; comuns++;
+    if (String(fa.regra) !== String(fb.regra) || pk(ia, fa) !== pk(ib, fb)) difB.push(`${v61Fact(fa)} · Prolog R${fa.regra} · Drools R${fb.regra}`);
+  });
+  return {linhas, comuns, difB, mesmoPedido: sa === sb, A, B};
+}
+function buildRealComparisonCard() {
+  const c = v61Comparar();
+  if (!c) return `
+    <div class="icard" style="border-color:#fbbf2488">
+      <span class="ict" style="color:#fbbf24">⚖️ comparação prolog vs drools (mesmo pedido)</span>
+      <div style="font-size:11px;color:var(--dim);line-height:1.55;margin-bottom:8px">Ainda não há respostas dos dois motores para este cenário. O botão envia os mesmos passos aos dois e compara as respostas pelo conteúdo (nunca pelos números dos factos nem pela ordem de disparo).</div>
+      <button class="btn-xs" onclick="v61CorrerAmbos()" style="width:100%;border-color:#fbbf24;color:#fde68a">⚡ Correr nos dois motores e comparar</button>
+    </div>`;
+  const totA = c.linhas.reduce((s, l) => s + l.soA.length + l.soB.length, 0);
+  const tot = totA + c.difB.length;
+  return `
+    <div class="icard" style="border-color:${tot ? '#fb7185' : '#34d39988'}">
+      <span class="ict" style="color:#fbbf24">⚖️ comparação prolog vs drools (mesmo pedido)</span>
+      <div class="dual-audit-banner ${tot ? 'diff' : 'ok'}">
+        <span>${!c.mesmoPedido ? '⚠ AS RESPOSTAS SÃO DE PEDIDOS DIFERENTES: CORRA DE NOVO' : tot ? `❌ ${tot} DIFERENÇA(S) ENTRE OS MOTORES` : '✅ MESMO RESULTADO NOS DOIS MOTORES'}</span>
+        <span>${(c.A._passos || []).length} passos</span>
+      </div>
+      <table class="cmp-grid-table" style="margin-top:8px">
+        <thead><tr><th>Nível A (AC14)</th><th>Prolog</th><th>Drools</th><th>Diferenças</th></tr></thead>
+        <tbody>
+          ${c.linhas.map(l => `<tr><td>${esc(l.nome)}</td><td>${l.na}</td><td>${l.nb}</td><td style="color:${l.soA.length + l.soB.length ? '#fda4af' : '#6ee7b7'};font-weight:700">${l.soA.length + l.soB.length ? `${l.soA.length} só Prolog · ${l.soB.length} só Drools` : '✓ iguais'}</td></tr>`).join('')}
+          <tr><td><b>Nível B (AC15)</b><br><span style="font-size:9.5px;color:var(--dim)">mesma regra e premissas</span></td><td colspan="2">${c.comuns} conclusões em comum</td><td style="color:${c.difB.length ? '#fda4af' : '#6ee7b7'};font-weight:700">${c.difB.length ? c.difB.length + ' diferentes' : '✓ iguais'}</td></tr>
+        </tbody>
+      </table>
+      ${c.linhas.filter(l => l.soA.length + l.soB.length).concat(c.difB.length ? [{nome: 'Nível B', soA: c.difB, soB: []}] : []).map(l => `
+        <details class="how-tree-details" style="margin-top:6px">
+          <summary><div class="how-sum-body"><div class="how-sum-goal">${esc(l.nome)}: ${l.soA.length + l.soB.length} diferença(s)</div></div></summary>
+          <div class="how-tree-children" style="font-family:var(--mono);font-size:10.5px;max-height:240px;overflow:auto">
+            ${l.soA.slice(0, 200).map(x => `<div style="color:#fda4af">${l.nome === 'Nível B' ? '≠' : '− só Prolog:'} ${esc(x)}</div>`).join('')}
+            ${l.soB.slice(0, 200).map(x => `<div style="color:#a5b4fc">+ só Drools: ${esc(x)}</div>`).join('')}
+          </div>
+        </details>`).join('')}
+      <button class="btn-xs" onclick="v61CorrerAmbos()" style="width:100%;margin-top:8px;border-color:#fbbf24;color:#fde68a">↻ Correr de novo nos dois motores</button>
+    </div>`;
+}
+async function v61RetirarPasso(id) {
+  if (!S.lastExecutedPassos) return;
+  S.lastExecutedPassos = S.lastExecutedPassos.filter(p => p.id !== id);
+  log('rewind (AC11)', `passo "${id}" retirado; reenviados ${S.lastExecutedPassos.length} passos`, 'st');
+  const engines = S.engine === 'both' ? ['prolog', 'drools'] : [S.engine === 'drools' ? 'drools' : 'prolog'];
+  const rs = await Promise.all(engines.map(e => v61Inferir(e, S.lastExecutedPassos)));
+  if (rs[0]) await applyRealEngineResultToGraph(rs[0], engines[0], true);
+  inspect();
+}
+async function v61CorrerAmbos() {
+  const passos = S.lastExecutedPassos && S.lastExecutedPassos.length ? S.lastExecutedPassos : v61PassosDoCenario(S.scen || 'all');
+  if (!passos.length) return;
+  S.lastExecutedPassos = JSON.parse(JSON.stringify(passos));
+  log('comparação', `mesmo pedido (${passos.length} passos) ao Prolog e ao Drools`, 'c');
+  await Promise.all(['prolog', 'drools'].map(eng => v61Inferir(eng, passos)));
+  S.inspTab = 'api';
+  inspect();
+}
+// um pedido ao motor; guarda a resposta com os passos que a originaram; mostra o erro da API se houver
+async function v61Inferir(eng, passos) {
+  const t0 = performance.now();
+  try {
+    const res = await fetch(`${S.apiBaseUrl}/api/${eng}/infer`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({versaoKB: S.detectedKbVersion, passos})});
+    const txt = await res.text();
+    let data = null; try { data = JSON.parse(txt); } catch {}
+    const ms = Math.round(performance.now() - t0);
+    if (!res.ok || !data || data.estado === 'erro') {
+      const msg = data?.erro || txt.slice(0, 200) || res.statusText;
+      log(`HTTP ${res.status}`, `POST /api/${eng}/infer: ${msg}`, 'bl');
+      showV61Error(`${eng}: HTTP ${res.status} · ${msg}`);
+      return null;
+    }
+    data._passos = JSON.parse(JSON.stringify(passos));
+    data._ms = ms;
+    if (!S.engineResults) S.engineResults = {prolog: {}, drools: {}};
+    S.engineResults[eng][S.scen || 'all'] = data;
+    log('HTTP 200 OK', `POST /api/${eng}/infer (${ms}ms) · ${data.estado} · ${data.tickets?.length || 0} tickets · ${data.perguntas?.length || 0} perguntas · ${data.factos?.length || 0} factos`, 'ok');
+    return data;
+  } catch (e) {
+    log('erro api', `POST /api/${eng}/infer: ${e.message}`, 'bl');
+    showV61Error(`${eng}: sem ligação (${e.message})`);
+    return null;
+  }
+}
+function showV61Error(msg) {
+  let t = $('v61Err');
+  if (!t) { t = document.createElement('div'); t.id = 'v61Err'; t.style.cssText = 'position:fixed;left:50%;bottom:60px;transform:translateX(-50%);z-index:9999;background:#2a0d14;border:1px solid #fb7185;color:#fecdd3;padding:9px 14px;border-radius:6px;font-family:var(--mono);font-size:11.5px;max-width:620px;box-shadow:0 8px 30px #000a'; document.body.appendChild(t); }
+  t.textContent = '⚠ ' + msg;
+  t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(() => { t.style.display = 'none'; }, 7000);
+}
+// passos de um cenario a partir do catalogo: a cadeia do campo "depende"; vista global = as sequencias da base
+function v61PassosDoCenario(key) {
+  const lista = window._LAST_CENARIOS_LIST || [];
+  const byId = new Map(lista.map(c => [c.id, c]));
+  if (key === 'all') {
+    const seqs = window._LAST_SEQUENCIAS || {};
+    const ids = [...new Set(Object.values(seqs).flat())];
+    return ids.map(id => byId.get(id)?.passo).filter(Boolean);
+  }
+  const out = [], seen = new Set();
+  const visit = id => { if (seen.has(id)) return; seen.add(id); const c = byId.get(id); if (!c) return; (c.depende || []).forEach(visit); if (c.passo) out.push(c.passo); };
+  visit(key);
+  return out;
+}
+document.addEventListener('change', e => {
+  if (e.target && e.target.id === 'v61ExpSel') { S.v61Exp = +e.target.value; S.v61Whynot = {}; inspect(); }
+});
+document.addEventListener('input', e => { if (e.target && e.target.id === 'v61WnInput') S.v61WnTxt = e.target.value; });
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('.v61-explicar');
+  if (a) { e.preventDefault(); S.v61Exp = +a.dataset.n; S.v61Whynot = {}; S.inspTab = 'explicacao'; S.sel = null; S.selTicket = null; inspect(); }
+});
+document.addEventListener('click', e => {
+  const j = e.target.closest && e.target.closest('.v61-jump');
+  if (j) { e.preventDefault(); const d = $('v61step-' + j.dataset.n); if (d) { d.open = true; d.scrollIntoView({behavior: 'smooth', block: 'center'}); d.style.boxShadow = '0 0 18px rgba(34,211,238,.7)'; setTimeout(() => { d.style.boxShadow = ''; }, 1300); } return; }
+  const w = e.target.closest && e.target.closest('.v61-whynot');
+  if (w) { v61PedirWhynot(w.dataset.k, JSON.parse(w.dataset.f)); return; }
+  if (e.target && e.target.id === 'v61WnGo') {
+    const t = v61ParseTermo($('v61WnInput')?.value || '');
+    if (!t) { showV61Error('Escreva o facto como predicado(arg1, arg2, ...)'); return; }
+    v61PedirWhynot('livre', t);
+  }
+});
+
 inspect = function() {
   const box = $('insp');
   if (!box) return;
@@ -13967,15 +14334,16 @@ inspect = function() {
 
   // Banner de Standby quando ainda não foi premido Play
   let standbyCardHtml = '';
-  if (!S.batchExecuted && R.done.size === 0) {
+  if (S.apiOnline ? !v61Res() : (!S.batchExecuted && R.done.size === 0)) {
+    const nP = v61PassosDoCenario(S.scen || 'all').length;
     standbyCardHtml = `
       <div class="icard" style="border-color:var(--eng-accent);background:rgba(16,185,129,0.07);margin-top:0;margin-bottom:10px">
-        <span class="ict" style="color:var(--eng-accent)">▶️ pronto para execução global (13 cenários)</span>
+        <span class="ict" style="color:var(--eng-accent)">▶️ pronto para execução (${esc((S.scen || 'all') === 'all' ? 'vista global' : S.scen.toUpperCase())} · ${nP} passos)</span>
         <div style="font-size:11px;color:#fff;font-weight:700;margin-bottom:4px">Motor em Standby na Fase 01 (t = 0s)</div>
         <div style="font-size:10.5px;color:var(--dim);line-height:1.5;margin-bottom:8px">
-          Carregue em <b>▶ Play</b> no Notch (ou <code>Espaço</code>) para processar todos os 13 cenários em lote.
+          Carregue em <b>▶ Play</b> no Notch (ou <code>Espaço</code>) para enviar os ${nP} passos ao motor.
         </div>
-        <button class="api-sim-btn-run" onclick="play()">▶ Executar Motor Agora (Processar C1 a C13)</button>
+        <button class="api-sim-btn-run" onclick="play()">▶ Executar Motor Agora (${nP} passos)</button>
       </div>
     `;
   }
@@ -14052,231 +14420,66 @@ inspect = function() {
       </div>
     `;
   } else if (S.inspTab === 'explicacao') {
-    // ABA DE EXPLICAÇÕES 100% LIMPA E FOCADA EM WHO / HOW / WHY-NOT PARA TODOS OS 13 CENÁRIOS + ALL
-    const activeScenKey = S.scen || 'all';
-    const fExp = FORENSIC_EXPLANATIONS_V53[activeScenKey] || FORENSIC_EXPLANATIONS_V53.c2;
-    const allKeys = ['all','c1','c2','c3','c4','c5','c6','c7','c8','c9','c10','c11','c12','c13'];
-    const hasRun = S.engineResults && S.engineResults[S.engine] && S.engineResults[S.engine][activeScenKey];
-
-    if (!hasRun) {
-      const curScenDesc = (window._LAST_CENARIOS_LIST || []).find(c => c.id === activeScenKey);
-      const titleDesc = curScenDesc ? `${activeScenKey.toUpperCase()} · ${curScenDesc.descricao}` : fExp.title;
-      tabContent = `
-        <div class="icard">
-          <span class="ict">auditoria pericial (${esc(activeScenKey.toUpperCase())})</span>
-          <div style="font-size:12px;font-weight:700;color:var(--cyan);margin-bottom:6px">${esc(titleDesc)}</div>
-          <div style="padding:18px;background:rgba(15,23,42,0.6);border:1px dashed #263f54;border-radius:6px;text-align:center;color:#94a3b8;font-size:11.5px;line-height:1.6">
-            <div style="font-size:24px;margin-bottom:8px">⏳</div>
-            <b style="color:#e2e8f0;font-size:12px">Inferência em Standby</b><br>
-            O motor <b>${(S.engine||'prolog').toUpperCase()}</b> ainda não executou a inferência deste cenário.<br>
-            As premissas e a prova causal <b>"Como?"</b> só são geradas após o motor disparar as regras reais.<br><br>
-            Carregue em <b>▶ Play</b> no Notch (ou Espaço) para enviar os factos ao motor.
-          </div>
-        </div>
-      `;
-    } else {
-    tabContent = `
+    // Explicações com os dados reais devolvidos pelo motor (factos[].regra / premissas)
+    const real = buildRealExplanationHtml();
+    tabContent = real || `
       <div class="icard">
-        <span class="ict">cenário sob auditoria pericial (${esc(activeScenKey.toUpperCase())})</span>
-        <div style="font-size:12px;font-weight:700;color:var(--cyan);margin-bottom:6px">${esc(fExp.title)}</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${allKeys.map(k => `
-            <button class="btn-xs ${activeScenKey === k ? 'active' : ''}" data-setscen="${k}" style="${activeScenKey === k ? 'border-color:var(--cyan);color:var(--cyan);background:var(--cyan2);font-weight:700' : ''}">
-              ${k === 'all' ? '🌐 Todos' : k.toUpperCase()}
-            </button>
-          `).join('')}
+        <span class="ict">auditoria pericial (${esc((S.scen || 'all').toUpperCase())})</span>
+        <div style="padding:18px;background:rgba(15,23,42,0.6);border:1px dashed #263f54;border-radius:6px;text-align:center;color:#94a3b8;font-size:11.5px;line-height:1.6">
+          <div style="font-size:24px;margin-bottom:8px">⏳</div>
+          <b style="color:#e2e8f0;font-size:12px">Inferência em Standby</b><br>
+          O motor <b>${(S.engine === 'drools' ? 'drools' : 'prolog').toUpperCase()}</b> ainda não executou a inferência deste cenário.<br>
+          As premissas e a prova causal <b>"Como?"</b> só são geradas após o motor disparar as regras reais.<br><br>
+          Carregue em <b>▶ Play</b> no Notch (ou Espaço) para enviar os factos ao motor.
         </div>
-      </div>
-
-      <!-- BLOCO 1: CONTEXTO FORENSE (QUEM · O QUÊ · ONDE · QUANDO) -->
-      <div class="icard">
-        <span class="ict">👤 contexto forense (quem · onde · o quê · quando)</span>
-        <div class="forensic-ctx-grid">
-          <div class="fctx-item who">
-            <div class="fctx-head"><span style="color:#fb7185">QUEM · Origem / Atacante</span><span>Threat Actor</span></div>
-            <div style="color:#e2eef3">${esc(fExp.context.atacante)}</div>
-          </div>
-          <div class="fctx-item where">
-            <div class="fctx-head"><span style="color:#38bdf8">ONDE · Ativo Alvo & Cobertura</span><span>Target Asset</span></div>
-            <div style="color:#e2eef3">${esc(fExp.context.alvo)}</div>
-          </div>
-          <div class="fctx-item what">
-            <div class="fctx-head"><span style="color:#c084fc">O QUÊ · Ameaça, CVE & SemVer</span><span>Vulnerability</span></div>
-            <div style="color:#e2eef3">${esc(fExp.context.ameaca)}</div>
-          </div>
-          <div class="fctx-item when">
-            <div class="fctx-head"><span style="color:#fbbf24">QUANDO · Cronologia & Janela Δt</span><span>Timeline</span></div>
-            <div style="color:#e2eef3">${esc(fExp.context.cronologia)}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- BLOCO 2: ÁRVORE COMPLETA "COMO?" (HOW) -->
-      <div class="icard">
-        <span class="ict">🌳 árvore completa "como?" (how · prova positiva)</span>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px">
-          <span style="font-size:10.5px;color:var(--dim)">Premissas antecedentes e factos da base:</span>
-          <div style="display:flex;gap:4px">
-            <button class="btn-xs" onclick="toggleAllHowTreeDetails(true)">▾ Expandir Todos</button>
-            <button class="btn-xs" onclick="toggleAllHowTreeDetails(false)">▸ Recolher Todos</button>
-          </div>
-        </div>
-        <div class="tree-box">
-          ${fExp.how.map((h, i) => `
-            <details class="how-tree-details" open>
-              <summary>
-                <div class="how-sum-body">
-                  <div class="how-sum-top">
-                    <span class="origin-pill regra">${esc(h.rule)}</span>
-                    <span style="font-size:9px;color:var(--dim);font-family:var(--mono)">${(h.premises || []).length} premissa(s)</span>
-                  </div>
-                  <div class="how-sum-goal">${esc(h.goal)}</div>
-                </div>
-              </summary>
-              <div class="how-tree-children">
-                <div style="font-size:10.5px;color:#bae6fd;margin:4px 0 6px">${esc(h.note)}</div>
-                ${(h.premises || []).map(p => {
-                  const badgeLbl = { kb: 'FACTO KB', in: 'TELEMETRIA', calc: 'CALCULADA', naf: 'NEGAÇÃO \\+', ded: 'DEDUZIDO' }[p.kind] || 'PREMISSA';
-                  return `
-                    <div class="how-premise-row">
-                      <span class="prem-badge ${esc(p.kind)}">${badgeLbl}</span>
-                      <span style="color:#e2eef3">${esc(p.text)}</span>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            </details>
-          `).join('')}
-        </div>
-      </div>
-
-      <!-- BLOCO 3: DIAGNÓSTICO FORMAL "PORQUÊ NÃO?" (WHY-NOT) -->
-      <div class="icard">
-        <span class="ict">🚫 diagnóstico formal "porquê não?" (why-not · refutação)</span>
-        <div style="font-size:10.5px;color:var(--dim);margin-bottom:8px">
-          Hipóteses alternativas avaliadas pelo motor e a condição exata que impediu o seu disparo:
-        </div>
-        <div>
-          ${fExp.whynot.map(wn => `
-            <div class="whynot-formal-card">
-              <div class="wn-card-head">
-                <span class="origin-pill regra">${esc(wn.rule)}</span>
-                <div class="wn-card-goal">✕ ${esc(wn.goal)}</div>
-              </div>
-              ${(wn.verified || []).map(v => `<div class="wn-check-row pass">${esc(v)}</div>`).join('')}
-              <div class="wn-check-row fail">${esc(wn.failed)}</div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-    }
+      </div>`;
   } else if (S.inspTab === 'api') {
-    // ABA DEDICADA 📡 API / JSON (Sincronização Stateless, Pilha de Passos, Contrato JSON e Paridade Dual)
-    const activeScenKey = S.scen === 'all' ? 'c7' : (S.scen || 'c7');
-    const contract = buildContractPayloadAndResponse(activeScenKey);
-    const req = contract.requestJson;
-    const resp = contract.responseJson;
-    const est = resp.estado;
-
-    const curHash = S.engineSync.currentHash;
-    const pl = S.engineSync.prolog;
-    const dr = S.engineSync.drools;
-    const plOk = pl.hash === curHash;
-    const drOk = dr.hash === curHash;
-
-    const { plResp, drResp } = generateDualEnginePayloads(activeScenKey);
-    const plRuleFacts = (plResp.factos || []).filter(f => f.origem === 'regra' || f.origem === 'entrada');
-    const drRuleFacts = (drResp.factos || []).filter(f => f.origem === 'regra' || f.origem === 'entrada');
-    let diffCount = 0;
-    plRuleFacts.forEach(pf => {
-      const sig = `${pf.predicado}(${(pf.args || []).join(', ')})`;
-      if (!drRuleFacts.some(x => `${x.predicado}(${(x.args || []).join(', ')})` === sig)) diffCount++;
-    });
-
-    const stepsHtml = (req.passos || []).map((p, idx) => {
-      const isAns = p.id.startsWith('resposta');
+    // Pedido e resposta reais, pilha de passos enviada e comparação entre os dois motores
+    const eng = S.engine === 'drools' ? 'drools' : 'prolog';
+    const resAtual = S.engineResults?.[eng]?.[S.scen || 'all'];
+    const passosReais = resAtual?._passos || S.lastExecutedPassos || [];
+    const nomes = new Set((window._LAST_CENARIOS_LIST || []).map(c => c.id));
+    const stepsHtml = passosReais.map((p, idx) => {
+      const isAns = !nomes.has(p.id);
       return `
         <div class="step-stack-card ${isAns ? 'step-answer' : 'step-telemetry'}">
           <div class="step-stack-head">
             <span><span class="step-badge-num">Passo ${idx + 1}</span> <b style="color:#fff">id: "${esc(p.id)}"</b></span>
-            <span style="color:var(--dim)">${p.factos.length} facto(s)</span>
+            <span style="color:var(--dim)">${(p.factos || []).length} facto(s)</span>
           </div>
           <div style="color:${isAns ? '#6ee7b7' : '#93c5fd'};line-height:1.4">
-            ${p.factos.map(f => `<code>${esc(f.predicado)}(${(f.args || []).map(a => JSON.stringify(a)).join(', ')})</code>`).join('<br>')}
+            ${(p.factos || []).map(f => `<code>${esc(f.predicado)}(${(f.args || []).map(a => JSON.stringify(a)).join(', ')})</code>`).join('<br>')}
           </div>
-          ${isAns ? `
-            <div style="margin-top:5px;padding-top:4px;border-top:1px dashed rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center">
-              <span style="color:var(--dim);font-size:9px">Critério AC11 (Prefixo de passos):</span>
-              <button class="btn-xs" onclick="removeLastStatelessStepAndRerun()" style="border-color:#fb7185;color:#fda4af;font-size:9.5px">⏪ Remover Passo 2 e Reexecutar</button>
-            </div>
-          ` : ''}
-        </div>
-      `;
+          ${isAns ? `<div style="margin-top:5px;padding-top:4px;border-top:1px dashed rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center">
+              <span style="color:var(--dim);font-size:9px">Resposta do analista (AC11: retirar e reenviar o prefixo)</span>
+              <button class="btn-xs" onclick="v61RetirarPasso('${esc(p.id)}')" style="border-color:#fb7185;color:#fda4af;font-size:9.5px">⏪ Retirar e reexecutar</button></div>` : ''}
+        </div>`;
     }).join('');
-
+    const reqJson = resAtual ? {versaoKB: S.detectedKbVersion, passos: passosReais} : null;
+    const respJson = resAtual ? Object.fromEntries(Object.entries(resAtual).filter(([k]) => !k.startsWith('_'))) : null;
+    const comparar = buildRealComparisonCard();
     tabContent = `
-      <div class="icard" style="border-color:#38bdf866">
-        <span class="ict" style="color:#38bdf8">🔗 sincronização de estado entre motores (stateless)</span>
-        <table class="cmp-grid-table" style="margin-bottom:6px">
-          <thead>
-            <tr><th>Motor</th><th>Endpoint</th><th>Estado Sync</th><th>Último Pedido</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><b style="color:#10b981">SWI-Prolog</b></td>
-              <td><code>/api/prolog/infer</code></td>
-              <td><span class="sync-pill ${plOk ? 'synced-pl' : 'stale'}">${plOk ? '✓ Sincronizado' : '⏳ Pendente'}</span></td>
-              <td>${plOk ? `POST #${pl.reqNum} (${pl.latencyMs}ms)` : 'Executa ao selecionar'}</td>
-            </tr>
-            <tr>
-              <td><b style="color:#818cf8">Drools 8</b></td>
-              <td><code>/api/drools/infer</code></td>
-              <td><span class="sync-pill ${drOk ? 'synced-dr' : 'stale'}">${drOk ? '✓ Sincronizado' : '⏳ Pendente'}</span></td>
-              <td>${drOk ? `POST #${dr.reqNum} (${dr.latencyMs}ms)` : 'Executa ao selecionar'}</td>
-            </tr>
-          </tbody>
-        </table>
-        <button class="btn-xs" onclick="setEngineMode('both')" style="width:100%;border-color:#fbbf24;color:#fde68a">
-          ⚡ Sincronizar e Comparar Ambos (${S.passosAtuais.length} passo(s))
-        </button>
-      </div>
-
+      ${S.engine === 'both' ? comparar : ''}
       <div class="icard" style="border-color:#10b98166">
-        <span class="ict" style="color:#10b981">🔄 ciclo stateless de passos[] (secção 3 & 5)</span>
-        <div style="font-size:10px;color:var(--dim);margin-bottom:6px">
-          Pilha de passos enviada neste pedido (${req.passos.length} passo(s)):
-        </div>
-        ${stepsHtml}
+        <span class="ict" style="color:#10b981">🔄 ciclo stateless de passos[] enviado ao motor</span>
+        <div style="font-size:10px;color:var(--dim);margin-bottom:6px">${passosReais.length ? `Último pedido a <code>/api/${eng}/infer</code> (${passosReais.length} passo(s)${resAtual?._ms ? ', ' + resAtual._ms + ' ms' : ''}):` : 'Ainda não foi enviado nenhum pedido.'}</div>
+        <div style="max-height:260px;overflow:auto">${stepsHtml}</div>
       </div>
-
       <div class="icard">
-        <span class="ict">📡 contrato json (${esc(contract.endpoint)})</span>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px">
+        <span class="ict">📡 contrato json real (POST /api/${eng}/infer)</span>
+        ${resAtual ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px">
           <span style="font-size:10.5px;color:var(--dim)">Estado devolvido pelo motor:</span>
-          <span class="estado-pill ${est === 'aguarda_resposta' ? 'aguarda' : 'concluido'}">${esc(est)}</span>
-        </div>
+          <span class="estado-pill ${resAtual.estado === 'aguarda_resposta' ? 'aguarda' : 'concluido'}">${esc(resAtual.estado)}</span></div>
         <details class="how-tree-details">
-          <summary><div class="how-sum-body"><div class="how-sum-goal">📤 Ver Pedido JSON (${req.passos.length} passo(s))</div></div></summary>
-          <pre style="font-size:10px;color:#93c5fd;margin-top:4px;max-height:160px;overflow-y:auto">${esc(JSON.stringify(req, null, 2))}</pre>
+          <summary><div class="how-sum-body"><div class="how-sum-goal">📤 Ver Pedido JSON (${passosReais.length} passo(s))</div></div></summary>
+          <pre style="font-size:10px;color:#93c5fd;margin-top:4px;max-height:200px;overflow-y:auto">${esc(JSON.stringify(reqJson, null, 2))}</pre>
         </details>
-        <details class="how-tree-details" open>
-          <summary><div class="how-sum-body"><div class="how-sum-goal">📥 Ver Resposta JSON (factos, perguntas, tickets)</div></div></summary>
-          <pre style="font-size:10px;color:#6ee7b7;margin-top:4px;max-height:200px;overflow-y:auto">${esc(JSON.stringify(resp, null, 2))}</pre>
-        </details>
+        <details class="how-tree-details">
+          <summary><div class="how-sum-body"><div class="how-sum-goal">📥 Ver Resposta JSON (${(respJson.factos || []).length} factos, ${(respJson.tickets || []).length} tickets, ${(respJson.perguntas || []).length} perguntas)</div></div></summary>
+          <pre style="font-size:10px;color:#6ee7b7;margin-top:4px;max-height:260px;overflow-y:auto">${esc(JSON.stringify(respJson, null, 2))}</pre>
+        </details>` : '<div style="font-size:11px;color:var(--dim)">Carregue em ▶ Play para enviar o pedido ao motor.</div>'}
       </div>
-
-      <div class="icard" style="border-color:${diffCount === 0 ? '#fbbf2488' : '#fb7185'}">
-        <span class="ict" style="color:#fbbf24">⚖️ auditoria dual (prolog vs drools)</span>
-        <div class="dual-audit-banner ${diffCount === 0 ? 'ok' : 'diff'}">
-          <span>${diffCount === 0 ? '✅ EQUIVALÊNCIA SEMÂNTICA PROVADA' : `❌ ${diffCount} DIVERGÊNCIA(S) DETETADA(S)!`}</span>
-          <span>${plRuleFacts.length} factos</span>
-        </div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
-          <button class="btn-xs" onclick="triggerDualMutationTest('drop_r13_drools')" style="border-color:#fb7185;color:#fda4af">🧪 Injetar Falha Drools</button>
-          <button class="btn-xs" onclick="triggerDualMutationTest('none')" style="border-color:#10b981;color:#6ee7b7">✓ Restaurar Paridade</button>
-        </div>
-      </div>
+      ${S.engine === 'both' ? '' : comparar}
     `;
   }
 
@@ -14303,7 +14506,7 @@ inspect = function() {
       <button class="insp-tab exp-featured ${S.inspTab==='explicacao'?'active':''}" data-tab="explicacao" title="Auditoria Forense: Contexto, Árvore Como? e Porquê Não?">💡 Explicações${isSingleScen ? ' · ' + S.scen.toUpperCase() : ''}</button>
       <button class="insp-tab ${S.inspTab==='tickets'?'active':''}" data-tab="tickets">🎫 Tickets (${TICKETS.length})</button>
       <button class="insp-tab ${S.inspTab==='fases'?'active':''}" data-tab="fases">🔍 Fases</button>
-      <button class="insp-tab ${S.inspTab==='api'?'active':''}" data-tab="api" title="Contrato REST/JSON, Passos Stateless e Sincronização">📡 API / JSON</button>
+      <button class="insp-tab ${S.inspTab==='api'?'active':''}" data-tab="api" title="Contrato REST/JSON, passos enviados e comparação entre motores">${S.engine === 'both' ? '⚖️ Comparação' : '📡 API / JSON'}</button>
     </div>
 
     ${tabContent}
@@ -14316,7 +14519,11 @@ inspect = function() {
     S.inspTab = b.dataset.tab;
     inspect();
   }));
-  box.querySelectorAll('[data-tkt]').forEach(row => row.addEventListener('click', () => selectTicket(row.dataset.tkt)));
+  box.querySelectorAll('[data-tkt]').forEach(row => row.addEventListener('click', () => {
+    const tk = TICKETS.find(t => t.id === row.dataset.tkt);
+    if (tk && tk.facto != null && S.apiOnline) { S.v61Exp = tk.facto; S.v61Whynot = {}; S.inspTab = 'explicacao'; S.selTicket = null; inspect(); return; }
+    selectTicket(row.dataset.tkt);
+  }));
   box.querySelectorAll('[data-go]').forEach(x => x.addEventListener('click', () => select(x.dataset.go)));
   const cbtn = $('inspCloseBtn');
   if (cbtn) cbtn.addEventListener('click', () => {
@@ -14805,12 +15012,13 @@ function getPendingEngineQuestions() {
     const curRes = S.engineResults && S.engineResults[activeEng] ? S.engineResults[activeEng][S.scen || 'all'] : null;
     const pergs = curRes?.perguntas || [];
     return pergs.map(q => ({
-      scen: S.scen || 'c7',
-      alvo: q.ativo || 'web_srv_04',
-      evento: q.evento || 'ev_e1',
-      pergunta: q.pergunta || 'shell_servico',
+      scen: S.scen || 'all',
+      ativo: q.ativo, alvo: q.ativo,
+      evento: q.evento,
+      pergunta: q.pergunta,
       texto: q.texto || '',
-      opcoes: q.opcoes || []
+      opcoes: q.opcoes || [],
+      facto: q.facto
     }));
   }
   if (!S.apiLoaded) return [];
@@ -14982,7 +15190,7 @@ refreshTopFilterDropdown = function() {
   const isC7Waiting = isC7QuestionCurrentlyPending() && (S.scen === 'c7' || S.scen === 'all' || S.batchExecuted);
 
   if (activeKey === 'all') {
-    lbl.textContent = S.batchExecuted ? '🌐 Vista Global (C1–C13) ✓' : '🌐 Vista Global (C1–C13)';
+    lbl.textContent = S.batchExecuted ? '🌐 Vista Global (C1–C13) ✓' : '🌐 Vista Global';
   } else {
     const curSc = SCEN[activeKey];
     lbl.textContent = curSc ? curSc.title : activeKey.toUpperCase();
@@ -15165,17 +15373,13 @@ inspect = function() {
   const box = $('insp');
   if (!box) return;
   const nd = byId[S.sel];
-  const scKey = (S.scen && S.scen !== 'all') ? S.scen : 'c2';
-  const fExp = FORENSIC_EXPLANATIONS_V53[scKey] || FORENSIC_EXPLANATIONS_V53.c2;
+  const scKey = (S.scen || 'all');
   const causalLine = deriveNodeCausalProvenanceLine(nd, S.scen);
-
-  // Procurar entradas HOW na árvore forense que correspondam a este nó
-  const matchingHow = (fExp.how || []).filter(h => {
-    if (nd.code && h.rule.toUpperCase().includes(nd.code.split('–')[0].toUpperCase())) return true;
-    if (nd.preds && nd.preds.some(p => h.goal.includes(p.split('/')[0]))) return true;
-    if (nd.sub && h.goal.includes(nd.sub.split('/')[0])) return true;
-    return false;
-  });
+  // Factos reais da resposta do motor cujo predicado corresponde a este nó
+  const liveR = v61Res();
+  const preds = new Set((nd.preds || []).map(p => p.split('/')[0]));
+  const factosNo = liveR ? (liveR.factos || []).filter(f => preds.has(f.predicado) && f.origem !== 'inicial') : [];
+  const matchingHow = factosNo.slice(0, 12).map(f => ({rule: f.origem === 'regra' ? 'R' + f.regra : f.origem.toUpperCase(), goal: v61Fact(f), num: f.numero, premises: []}));
 
   const howCard = document.createElement('div');
   howCard.className = 'icard';
@@ -15189,7 +15393,7 @@ inspect = function() {
       <div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(34,211,238,0.2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
           <span class="origin-pill regra">${esc(h.rule)}</span>
-          <span style="font-size:9.5px;color:var(--dim)">${(h.premises || []).length} premissa(s)</span>
+          <a href="#" class="v61-explicar" data-n="${h.num}" style="font-size:9.5px;color:#7dd3fc">ver explicação completa →</a>
         </div>
         <div style="font-family:var(--mono);font-size:10.5px;font-weight:700;color:#fff;margin-bottom:4px">${esc(h.goal)}</div>
         ${(h.premises || []).map(p => {
@@ -15197,7 +15401,7 @@ inspect = function() {
           return `<div class="how-premise-row"><span class="prem-badge ${esc(p.kind)}">${badgeLbl}</span><span style="color:#e2eef3">${esc(p.text)}</span></div>`;
         }).join('')}
       </div>
-    `).join('') : `<div style="font-size:10px;color:var(--dim)">Selecione um cenário específico onde <b>${esc(nd.label)}</b> dispare para ver todas as instanciações numeradas da memória de trabalho.</div>`}
+    `).join('') : `<div style="font-size:10px;color:var(--dim)">${liveR ? `Nenhum facto <b>${esc([...preds].join(', '))}</b> nesta resposta do motor.` : 'Carregue em ▶ Play para obter os factos do motor.'}</div>`}
   `;
   box.insertBefore(howCard, box.children[1] || null);
 };
@@ -15328,7 +15532,7 @@ function populateDropdownFromCenariosList(cenariosList) {
   const cur = cenariosList.find(c => c.id === curId);
   if (lbl) {
     lbl.textContent = curId === 'all'
-      ? '🌐 Vista Global (C1–C13)'
+      ? '🌐 Vista Global'
       : (cur ? `${cur.id.toUpperCase()} · ${cur.descricao || cur.id}` : curId.toUpperCase());
   }
 
@@ -15341,7 +15545,7 @@ function populateDropdownFromCenariosList(cenariosList) {
       <button type="button" class="soc-scen-opt ${curId === 'all' ? 'active' : ''}" onclick="selectSocScenarioFromMenu('all')">
         <span class="soc-scen-opt-main">
           <span class="soc-scen-code">ALL</span>
-          <span class="soc-scen-title">🌐 Vista Global · Lote Completo (${cenariosList.map(c => c.id.toUpperCase()).join(', ')})</span>
+          <span class="soc-scen-title">🌐 Vista Global · todas as sequências da base</span>
         </span>
         <span class="soc-scen-badge time">lote api</span>
       </button>
@@ -15551,12 +15755,8 @@ async function applyRealEngineResultToGraph(liveResult, activeEng, shouldAnimate
       : (t.acao && typeof t.acao === 'object'
           ? (t.acao.args ? `${t.acao.f}(${t.acao.args.join(', ')})` : (t.acao.f || 'acao'))
           : 'acao');
-    let reg = 'R16';
-    if (acaoName.includes('isolar')) reg = (prioUpper === 'P1' ? 'R15' : 'R14');
-    else if (acaoName.includes('bloquear')) reg = 'R12';
-    else if (prioUpper === 'P4' || acaoName.includes('vigiar')) reg = 'R11';
-    else if (prioUpper === 'P3' || acaoName.includes('inventario') || acaoName.includes('inspec')) reg = 'R8';
-    else if (prioUpper === 'P1') reg = 'R15';
+    const tFacto = (liveResult.factos || []).find(f => f.numero === t.facto);
+    const reg = tFacto && tFacto.regra != null ? 'R' + tFacto.regra : '—';
 
     let tktId = `TKT-${idx + 1}`;
     if (t.incidente) {
@@ -15590,6 +15790,7 @@ async function applyRealEngineResultToGraph(liveResult, activeEng, shouldAnimate
     const critNum = prioUpper === 'P1' ? 9 : (prioUpper === 'P2' ? 7 : (prioUpper === 'P3' ? 5 : 3));
 
     return {
+      facto: t.facto,
       id: tktId,
       prio: prioUpper,
       alvo: t.ativo || 'ativo',
@@ -15673,6 +15874,8 @@ setEngineMode = function(eng) {
   if (eng === S.engine) return;
   const prevEng = S.engine;
   S.engine = eng;
+  S.currentPendingQuestion = null;
+  S.v61Exp = null; S.v61Whynot = {};
 
   document.querySelectorAll('#engineSwitcher .eng-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.engine === eng);
@@ -15687,8 +15890,11 @@ setEngineMode = function(eng) {
   }
 
   if (eng === 'both') {
+    // Comparador: se já houver passos, envia o mesmo pedido aos dois motores
+    S.inspTab = 'api';
     render();
     inspect();
+    if (S.apiOnline && (S.lastExecutedPassos?.length || S.scen)) v61CorrerAmbos();
     return;
   }
 
@@ -15696,7 +15902,7 @@ setEngineMode = function(eng) {
   if (lbl && window._LAST_CENARIOS_LIST) {
     const cur = window._LAST_CENARIOS_LIST.find(c => c.id === S.scen);
     if (cur) lbl.textContent = `${cur.id.toUpperCase()} · ${cur.descricao || cur.id}`;
-    else if (S.scen === 'all') lbl.textContent = '🌐 Vista Global (C1–C13)';
+    else if (S.scen === 'all') lbl.textContent = '🌐 Vista Global';
   }
 
   const cachedRun = S.engineResults && S.engineResults[eng] ? S.engineResults[eng][S.scen] : null;
@@ -15711,8 +15917,12 @@ setEngineMode = function(eng) {
 
 setScenario = function(k) {
   R.playing = false;
-  const chosen = k || 'c1';
+  const chosen = k || 'all';
   S.scen = chosen;
+  const cached = S.engineResults?.[S.engine === 'drools' ? 'drools' : 'prolog']?.[chosen];
+  S.lastExecutedPassos = cached?._passos ? JSON.parse(JSON.stringify(cached._passos)) : null;
+  S.currentPendingQuestion = null;
+  S.v61Exp = null; S.v61Whynot = {};
   S.sel = null;
   S.selTicket = null;
 
@@ -15723,7 +15933,7 @@ setScenario = function(k) {
   if (lbl && window._LAST_CENARIOS_LIST) {
     const cur = window._LAST_CENARIOS_LIST.find(c => c.id === chosen);
     if (cur) lbl.textContent = `${cur.id.toUpperCase()} · ${cur.descricao || cur.id}`;
-    else if (chosen === 'all') lbl.textContent = '🌐 Vista Global (C1–C13)';
+    else if (chosen === 'all') lbl.textContent = '🌐 Vista Global';
   }
 
   document.querySelectorAll('#socScenMenu .soc-scen-opt').forEach(opt => {
@@ -15762,55 +15972,22 @@ play = async function() {
     const activeEng = S.engine === 'drools' ? 'drools' : 'prolog';
     const scenKey = S.scen;
 
-    let passosToSend = [];
-    if (scenKey === 'all') {
-      const seen = new Set();
-      Object.keys(DYNAMIC_SCENARIO_PASSOS).sort().forEach(k => {
-        (DYNAMIC_SCENARIO_PASSOS[k] || []).forEach(p => {
-          if (!seen.has(p.id)) { seen.add(p.id); passosToSend.push(p); }
-        });
-      });
-    } else {
-      passosToSend = [...(DYNAMIC_SCENARIO_PASSOS[scenKey] || [{ id: scenKey, factos: [] }])];
-    }
+    // Passos tirados do catálogo da API: a cadeia "depende" do cenário; vista global = sequências da base
+    const passosToSend = v61PassosDoCenario(scenKey);
+    if (!passosToSend.length) { showV61Error('O catálogo não tem passos para ' + scenKey); R.playing = false; updateButtons(); return; }
 
     // Inicializar os passos executados e limpar perguntas pendentes anteriores
     S.lastExecutedPassos = JSON.parse(JSON.stringify(passosToSend));
     S.currentPendingQuestion = null;
-
-    const payload = {
-      versaoKB: S.detectedKbVersion || '6',
-      passos: passosToSend
-    };
-
-    log('inferência', `Enviando POST /api/${activeEng}/infer (${passosToSend.length} passos)...`, 'c');
+    S.v61Exp = null; S.v61Whynot = {};
 
     try {
-      const t0 = performance.now();
-      const res = await fetch(`${S.apiBaseUrl}/api/${activeEng}/infer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const t1 = performance.now();
-      const latencyMs = Math.round(t1 - t0);
-
-      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-
-      const liveResult = await res.json();
-      log(
-        `HTTP 200 OK`,
-        `POST /api/${activeEng}/infer (${latencyMs}ms) · Estado: "${liveResult.estado}" · ${liveResult.tickets?.length || 0} tickets · ${liveResult.factos?.length || 0} factos`,
-        'ok'
-      );
-
-      if (!S.engineResults) S.engineResults = { prolog: {}, drools: {} };
-      S.engineResults[activeEng][scenKey] = liveResult;
-
-      await applyRealEngineResultToGraph(liveResult, activeEng, true);
-
-    } catch (err) {
-      log('erro api', `Falha ao contactar POST /api/${activeEng}/infer (${err.message})`, 'bl');
+      // No modo Comparador, o mesmo pedido vai aos dois motores; o grafo mostra o Prolog
+      const engines = S.engine === 'both' ? ['prolog', 'drools'] : [activeEng];
+      const results = await Promise.all(engines.map(eng => v61Inferir(eng, passosToSend)));
+      const liveResult = results[0];
+      if (liveResult) await applyRealEngineResultToGraph(liveResult, engines[0], true);
+      if (S.engine === 'both') { S.inspTab = 'api'; }
     } finally {
       R.playing = false;
       updateButtons();
@@ -15854,20 +16031,9 @@ submitAnalystResponse = async function(valor) {
       return;
     }
 
-    // Se ainda não temos a pilha dos passos executados, inicializá-la a partir dos passos do cenário atual
+    // Se ainda não temos a pilha dos passos executados, inicializá-la a partir do catálogo
     if (!S.lastExecutedPassos || !Array.isArray(S.lastExecutedPassos) || S.lastExecutedPassos.length === 0) {
-      if (scenKey === 'all') {
-        const seen = new Set();
-        const passosAll = [];
-        Object.keys(DYNAMIC_SCENARIO_PASSOS).sort().forEach(k => {
-          (DYNAMIC_SCENARIO_PASSOS[k] || []).forEach(pas => {
-            if (!seen.has(pas.id)) { seen.add(pas.id); passosAll.push(pas); }
-          });
-        });
-        S.lastExecutedPassos = passosAll;
-      } else {
-        S.lastExecutedPassos = [...(DYNAMIC_SCENARIO_PASSOS[scenKey] || [{ id: scenKey, factos: [] }])];
-      }
+      S.lastExecutedPassos = v61PassosDoCenario(scenKey);
     }
 
     // Gerar um passo de resposta com identificador único para esta pergunta
@@ -15896,17 +16062,10 @@ submitAnalystResponse = async function(valor) {
     log('analista resposta', `Enviando resposta_analista(${alvo}, ${ev}, ${perg}, ${valor}) com ${S.lastExecutedPassos.length} passos acumulados...`, 'c');
 
     try {
-      const res = await fetch(`${S.apiBaseUrl}/api/${activeEng}/infer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const liveResult = await res.json();
-      log('analista resposta', `POST /api/${activeEng}/infer: "${liveResult.estado}" · ${liveResult.tickets?.length || 0} tickets · ${liveResult.factos?.length || 0} factos.`, 'ok');
-
-      if (!S.engineResults) S.engineResults = { prolog: {}, drools: {} };
-      S.engineResults[activeEng][scenKey] = liveResult;
+      const engines = S.engine === 'both' ? ['prolog', 'drools'] : [activeEng];
+      const results = await Promise.all(engines.map(eng => v61Inferir(eng, payload.passos)));
+      const liveResult = results[0];
+      if (!liveResult) throw new Error('o motor devolveu um erro (ver a consola de eventos)');
 
       // Se o motor ainda tiver perguntas pendentes, atualizar S.currentPendingQuestion para a próxima pergunta da fila!
       if (liveResult.estado === 'aguarda_resposta' && liveResult.perguntas?.length > 0) {
@@ -15915,12 +16074,11 @@ submitAnalystResponse = async function(valor) {
         S.currentPendingQuestion = null;
       }
 
-      await applyRealEngineResultToGraph(liveResult, activeEng, true);
+      await applyRealEngineResultToGraph(liveResult, S.engine === 'both' ? 'prolog' : activeEng, true);
+      showAnalystImpactToast(valor, alvo, ev, perg);
     } catch (err) {
       log('erro api resposta', `Falha ao enviar resposta do analista: ${err.message}`, 'bl');
     }
-
-    showAnalystImpactToast(valor, alvo, ev, perg);
   }
 };
 window.submitAnalystResponse = submitAnalystResponse;
@@ -15972,36 +16130,13 @@ verifyAndRetrieveFromApi = async function(manualClick = false) {
       if (item && item.id && item.passo) passoMap[item.id] = item.passo;
     });
 
-    const CAUSAL_DEPS = {
-      c1: ['c1'],
-      c2: ['c1', 'c2'],
-      c3: ['c1', 'c2', 'c3'],
-      c4: ['c4'],
-      c5: ['c5'],
-      c6: ['c6'],
-      c7: ['c7'],
-      c8: ['c8'],
-      c9: ['c9'],
-      c10: ['c10', 'c10b', 'c10c'],
-      c11: ['c8', 'c11', 'c11b'],
-      c12: ['c12'],
-      c13: ['c13']
-    };
-
-    Object.keys(CAUSAL_DEPS).forEach(k => {
-      const stepIds = CAUSAL_DEPS[k];
-      const passos = stepIds.map(sid => passoMap[sid]).filter(Boolean);
-      if (passos.length > 0) DYNAMIC_SCENARIO_PASSOS[k] = passos;
-    });
-
-    const allStepIds = ['c1','c2','c3','c4','c5','c6','c7','c8','c9','c10','c10b','c10c','c11','c11b','c12','c13'];
-    DYNAMIC_SCENARIO_PASSOS['all'] = allStepIds.map(sid => passoMap[sid]).filter(Boolean);
-
-    // Manter quaisquer outros cenários do catálogo acessíveis
-    cenariosList.forEach(item => {
-      if (!item || !item.id || DYNAMIC_SCENARIO_PASSOS[item.id]) return;
-      if (item.passo) DYNAMIC_SCENARIO_PASSOS[item.id] = [item.passo];
-    });
+    // O catálogo diz a ordem e as dependências: cada cenário leva a sua cadeia ("depende");
+    // a vista global leva as sequências da base. As respostas prontas do catálogo não se enviam.
+    window._LAST_CENARIOS_LIST = cenariosList;
+    window._LAST_SEQUENCIAS = cenariosCatalog?.sequencias || {};
+    Object.keys(DYNAMIC_SCENARIO_PASSOS).forEach(k => delete DYNAMIC_SCENARIO_PASSOS[k]);
+    cenariosList.forEach(item => { if (item && item.id) DYNAMIC_SCENARIO_PASSOS[item.id] = v61PassosDoCenario(item.id); });
+    DYNAMIC_SCENARIO_PASSOS['all'] = v61PassosDoCenario('all');
 
     S.apiOnline = true;
     S.apiLoaded = true;
@@ -16019,7 +16154,9 @@ verifyAndRetrieveFromApi = async function(manualClick = false) {
     if (pill) pill.className = 'api-status-pill online';
     if ($('apiStatusText')) $('apiStatusText').textContent = `API Online · SWI-Prolog · KB v${S.detectedKbVersion}`;
 
-    populateDropdownFromCenariosList(cenariosList);
+    const emSequencia = new Set(Object.values(window._LAST_SEQUENCIAS).flat());
+    populateDropdownFromCenariosList(cenariosList.filter(c => emSequencia.size === 0 || emSequencia.has(c.id)));
+    window._LAST_CENARIOS_LIST = cenariosList;
 
     NODES = JSON.parse(JSON.stringify(_TEMPLATE_NODES));
     EDGES = JSON.parse(JSON.stringify(_TEMPLATE_EDGES));
@@ -16029,7 +16166,7 @@ verifyAndRetrieveFromApi = async function(manualClick = false) {
     const scenSel = $('scen');
     if (scenSel) scenSel.value = S.scen;
     const lbl = $('socScenBtnLbl');
-    if (lbl) lbl.textContent = '🌐 Vista Global (C1–C13)';
+    if (lbl) lbl.textContent = '🌐 Vista Global';
     resetGraphToStandby('Inicialização com API Online');
 
     log('api online', `Ligado com sucesso à API Spring Boot em ${baseUrl}. Motor SWI-Prolog ativo.`, 'ok');
