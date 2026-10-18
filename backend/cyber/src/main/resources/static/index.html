@@ -11321,7 +11321,7 @@ function computeCameraTargetForVisibleGraph(maxZoomAllowed = 1.04) {
   const boxH = Math.max(190, maxY - minY);
 
   const fitZoom = Math.min(availW / boxW, availH / boxH);
-  const targetZoom = Math.max(0.35, Math.min(maxZoomAllowed, fitZoom));
+  const targetZoom = Math.max(window.__v62 ? 0.12 : 0.35, Math.min(maxZoomAllowed, fitZoom));
   const targetPx = (c.width - boxW * targetZoom) / 2 - minX * targetZoom;
   const targetPy = islandH + Math.max(6, (availH - boxH * targetZoom) / 2) - minY * targetZoom;
 
@@ -16241,11 +16241,35 @@ function v62ScenTitle(key) {
   return c ? `${c.id.toUpperCase()} · ${c.descricao || ''}` : key;
 }
 
+// A fase 1 ocupa duas faixas quando tem muito mais entradas do que as outras colunas têm nós
+function v62Lanes(nodes) {
+  const c1 = nodes.filter(n => n.col === 1).sort((a, b) => (a.y - b.y));
+  const others = {};
+  nodes.filter(n => n.col > 1).forEach(n => { others[n.col] = (others[n.col] || 0) + 1; });
+  const maxOther = Math.max(8, ...Object.values(others));
+  if (c1.length <= maxOther + 2) return 1;
+  const half = Math.ceil(c1.length / 2);
+  c1.forEach((n, i) => { if (i >= half) n.col = 2; });
+  nodes.filter(n => !c1.includes(n)).forEach(n => { n.col += 1; });
+  return 2;
+}
+
 function v62Commit(nodes, edges, titles, scenEdges, res) {
+  const lanes = v62Lanes(nodes);
   NODES = nodes;
   EDGES = edges;
-  titles.forEach((t, i) => { if (STAGES[i]) STAGES[i].title = t; });
+  STAGES.length = 0;
+  titles.forEach((t, i) => {
+    const num = String(i + 1).padStart(2, '0');
+    if (i === 0 && lanes === 2) {
+      STAGES.push({ col: 1, num, title: t + ' (1/2)' });
+      STAGES.push({ col: 2, num, title: t + ' (2/2)' });
+    } else {
+      STAGES.push({ col: i + lanes, num, title: t });
+    }
+  });
   V62.active = true;
+  window.__v62 = true;
   if (S.cat && S.cat !== 'all' && !nodes.some(n => n.cat === S.cat)) S.cat = 'all';
   rebuildGraphIndexes();
   NODES.forEach(n => { n.x = colX(n.col); });
@@ -16718,6 +16742,165 @@ simulateApiRetrieveForTesting = function() {
   }
   log('sistema', 'Modo local desativado: todos os dados vêm da API.', 'war');
 };
+
+
+
+/* =====================================================================
+   v64: RESPONDER A TODAS AS PERGUNTAS E SÓ DEPOIS INFERIR + NOTCH COMPACTO
+   - Cada resposta fica registada no UI; passa-se logo à pergunta seguinte.
+   - Quando todas estão respondidas (ou em "Enviar já"), faz-se UM pedido ao
+     motor com todos os passos + um passo resposta_analista por resposta.
+   - O contador de perguntas no topo desce à medida que se responde.
+   ===================================================================== */
+S.v64Answers = {};
+const v64Key = p => `${p.ativo || p.alvo}|${p.evento}|${p.pergunta}`;
+
+function v64AllQuestions() {
+  const eng = S.engine === 'drools' ? 'drools' : 'prolog';
+  const r = S.engineResults?.[eng]?.[S.scen || 'all'];
+  return (r?.perguntas || []).map(q => ({ scen: S.scen || 'all', ativo: q.ativo, alvo: q.ativo, evento: q.evento, pergunta: q.pergunta, texto: q.texto || '', opcoes: q.opcoes || [], facto: q.facto }));
+}
+
+// Perguntas ainda sem resposta registada
+getPendingEngineQuestions = function() {
+  if (!S.apiOnline) return [];
+  return v64AllQuestions().filter(q => !(v64Key(q) in S.v64Answers));
+};
+
+function v64Progress() {
+  const all = v64AllQuestions();
+  const done = all.filter(q => v64Key(q) in S.v64Answers).length;
+  return { total: all.length, done };
+}
+
+function v64ShowNext() {
+  const next = getPendingEngineQuestions()[0];
+  if (next) {
+    S.currentPendingQuestion = next;
+    showEngineQuestionPrompt(next);
+  } else {
+    S.currentPendingQuestion = null;
+    clearEngineQuestionPrompt();
+  }
+  updateHeaderC7PendingPill();
+  inspect();
+}
+
+submitAnalystResponse = async function(valor) {
+  if (!S.apiOnline) return;
+  const p = S.currentPendingQuestion && !(v64Key(S.currentPendingQuestion) in S.v64Answers) ? S.currentPendingQuestion : getPendingEngineQuestions()[0];
+  if (!p) { log('analista', 'Nenhuma pergunta pendente.', 'war'); return; }
+  S.v64Answers[v64Key(p)] = { ativo: p.ativo || p.alvo, evento: p.evento, pergunta: p.pergunta, valor };
+  const { total, done } = v64Progress();
+  log('analista', `resposta registada (${done}/${total}): ${p.pergunta} em ${p.ativo || p.alvo} = ${valor}`, 'c');
+  if (done >= total) {
+    await v64SendAnswers();
+  } else {
+    v64ShowNext();
+  }
+};
+window.submitAnalystResponse = submitAnalystResponse;
+
+function v64UndoAnswer(k) {
+  delete S.v64Answers[k];
+  v64ShowNext();
+}
+window.v64UndoAnswer = v64UndoAnswer;
+
+async function v64SendAnswers() {
+  const answers = Object.values(S.v64Answers);
+  if (!answers.length) return;
+  closeC7Modal();
+  clearEngineQuestionPrompt();
+  if (!S.lastExecutedPassos || !S.lastExecutedPassos.length) S.lastExecutedPassos = v61PassosDoCenario(S.scen || 'all');
+  answers.forEach(a => {
+    const step = { id: `resposta_${a.ativo}_${a.evento}_${a.pergunta}`, factos: [{ predicado: 'resposta_analista', args: [a.ativo, a.evento, a.pergunta, a.valor] }] };
+    const i = S.lastExecutedPassos.findIndex(x => x.id === step.id);
+    if (i >= 0) S.lastExecutedPassos[i] = step; else S.lastExecutedPassos.push(step);
+  });
+  S.v64Answers = {};
+  S.currentPendingQuestion = null;
+  log('analista', `a enviar ${answers.length} resposta(s) num único pedido (${S.lastExecutedPassos.length} passos)…`, 'c');
+  const eng = S.engine === 'drools' ? 'drools' : 'prolog';
+  const engines = S.engine === 'both' ? ['prolog', 'drools'] : [eng];
+  try {
+    const results = await Promise.all(engines.map(e => v61Inferir(e, S.lastExecutedPassos)));
+    const live = results[0];
+    if (!live) throw new Error('o motor devolveu um erro (ver a consola de eventos)');
+    await applyRealEngineResultToGraph(live, engines[0], true);
+    if (typeof showAnalystImpactToast === 'function' && answers.length === 1) showAnalystImpactToast(answers[0].valor, answers[0].ativo, answers[0].evento, answers[0].pergunta);
+  } catch (err) {
+    log('erro api resposta', `Falha ao enviar respostas: ${err.message}`, 'bl');
+  }
+  updateHeaderC7PendingPill();
+}
+window.v64SendAnswers = v64SendAnswers;
+
+// Novo resultado do motor: as respostas por enviar deixam de fazer sentido
+const _v64Apply = applyRealEngineResultToGraph;
+applyRealEngineResultToGraph = async function(res, eng, anim) {
+  S.v64Answers = {};
+  S.currentPendingQuestion = null;
+  await _v64Apply(res, eng, anim);
+  updateHeaderC7PendingPill();
+};
+
+// Notch: mostrar "pergunta i de n" e o botão de envio
+const _v64ShowPrompt = showEngineQuestionPrompt;
+showEngineQuestionPrompt = function(p) {
+  _v64ShowPrompt(p);
+  const { total, done } = v64Progress();
+  const badge = $('diPromptBadge');
+  if (badge && total > 1) badge.textContent = `⚠️ PERGUNTA ${done + 1}/${total} · ${p.pergunta || ''}`;
+  const btns = $('diPromptBtns');
+  if (btns && done > 0) btns.insertAdjacentHTML('beforeend', ` <button class="di-ans-btn unk" onclick="v64SendAnswers()" title="Enviar já as respostas registadas">⇢ Enviar ${done}</button>`);
+};
+window.showEngineQuestionPrompt = showEngineQuestionPrompt;
+
+// Inspetor: progresso, respostas registadas (com anular) e "Enviar já"
+const _v64Inspect = inspect;
+inspect = function() {
+  _v64Inspect();
+  const banner = $('inspC7ActionBanner');
+  const { total, done } = v64Progress();
+  if (!total) return;
+  const answers = Object.entries(S.v64Answers);
+  const html = `
+    <div class="v64-answers" style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(251,191,36,.35);font-size:11px;color:#fde68a">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px">
+        <b>Pergunta ${Math.min(done + 1, total)} de ${total}</b>
+        <span style="color:var(--dim)">${done} respondida(s) · o motor só é chamado no fim</span>
+      </div>
+      ${answers.map(([k, a]) => `<div style="display:flex;justify-content:space-between;gap:6px;font-family:var(--mono);font-size:10.5px;padding:2px 0">
+        <span>✓ ${esc(a.pergunta)} · ${esc(a.ativo)} = <b>${esc(a.valor)}</b></span>
+        <a href="#" onclick="v64UndoAnswer('${esc(k)}');return false" style="color:#fca5a5">anular</a></div>`).join('')}
+      ${done ? `<button class="btn-xs" onclick="v64SendAnswers()" style="width:100%;margin-top:6px;border-color:#fbbf24;color:#fde68a">⇢ Enviar já ${done} resposta(s) ao motor${done < total ? ` (faltam ${total - done})` : ''}</button>` : ''}
+    </div>`;
+  if (banner) banner.insertAdjacentHTML('beforeend', html);
+  else if (done) {
+    const box = $('insp');
+    if (box) box.insertAdjacentHTML('afterbegin', `<div class="insp-c7-action-banner" id="inspC7ActionBanner"><div class="c7-b-head"><span>✓ TODAS AS PERGUNTAS RESPONDIDAS</span></div>${html}</div>`);
+  }
+};
+
+// Notch compacto: intervalo real dos factos tempo/2, sem segundos inventados
+const _v64Dock = updateTimelineDockUI;
+updateTimelineDockUI = function() {
+  _v64Dock();
+  if (!window.__v62) return;
+  const tb = $('spdTimeBadge');
+  if (!tb) return;
+  const snaps = S.timelineSnapshots || [];
+  if (!snaps.length) { tb.innerHTML = '<span class="clk-hms">⏱ —</span>'; return; }
+  const clk = getDynamicScenarioClock(S.scen || 'all');
+  tb.innerHTML = clk.t0 || clk.tEnd ? `<span class="clk-hms">⏱ ${clk.t0}–${clk.tEnd}s</span>` : '<span class="clk-hms">⏱ —</span>';
+  tb.title = `Intervalo dos factos tempo/2 enviados: ${clk.label}`;
+};
+(function() {
+  const st = document.createElement('style');
+  st.textContent = '#spdTimeBadge,#spdWaveBadge{white-space:nowrap}#spdTimeBadge .clk-sec{display:none}';
+  document.head.appendChild(st);
+})();
 
 
 // Arrancar a verificação inicial após todos os handlers estarem declarados
