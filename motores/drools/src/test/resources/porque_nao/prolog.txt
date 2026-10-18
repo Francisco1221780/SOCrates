@@ -1,0 +1,126 @@
+#### vetor_aberto(ev_f1,web_srv_05,web_srv_05_apache,cve_2021_41773)
+O facto vetor_aberto(ev_f1,web_srv_05,web_srv_05_apache,cve_2021_41773) nao e falso! (facto n. 441)
+#### alerta_ids(ev_zz,web_srv_01,sig_x)
+Porque: o facto alerta_ids(ev_zz,web_srv_01,sig_x) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+#### ataque_dirigido(ev_e1,web_srv_04)
+Porque pela regra 13:
+     A premissa origem_hostil(ip_198_51_100_23,A) e falsa
+          Porque pela regra 12:
+               A premissa origem(ev_b1,ip_198_51_100_23) e falsa
+                    Porque: o facto origem(ev_b1,ip_198_51_100_23) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+          Porque pela regra 35:
+               A premissa reconhecimento(A,B,ip_198_51_100_23) e falsa
+                    Porque: o facto reconhecimento(A,B,ip_198_51_100_23) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+#### exploracao_possivel(ev_f1,web_srv_05,cve_2021_41773)
+Porque pela regra 6:
+     A premissa vulneravel(web_srv_05_apache,cve_2021_41773) e falsa
+          Porque pela regra 1:
+               A premissa versao(web_srv_05_apache,A) e falsa
+                    Porque: o facto versao(web_srv_05_apache,A) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+               A condicao calculada versao_cmp(A,>=,v(2,4,49)) e falsa
+               A condicao calculada versao_cmp(A,=<,v(2,4,49)) e falsa
+#### impacto_confirmado(web_srv_04,ev_e1,execucao_remota)
+Porque pela regra 20:
+     A premissa evento_host(A,web_srv_04,shell_iniciada) e falsa
+          Porque: o facto evento_host(A,web_srv_04,shell_iniciada) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+     A condicao calculada origem_evidencia(A,ev_e1,web_srv_04,cve_2021_41773,ligada) e falsa
+Porque pela regra 32:
+     A premissa resposta_analista(web_srv_04,ev_e1,A,sim) e falsa
+          Porque: o facto resposta_analista(web_srv_04,ev_e1,A,sim) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+Porque pela regra 50:
+     A premissa impacto_provavel(web_srv_04,ev_e1,execucao_remota) e falsa
+          Porque pela regra 22:
+               A premissa evento_host(A,web_srv_04,shell_iniciada) e falsa
+                    Porque: o facto evento_host(A,web_srv_04,shell_iniciada) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+               A condicao calculada origem_evidencia(A,ev_e1,web_srv_04,cve_2021_41773,por_confirmar(B)) e falsa
+          Porque pela regra 23:
+               A premissa evento_host(A,web_srv_04,shell_iniciada) e falsa
+                    Porque: o facto evento_host(A,web_srv_04,shell_iniciada) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+               A condicao calculada origem_evidencia(A,ev_e1,web_srv_04,cve_2021_41773,ligada) e falsa
+          Porque pela regra 24:
+               A premissa impacto_excluido(ev_e1,web_srv_04,A,execucao_remota,B) e falsa
+                    (... para ver mais fundo: define_opcao(profundidade_whynot, N))
+               A premissa evento_host(A,web_srv_04,shell_iniciada) e falsa
+                    Porque: o facto evento_host(A,web_srv_04,shell_iniciada) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+     A premissa resposta_analista(web_srv_04,ev_e1,compromisso_no_host,sim) e falsa
+          Porque: o facto resposta_analista(web_srv_04,ev_e1,compromisso_no_host,sim) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+#### compromisso_confirmado(web_srv_05,Ev)
+Porque pela regra 25:
+     A premissa impacto_confirmado(web_srv_05,A,B) e falsa
+          Porque pela regra 20:
+               A premissa impacto_possivel(A,web_srv_05,B,C) e falsa
+                    (... para ver mais fundo: define_opcao(profundidade_whynot, N))
+               A premissa evento_host(A,web_srv_05,B) e falsa
+                    Porque: o facto evento_host(A,web_srv_05,B) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+               A condicao calculada depois(A,B,C) e falsa
+               A condicao calculada origem_evidencia(A,B,web_srv_05,C,ligada) e falsa
+          Porque pela regra 32:
+               A premissa resposta_analista(web_srv_05,A,B,sim) e falsa
+                    Porque: o facto resposta_analista(web_srv_05,A,B,sim) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+               A premissa impacto_possivel(A,web_srv_05,B,C) e falsa
+                    (... para ver mais fundo: define_opcao(profundidade_whynot, N))
+          Porque pela regra 50:
+               A premissa impacto_provavel(web_srv_05,A,B) e falsa
+                    (... para ver mais fundo: define_opcao(profundidade_whynot, N))
+               A premissa resposta_analista(web_srv_05,A,compromisso_no_host,sim) e falsa
+                    Porque: o facto resposta_analista(web_srv_05,A,compromisso_no_host,sim) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+Porque pela regra 43:
+     A premissa impacto_possivel(A,web_srv_05,B,C) e falsa
+          Porque pela regra 16:
+               A premissa vulneravel(web_srv_05_apache,cve_2021_41773) e falsa
+                    (... para ver mais fundo: define_opcao(profundidade_whynot, N))
+               A premissa nao requer_condicao(cve_2021_41773,execucao_remota,A) e falsa
+                    Porque: o facto requer_condicao(cve_2021_41773,execucao_remota,A) e verdadeiro (facto n. 166)
+          Porque pela regra 17:
+               A premissa vulneravel(web_srv_05_apache,cve_2021_41773) e falsa
+                    (... para ver mais fundo: define_opcao(profundidade_whynot, N))
+               A premissa configuracao(web_srv_05_apache,cgi_ativo,sim) e falsa
+                    Porque: o facto configuracao(web_srv_05_apache,cgi_ativo,sim) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+          Porque pela regra 19:
+               A premissa vulneravel(web_srv_05_apache,cve_2021_41773) e falsa
+                    (... para ver mais fundo: define_opcao(profundidade_whynot, N))
+     A condicao calculada origem_evidencia(ev_s1,A,web_srv_05,B,ligada) e falsa
+Porque pela regra 49:
+     A premissa resposta_analista(web_srv_05,ev_s1,compromisso_no_host,sim) e falsa
+          Porque: o facto resposta_analista(web_srv_05,ev_s1,compromisso_no_host,sim) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+#### tentativa_sem_impacto(ev_f1,web_srv_05,X)
+Porque pela regra 5:
+     A condicao calculada sem_servico_acessivel(ev_f1,web_srv_05,apache_httpd,internet) e falsa
+     A premissa cobertura(web_srv_05,sbom,completa) e falsa
+          Porque: o facto cobertura(web_srv_05,sbom,completa) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+Porque pela regra 10:
+     A premissa nao_afetado(web_srv_05_apache,cve_2021_41773) e falsa
+          Porque pela regra 2:
+               A premissa versao(web_srv_05_apache,A) e falsa
+                    Porque: o facto versao(web_srv_05_apache,A) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+               A condicao calculada fora_dos_intervalos(A,cve_2021_41773) e falsa
+          Porque pela regra 3:
+               A premissa corrigido_backport(web_srv_05_apache,cve_2021_41773) e falsa
+                    Porque: o facto corrigido_backport(web_srv_05_apache,cve_2021_41773) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+     A condicao calculada todas_ao_alcance_nao_afetadas(ev_f1,web_srv_05,cve_2021_41773) e falsa
+Porque pela regra 11:
+     A premissa nao componente(A,web_srv_05,apache_httpd) e falsa
+          Porque: o facto componente(A,web_srv_05,apache_httpd) e verdadeiro (facto n. 86)
+     A premissa cobertura(web_srv_05,sbom,completa) e falsa
+          Porque: o facto cobertura(web_srv_05,sbom,completa) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+#### vulneravel(web_srv_02_apache,cve_2021_41773)
+Porque pela regra 1:
+     A condicao calculada versao_cmp(v(2,4,52),=<,v(2,4,49)) e falsa
+#### sem_evidencia_observada(ev_e1,web_srv_04)
+Porque pela regra 33:
+     A premissa resposta_analista(web_srv_04,ev_e1,A,nao) e falsa
+          Porque: o facto resposta_analista(web_srv_04,ev_e1,A,nao) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+     A condicao calculada evidencias_negadas(web_srv_04,ev_e1,cve_2021_41773) e falsa
+#### falha_catalogo(cve_2021_41773,X)
+Porque pela regra 89:
+     A premissa nao evidencia_impacto(execucao_remota,A,B) e falsa
+          Porque: o facto evidencia_impacto(execucao_remota,A,B) e verdadeiro (facto n. 188)
+Porque pela regra 90:
+     A premissa nao pergunta_evidencia(shell_iniciada,A) e falsa
+          Porque: o facto pergunta_evidencia(shell_iniciada,A) e verdadeiro (facto n. 202)
+Porque pela regra 91:
+     A premissa nao classe_impacto(execucao_remota,A) e falsa
+          Porque: o facto classe_impacto(execucao_remota,A) e verdadeiro (facto n. 184)
+Porque pela regra 92:
+     A premissa nao tipo_provavel(controlo,A) e falsa
+          Porque: o facto tipo_provavel(controlo,A) e verdadeiro (facto n. 186)
