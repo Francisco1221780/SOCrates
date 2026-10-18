@@ -77,19 +77,11 @@ class ParidadeTest {
      * diferenca com causa numa regra H-M que nao esteja aqui, ou sem causa H-M, continua a falhar o teste. O nivel
      * A-G+N nao tem lista nenhuma. Quando a #15 corrigir uma causa, sai daqui.
      */
-    private static final Map<Integer, String> CAUSAS_H_M = Map.of(
-            35, "premissas avalia(...) escritas como condicao calculada; o Prolog guarda o numero do facto lido (avalia/2)",
-            74, "idem R35 (avalia(criticidade(...)))",
-            75, "idem R35 (avalia(criticidade(...)))",
-            43, "nao verifica origem_evidencia(...,ligada), so a poe nas premissas: confirma o compromisso no c26 "
-                    + "(o Prolog nao confirma) e no c11 em vez do c11b",
-            66, "fora_do_destino num eval sem reavaliacao: o destino que chega depois do alerta (c37b) nao volta a "
-                    + "avaliar a regra (condicao_le)");
+    /** Causas conhecidas de diferenca nas regras H-M: vazio quando a #15 estiver completamente corrigida. */
+    private static final Map<Integer, String> CAUSAS_H_M = Map.of();
 
-    /** Respostas em erro no nivel completo por causa das regras H-M: um pedaco da mensagem e a causa. */
-    private static final Map<String, String> ERROS_H_M = Map.of(
-            "termo nao suportado: ", "regras do grupo L (R64-R72) poem o facto revisto como Facto no 1.o argumento de "
-                    + "revisto/2, e o TermosJson nao o sabe escrever na resposta");
+    /** Respostas em erro no nivel completo por causa das regras H-M: vazio quando a #15 estiver completamente corrigida. */
+    private static final Map<String, String> ERROS_H_M = Map.of();
 
     private static List<ComparaRespostas.Diferenca> semCausasHMConhecidas(List<ComparaRespostas.Diferenca> diferencas,
             JsonNode prolog, JsonNode drools) {
