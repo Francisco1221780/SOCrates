@@ -7742,6 +7742,7 @@ function nodeMatchesSearch(n, query){
          (n.preds && n.preds.some(p => p.toLowerCase().includes(q)));
 }
 
+var _arcCache = new Map(); // ângulos dos arcos ∧ por geometria (não mudam entre renders)
 function render(){
   gStages.innerHTML = ''; gE.innerHTML = ''; gA.innerHTML = ''; gN.innerHTML = '';
   const sc = S.scen && SCEN[S.scen];
@@ -7790,9 +7791,16 @@ function render(){
     if (n.t !== 'rule' || !n.and || IN[n.id].length < 2) continue;
     const cx = n.x, cy = n.y + H/2, r = 30;
     const angs = IN[n.id].map(e => {
-      const p = $('e-' + key(e.id, n.id)); const L = p.getTotalLength();
-      let pt = p.getPointAtLength(0);
-      for (let s = L; s >= 0; s -= 1.5) { const q = p.getPointAtLength(s); if (Math.hypot(q.x-cx, q.y-cy) >= r) { pt = q; break; } }
+      const p = $('e-' + key(e.id, n.id));
+      const ck = p.getAttribute('d') + '|' + cx + '|' + cy;
+      let pt = _arcCache.get(ck);
+      if (!pt) {
+        const L = p.getTotalLength();
+        pt = p.getPointAtLength(0);
+        let lo = 0, hi = L; for (let it = 0; it < 12; it++) { const mid = (lo + hi) / 2; const q = p.getPointAtLength(mid); if (Math.hypot(q.x-cx, q.y-cy) >= r) { pt = {x: q.x, y: q.y}; lo = mid; } else hi = mid; }
+        if (_arcCache.size > 4000) _arcCache.clear();
+        _arcCache.set(ck, pt);
+      }
       let a = Math.atan2(pt.y - cy, pt.x - cx); if (a < 0) a += Math.PI * 2; return a;
     });
     let a1 = Math.min(...angs), a2 = Math.max(...angs);
@@ -8625,11 +8633,11 @@ function animatePacket(k){
     const dot = el('circle', {r:5, class:'pkt'}, gP), tr = el('circle', {r:3, class:'pkt-trail'}, gP);
     const dur = 850 / (S.speed * (S.waveBoost || 1)), t0 = performance.now();
     const ease = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+    let p = null, L = 0;
     (function frame(now){
       const t = Math.min(1, (now - t0) / dur);
-      const p = $('e-' + k);
+      if (!p || !p.isConnected) { p = $('e-' + k); L = p ? p.getTotalLength() : 0; }
       if (p) {
-        const L = p.getTotalLength();
         const a = p.getPointAtLength(L * ease(t)), b = p.getPointAtLength(L * ease(Math.max(0, t - .06)));
         dot.setAttribute('cx', a.x); dot.setAttribute('cy', a.y); tr.setAttribute('cx', b.x); tr.setAttribute('cy', b.y);
       }
@@ -16868,8 +16876,8 @@ inspect = function() {
   const html = `
     <div class="v64-answers" style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(251,191,36,.35);font-size:11px;color:#fde68a">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px">
-        <b>Pergunta ${Math.min(done + 1, total)} de ${total}</b>
-        <span style="color:var(--dim)">${done} respondida(s) · o motor só é chamado no fim</span>
+        <b>${done >= total ? `${total}/${total} respondidas · reveja antes de enviar` : `Pergunta ${done + 1} de ${total}`}</b>
+        <span style="color:var(--dim)">${done >= total ? '' : `${done} respondida(s) · o motor só é chamado quando enviar`}</span>
       </div>
       ${answers.map(([k, a]) => `<div style="display:flex;justify-content:space-between;gap:6px;font-family:var(--mono);font-size:10.5px;padding:2px 0">
         <span>✓ ${esc(a.pergunta)} · ${esc(a.ativo)} = <b>${esc(a.valor)}</b></span>
@@ -16902,6 +16910,159 @@ updateTimelineDockUI = function() {
   document.head.appendChild(st);
 })();
 
+
+
+/* =====================================================================
+   v65: FLUIDEZ DA ANIMAÇÃO + NOTCH DENTRO DOS LIMITES + REVER RESPOSTAS
+   ===================================================================== */
+
+// 1) Nós visíveis: versão rápida para o grafo dinâmico + memória por estado
+//    (era chamada uma vez por nó em cada render e percorria todas as setas → ~400 ms por render)
+const _v65Visible = getVisibleNodesForCurrentState;
+let _v65VisKey = '', _v65VisVal = null;
+getVisibleNodesForCurrentState = function() {
+  if (!window.__v62) return _v65Visible();
+  const k = [S.scen, S.cat, S.search, S.selTicket, S.sequentialReveal, NODES.length, EDGES.length, R.lit.size, R.blocked.size, R.flying.size, R.done.size, S.timelineStep].join('|');
+  if (k === _v65VisKey && _v65VisVal) return _v65VisVal;
+  let vis;
+  const sc = S.scen && SCEN[S.scen];
+  if (!S.selTicket && sc && S.sequentialReveal && (!S.cat || S.cat === 'all') && !S.search) {
+    vis = new Set([...R.lit, ...R.blocked]);
+    R.flying.forEach(e => { const [a, b] = e.split('->'); vis.add(a); vis.add(b); });
+    if (!vis.size) {
+      const targets = new Set(sc.edges.map(e => e.split('->')[1]));
+      sc.nodes.forEach(id => { if (!targets.has(id)) vis.add(id); });
+    }
+  } else {
+    vis = _v65Visible();
+  }
+  _v65VisKey = k; _v65VisVal = vis;
+  return vis;
+};
+const _v65Render = render;
+render = function() { _v65VisKey = ''; _v65Render(); };
+
+// Duração: um lote grande demora o mesmo que um cenário de ~8 etapas
+const _v65RunWaves = v62RunWaves;
+v62RunWaves = async function() {
+  const n = Math.max(1, (S.timelineSnapshots || []).length - 1);
+  S.waveBoost = Math.max(1, n / 8);
+  // Na vista global a câmara fica fixa no grafo inteiro (mover a câmara a cada onda obrigava a redesenhar tudo)
+  return _v65RunWaves();
+};
+const _v65Cam = animateCameraToVisibleGraph;
+animateCameraToVisibleGraph = function(ms, z) {
+  if (window.__v62 && R.playing && (S.scen || 'all') === 'all') {
+    if (S._v65CamFixed) return;
+    S._v65CamFixed = true;
+    const keep = R.lit; R.lit = new Set(NODES.map(n => n.id)); _v65VisKey = '';
+    try { _v65Cam(ms, z); } finally { R.lit = keep; _v65VisKey = ''; }
+    return;
+  }
+  S._v65CamFixed = false;
+  return _v65Cam(ms, z);
+};
+
+// 2) Notch: a barra cresce para caber o conteúdo (nada fica fora do limite)
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    .dynamic-island:not(.expanded){width:auto !important;min-width:470px}
+    .dynamic-island .di-bar{flex-wrap:nowrap !important;white-space:nowrap}
+    .dynamic-island .di-readout{white-space:nowrap}
+    .dynamic-island.expanded{width:min(760px, 92vw) !important}
+    #timelinePinsRow.v65-pins{display:flex !important;justify-content:space-between !important;gap:0 !important;overflow:hidden !important;width:100% !important;padding:4px 0 2px !important}
+    #timelinePinsRow.v65-pins .spd-pin-slot{flex:0 0 var(--v65-slot) !important;width:var(--v65-slot) !important;min-width:0;overflow:hidden;display:flex;justify-content:center}
+    #timelinePinsRow.v65-pins .di-step-chip{max-width:100%;overflow:hidden;text-overflow:ellipsis;padding:2px 3px !important;gap:3px}
+    #timelinePinsRow.v65-pins.v65-narrow .di-step-chip .s-txt{display:none}
+  `;
+  document.head.appendChild(st);
+})();
+
+// Linha temporal: cada etapa num espaço igual, alinhado com o cursor; com muitas etapas só o número
+function v65RenderPins() {
+  const row = $('timelinePinsRow');
+  const snaps = S.timelineSnapshots || [];
+  if (!row || !snaps.length || !window.__v62) return;
+  const n = snaps.length;
+  const cur = Math.min(S.timelineStep || 0, n - 1);
+  const W = row.clientWidth || 640;
+  const slot = Math.max(16, Math.min(64, Math.floor(W / n)));
+  row.classList.remove('aligned-grid');
+  row.classList.add('v65-pins');
+  row.classList.toggle('v65-narrow', slot < 56);
+  row.style.setProperty('--v65-slot', slot + 'px');
+  const sl = document.querySelector('.spd-slider-row');
+  if (sl) sl.style.setProperty('padding', `0 ${Math.round(slot / 2)}px`, 'important');
+  row.innerHTML = snaps.map((s, i) => {
+    const novos = i > 0 ? [...s.lit].filter(id => !snaps[i - 1].lit.has(id)).map(id => byId[id]).filter(Boolean) : [];
+    const regras = novos.filter(x => x.t === 'rule').map(x => x.codeFull || x.code);
+    const short = i === 0 ? 'entradas' : (regras[0] || (novos[0] ? novos[0].label : ''));
+    const tip = i === 0 ? 'Etapa 1: factos de entrada e base de conhecimento' : `Etapa ${i + 1}/${n}: ${regras.length ? 'disparam ' + regras.join(', ') : ''}${novos.filter(x => x.t !== 'rule').length ? ' · novos: ' + novos.filter(x => x.t !== 'rule').map(x => x.label).join(', ') : ''}`;
+    const cls = i === cur ? 'di-step-chip current' : (i < cur ? 'di-step-chip reached' : 'di-step-chip');
+    return `<div class="spd-pin-slot"><span class="${cls}" onclick="onTimelineScrub(${i})" title="${esc(tip)}"><span class="s-idx">${slot < 30 ? i + 1 : 'E' + (i + 1)}</span><span class="s-txt">${esc(short)}</span></span></div>`;
+  }).join('');
+}
+const _v65Dock = updateTimelineDockUI;
+updateTimelineDockUI = function() {
+  _v65Dock();
+  if (!window.__v62) return;
+  const wb = $('spdWaveBadge');
+  const snaps = S.timelineSnapshots || [];
+  if (wb) wb.innerHTML = snaps.length ? `Etapa <b>${Math.min((S.timelineStep || 0) + 1, snaps.length)}/${snaps.length}</b>` : 'Etapa <b>—</b>';
+  v65RenderPins();
+};
+
+// 3) Depois da última resposta NÃO se envia logo: o analista revê e envia quando quiser
+submitAnalystResponse = async function(valor) {
+  if (!S.apiOnline) return;
+  const p = S.currentPendingQuestion && !(v64Key(S.currentPendingQuestion) in S.v64Answers) ? S.currentPendingQuestion : getPendingEngineQuestions()[0];
+  if (!p) { v65ShowReview(); return; }
+  S.v64Answers[v64Key(p)] = { ativo: p.ativo || p.alvo, evento: p.evento, pergunta: p.pergunta, valor };
+  const { total, done } = v64Progress();
+  log('analista', `resposta registada (${done}/${total}): ${p.pergunta} em ${p.ativo || p.alvo} = ${valor}`, 'c');
+  if (done >= total) v65ShowReview(); else v64ShowNext();
+};
+window.submitAnalystResponse = submitAnalystResponse;
+
+function v65ShowReview() {
+  const { total, done } = v64Progress();
+  S.currentPendingQuestion = null;
+  const island = $('dynamicIsland'), banner = $('diPromptBanner');
+  if (island) island.classList.add('prompt-pending');
+  if (banner) banner.classList.add('active');
+  if ($('diPromptBadge')) $('diPromptBadge').textContent = `✓ ${done}/${total} RESPOSTAS REGISTADAS · por enviar`;
+  if ($('diPromptQuestion')) $('diPromptQuestion').textContent = 'Reveja as respostas no painel lateral (pode anular qualquer uma) e envie ao motor quando estiver pronto.';
+  const btns = $('diPromptBtns');
+  if (btns) btns.innerHTML = `<button class="di-ans-btn unk" onclick="focusAnalystPromptInInspector()">Rever no painel</button> <button class="di-ans-btn sim" onclick="v64SendAnswers()">⇢ Enviar ${done} resposta(s) ao motor</button>`;
+  updateHeaderC7PendingPill();
+  inspect();
+}
+window.v65ShowReview = v65ShowReview;
+
+// Anular uma resposta: volta a ser a pergunta atual
+v64UndoAnswer = function(k) {
+  delete S.v64Answers[k];
+  const q = v64AllQuestions().find(x => v64Key(x) === k);
+  if (q) { S.currentPendingQuestion = q; showEngineQuestionPrompt(q); }
+  updateHeaderC7PendingPill();
+  inspect();
+};
+window.v64UndoAnswer = v64UndoAnswer;
+
+// Quando já não há perguntas por responder mas há respostas por enviar, o topo mostra isso
+const _v65Pill = updateHeaderC7PendingPill;
+updateHeaderC7PendingPill = function() {
+  _v65Pill();
+  const pill = $('headerC7PendingPill');
+  if (!pill || !window.__v62) return;
+  const { total, done } = v64Progress();
+  if (total && done >= total) {
+    pill.classList.add('visible');
+    pill.innerHTML = `<span>✓ ${done} por enviar ➔</span>`;
+    pill.title = 'Todas as perguntas respondidas: rever e enviar ao motor';
+  }
+};
 
 // Arrancar a verificação inicial após todos os handlers estarem declarados
 verifyAndRetrieveFromApi(false);
