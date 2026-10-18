@@ -1,22 +1,83 @@
 package regras;
 
-// B. O ATACANTE CONSEGUE CHEGAR A VULNERABILIDADE? (soc_regras.txt, base v6)
+// B. O ATACANTE CONSEGUE CHEGAR A VULNERABILIDADE? (soc_regras.txt, base v6, R4-R9)
 //
 // Molde para portar uma regra:
 //   - um padrao Facto(functor == "predicado/aridade", ...) por condicao, pela ordem do "se" da regra Prolog;
 //   - "nao X" -> not Facto(...); um argumento "_" nao entra no padrao;
+//   - uma condicao calculada -> eval(CondicoesCalculadas.<nome>(..., base)), ou "from" quando liga uma variavel
+//     (origem_evidencia). Antes dela, um padrao Marca(functor == ...) por cada facto que o condicao_le/2 do
+//     soc_suporte.txt diz que ela le: assim a regra reavalia-se quando um deles chega (ex.: um tempo atrasado);
 //   - o ENTAO nao faz insert: chama base.cria(kcontext, <numero da regra>, premissas, facto) por cada cria_facto;
-//   - premissas: uma por condicao, pela mesma ordem -> Premissa.de($f) para um facto,
+//   - premissas: uma por condicao, pela mesma ordem (as Marca nao contam) -> Premissa.de($f) para um facto,
 //     Premissa.nao("predicado", args...) para uma negacao (Variavel.nova() no lugar de cada "_"),
-//     Premissa.calculada("nome", args...) para uma condicao calculada.
+//     Premissa.calculada("nome", args...) para uma condicao calculada, com os argumentos ja ligados.
 
 import cyberrangers.motores.drools.modelo.Facto;
 import cyberrangers.motores.drools.modelo.Premissa;
 import cyberrangers.motores.drools.modelo.Termo;
 import cyberrangers.motores.drools.modelo.Variavel;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import cyberrangers.motores.drools.sessao.Marca;
 import java.util.List;
 
 global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R4: uma instalacao do programa atacado escuta no porto atacado, aberto para a zona de onde vem o ataque
+//     -> vetor aberto ate essa instalacao
+//   se [alerta_ids(Ev,Alvo,Sig) e assinatura_vuln(Sig,Vuln) e vuln_vetor(Vuln,rede) e vuln_afeta(Vuln,Nome) e
+//       servico(Inst,Alvo,Nome,Porto,Proto) e porto_compativel(Ev,Porto,Proto) e origem_zona(Ev,Zona) e
+//       exposto(Alvo,Porto,Proto,Zona)]
+//   entao [cria_facto(vetor_aberto(Ev,Alvo,Inst,Vuln))].
+// porto_compativel nao tem condicao_le (o destino so a pode tornar falsa), por isso nao leva Marca.
+rule "R4"
+when
+    $al : Facto(functor == "alerta_ids/3", $ev : arg(0), $alvo : arg(1), $sig : arg(2))
+    $as : Facto(functor == "assinatura_vuln/2", arg(0) == $sig, $vuln : arg(1))
+    $vv : Facto(functor == "vuln_vetor/2", arg(0) == $vuln, arg(1) == "rede")
+    $va : Facto(functor == "vuln_afeta/2", arg(0) == $vuln, $nome : arg(1))
+    $sv : Facto(functor == "servico/5", $inst : arg(0), arg(1) == $alvo, arg(2) == $nome, $porto : arg(3), $proto : arg(4))
+    eval(CondicoesCalculadas.portoCompativel($ev, $porto, $proto, base))
+    $oz : Facto(functor == "origem_zona/2", arg(0) == $ev, $zona : arg(1))
+    $ex : Facto(functor == "exposto/4", arg(0) == $alvo, arg(1) == $porto, arg(2) == $proto, arg(3) == $zona)
+then
+    List<Premissa> p = List.of(Premissa.de($al), Premissa.de($as), Premissa.de($vv), Premissa.de($va), Premissa.de($sv),
+            Premissa.calculada("porto_compativel", $ev, $porto, $proto), Premissa.de($oz), Premissa.de($ex));
+    base.cria(kcontext, 4, p, Facto.de("vetor_aberto", $ev, $alvo, $inst, $vuln));
+end
+
+// R5: nenhum servico do programa esta acessivel a partir dessa zona (no porto atacado, se for conhecido), e os
+//     inventarios de rede e de software estao completos -> tentativa sem impacto (vetor fechado)
+//   se [alerta_ids(Ev,Alvo,Sig) e assinatura_vuln(Sig,Vuln) e vuln_afeta(Vuln,Nome) e origem_zona(Ev,Zona) e
+//       sem_servico_acessivel(Ev,Alvo,Nome,Zona) e cobertura(Alvo,rede,completa) e cobertura(Alvo,sbom,completa)]
+//   entao [cria_facto(tentativa_sem_impacto(Ev,Alvo,vetor_fechado))].
+rule "R5"
+when
+    $al : Facto(functor == "alerta_ids/3", $ev : arg(0), $alvo : arg(1), $sig : arg(2))
+    $as : Facto(functor == "assinatura_vuln/2", arg(0) == $sig, $vuln : arg(1))
+    $va : Facto(functor == "vuln_afeta/2", arg(0) == $vuln, $nome : arg(1))
+    $oz : Facto(functor == "origem_zona/2", arg(0) == $ev, $zona : arg(1))
+    Marca(functor == "destino/3")
+    eval(CondicoesCalculadas.semServicoAcessivel($ev, $alvo, $nome, $zona, base))
+    $cr : Facto(functor == "cobertura/3", arg(0) == $alvo, arg(1) == "rede", arg(2) == "completa")
+    $cs : Facto(functor == "cobertura/3", arg(0) == $alvo, arg(1) == "sbom", arg(2) == "completa")
+then
+    List<Premissa> p = List.of(Premissa.de($al), Premissa.de($as), Premissa.de($va), Premissa.de($oz),
+            Premissa.calculada("sem_servico_acessivel", $ev, $alvo, $nome, $zona), Premissa.de($cr), Premissa.de($cs));
+    base.cria(kcontext, 5, p, Facto.de("tentativa_sem_impacto", $ev, $alvo, "vetor_fechado"));
+end
+
+// R6: vetor aberto ate uma instalacao vulneravel -> exploracao possivel
+//   se [vetor_aberto(Ev,Alvo,Inst,Vuln) e vulneravel(Inst,Vuln)]
+//   entao [cria_facto(exploracao_possivel(Ev,Alvo,Vuln))].
+rule "R6"
+when
+    $v : Facto(functor == "vetor_aberto/4", $ev : arg(0), $alvo : arg(1), $inst : arg(2), $vuln : arg(3))
+    $u : Facto(functor == "vulneravel/2", arg(0) == $inst, arg(1) == $vuln)
+then
+    List<Premissa> p = List.of(Premissa.de($v), Premissa.de($u));
+    base.cria(kcontext, 6, p, Facto.de("exploracao_possivel", $ev, $alvo, $vuln));
+end
 
 // R7: vetor aberto ate uma instalacao de que nao se sabe a versao -> exploracao incerta e incidente "versao por confirmar"
 //   se [vetor_aberto(Ev,Alvo,Inst,Vuln) e nao versao(Inst,_)]
@@ -33,4 +94,43 @@ then
     base.cria(kcontext, 7, p, Facto.de("exploracao_incerta", $ev, $alvo, $vuln));
     base.cria(kcontext, 7, p, Facto.de("motivo", inc, Termo.de("instalacao_sem_versao_valida", $inst)));
     base.cria(kcontext, 7, p, Facto.de("incidente", inc, "versao_por_confirmar", $alvo, List.of($alvo)));
+end
+
+// R8: vetor aberto, mas a versao registada nao esta num formato reconhecido (ex.: "2.4.49-ubuntu1") -> igual a R7
+//   se [vetor_aberto(Ev,Alvo,Inst,Vuln) e versao(Inst,V) e versao_invalida(V)]
+//   entao [cria_facto(exploracao_incerta(Ev,Alvo,Vuln)),
+//          cria_facto(motivo(inc(versao_por_confirmar,Ev),instalacao_sem_versao_valida(Inst))),
+//          cria_facto(incidente(inc(versao_por_confirmar,Ev),versao_por_confirmar,Alvo,[Alvo]))].
+rule "R8"
+when
+    $v : Facto(functor == "vetor_aberto/4", $ev : arg(0), $alvo : arg(1), $inst : arg(2), $vuln : arg(3))
+    $r : Facto(functor == "versao/2", arg(0) == $inst, $ver : arg(1))
+    eval(CondicoesCalculadas.versaoInvalida($ver))
+then
+    List<Premissa> p = List.of(Premissa.de($v), Premissa.de($r), Premissa.calculada("versao_invalida", $ver));
+    Termo inc = Termo.de("inc", "versao_por_confirmar", $ev);
+    base.cria(kcontext, 8, p, Facto.de("exploracao_incerta", $ev, $alvo, $vuln));
+    base.cria(kcontext, 8, p, Facto.de("motivo", inc, Termo.de("instalacao_sem_versao_valida", $inst)));
+    base.cria(kcontext, 8, p, Facto.de("incidente", inc, "versao_por_confirmar", $alvo, List.of($alvo)));
+end
+
+// R9: vetor aberto ate uma instalacao, mas o catalogo ainda nao tem nenhum intervalo de versoes para a vulnerabilidade
+//     -> exploracao incerta e incidente "catalogo incompleto"
+//   se [vetor_aberto(Ev,Alvo,Inst,Vuln) e nao intervalo_afetado(Vuln,_,_) e nao corrigido_backport(Inst,Vuln)]
+//   entao [cria_facto(exploracao_incerta(Ev,Alvo,Vuln)),
+//          cria_facto(motivo(inc(catalogo_incompleto,Ev),sem_intervalos(Vuln))),
+//          cria_facto(incidente(inc(catalogo_incompleto,Ev),catalogo_incompleto,Alvo,[Alvo]))].
+rule "R9"
+when
+    $v : Facto(functor == "vetor_aberto/4", $ev : arg(0), $alvo : arg(1), $inst : arg(2), $vuln : arg(3))
+    not Facto(functor == "intervalo_afetado/3", arg(0) == $vuln)
+    not Facto(functor == "corrigido_backport/2", arg(0) == $inst, arg(1) == $vuln)
+then
+    List<Premissa> p = List.of(Premissa.de($v),
+            Premissa.nao("intervalo_afetado", $vuln, Variavel.nova(), Variavel.nova()),
+            Premissa.nao("corrigido_backport", $inst, $vuln));
+    Termo inc = Termo.de("inc", "catalogo_incompleto", $ev);
+    base.cria(kcontext, 9, p, Facto.de("exploracao_incerta", $ev, $alvo, $vuln));
+    base.cria(kcontext, 9, p, Facto.de("motivo", inc, Termo.de("sem_intervalos", $vuln)));
+    base.cria(kcontext, 9, p, Facto.de("incidente", inc, "catalogo_incompleto", $alvo, List.of($alvo)));
 end

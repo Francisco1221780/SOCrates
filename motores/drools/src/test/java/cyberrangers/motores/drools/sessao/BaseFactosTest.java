@@ -39,6 +39,18 @@ class BaseFactosTest {
         assertEquals(Origem.ENTRADA, entrada.origem());
         assertEquals("cenario_06", entrada.passo());
         assertNull(entrada.regra());
-        assertEquals(2, sessao.getFactCount());
+        assertEquals(2, sessao.getObjects(o -> o instanceof Facto).size());
+    }
+
+    @Test
+    void factoLidoPorUmaCondicaoCalculadaMudaAMarca() {
+        base.insereEntrada(Facto.de("tempo", "ev_f1", 2200));
+        base.insereEntrada(Facto.de("tempo", "ev_f1", 2200));
+        base.insereEntrada(Facto.de("zona", "web_srv_05", "dmz"));
+
+        long tempos = sessao.getObjects(o -> o instanceof Marca m && m.getFunctor().equals("tempo/2")).stream()
+                .mapToLong(o -> ((Marca) o).getVersao()).sum();
+        assertEquals(1, tempos);
+        assertEquals(BaseFactos.LIDOS_POR_CONDICOES.size(), sessao.getObjects(o -> o instanceof Marca).size());
     }
 }

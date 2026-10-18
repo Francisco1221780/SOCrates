@@ -1,0 +1,91 @@
+package regras;
+
+// E. QUE IMPACTOS PODE O ATAQUE TER NESTA INSTALACAO? (soc_regras.txt, base v6, R16-R19)
+// Um impacto pode exigir condicoes de configuracao (requer_condicao); basta UMA em falta para ficar excluido (R18).
+// Molde e convencoes: ver B_vetor.drl e o README desta pasta.
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.modelo.Variavel;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R16: instalacao vulneravel ao alcance do ataque, e o impacto nao exige nenhuma condicao -> impacto possivel
+//   se [vetor_aberto(Ev,Alvo,Inst,Vuln) e vulneravel(Inst,Vuln) e vuln_impacto(Vuln,Impacto) e
+//       nao requer_condicao(Vuln,Impacto,_)]
+//   entao [cria_facto(impacto_possivel(Ev,Alvo,Vuln,Impacto))].
+rule "R16"
+when
+    $v : Facto(functor == "vetor_aberto/4", $ev : arg(0), $alvo : arg(1), $inst : arg(2), $vuln : arg(3))
+    $u : Facto(functor == "vulneravel/2", arg(0) == $inst, arg(1) == $vuln)
+    $i : Facto(functor == "vuln_impacto/2", arg(0) == $vuln, $impacto : arg(1))
+    not Facto(functor == "requer_condicao/3", arg(0) == $vuln, arg(1) == $impacto)
+then
+    List<Premissa> p = List.of(Premissa.de($v), Premissa.de($u), Premissa.de($i),
+            Premissa.nao("requer_condicao", $vuln, $impacto, Variavel.nova()));
+    base.cria(kcontext, 16, p, Facto.de("impacto_possivel", $ev, $alvo, $vuln, $impacto));
+end
+
+// R17: o impacto exige uma condicao e a instalacao tem-na (ex.: CGI ativo), e nenhuma outra condicao desse impacto
+//      esta em falta -> impacto possivel
+//   se [vetor_aberto(Ev,Alvo,Inst,Vuln) e vulneravel(Inst,Vuln) e vuln_impacto(Vuln,Impacto) e
+//       requer_condicao(Vuln,Impacto,Cond) e configuracao(Inst,Cond,sim) e sem_condicao_em_falta(Inst,Vuln,Impacto)]
+//   entao [cria_facto(impacto_possivel(Ev,Alvo,Vuln,Impacto))].
+// sem_condicao_em_falta nao tem condicao_le (uma configuracao "nao" so a pode tornar falsa).
+rule "R17"
+when
+    $v : Facto(functor == "vetor_aberto/4", $ev : arg(0), $alvo : arg(1), $inst : arg(2), $vuln : arg(3))
+    $u : Facto(functor == "vulneravel/2", arg(0) == $inst, arg(1) == $vuln)
+    $i : Facto(functor == "vuln_impacto/2", arg(0) == $vuln, $impacto : arg(1))
+    $r : Facto(functor == "requer_condicao/3", arg(0) == $vuln, arg(1) == $impacto, $cond : arg(2))
+    $c : Facto(functor == "configuracao/3", arg(0) == $inst, arg(1) == $cond, arg(2) == "sim")
+    eval(CondicoesCalculadas.semCondicaoEmFalta($inst, $vuln, $impacto, base))
+then
+    List<Premissa> p = List.of(Premissa.de($v), Premissa.de($u), Premissa.de($i), Premissa.de($r), Premissa.de($c),
+            Premissa.calculada("sem_condicao_em_falta", $inst, $vuln, $impacto));
+    base.cria(kcontext, 17, p, Facto.de("impacto_possivel", $ev, $alvo, $vuln, $impacto));
+end
+
+// R18: o impacto exige uma condicao e a instalacao NAO a tem (ex.: CGI desligado) -> esse impacto fica excluido
+//   se [vetor_aberto(Ev,Alvo,Inst,Vuln) e vulneravel(Inst,Vuln) e vuln_impacto(Vuln,Impacto) e
+//       requer_condicao(Vuln,Impacto,Cond) e configuracao(Inst,Cond,nao)]
+//   entao [cria_facto(impacto_excluido(Ev,Alvo,Vuln,Impacto,Cond))].
+rule "R18"
+when
+    $v : Facto(functor == "vetor_aberto/4", $ev : arg(0), $alvo : arg(1), $inst : arg(2), $vuln : arg(3))
+    $u : Facto(functor == "vulneravel/2", arg(0) == $inst, arg(1) == $vuln)
+    $i : Facto(functor == "vuln_impacto/2", arg(0) == $vuln, $impacto : arg(1))
+    $r : Facto(functor == "requer_condicao/3", arg(0) == $vuln, arg(1) == $impacto, $cond : arg(2))
+    $c : Facto(functor == "configuracao/3", arg(0) == $inst, arg(1) == $cond, arg(2) == "nao")
+then
+    List<Premissa> p = List.of(Premissa.de($v), Premissa.de($u), Premissa.de($i), Premissa.de($r), Premissa.de($c));
+    base.cria(kcontext, 18, p, Facto.de("impacto_excluido", $ev, $alvo, $vuln, $impacto, $cond));
+end
+
+// R19: o impacto exige uma condicao, nao se sabe se a instalacao a tem, e nenhuma outra condicao desse impacto esta
+//      em falta -> na duvida o impacto conta como possivel, e abre-se o incidente "configuracao por confirmar"
+//   se [vetor_aberto(Ev,Alvo,Inst,Vuln) e vulneravel(Inst,Vuln) e vuln_impacto(Vuln,Impacto) e
+//       requer_condicao(Vuln,Impacto,Cond) e nao configuracao(Inst,Cond,_) e sem_condicao_em_falta(Inst,Vuln,Impacto)]
+//   entao [cria_facto(impacto_possivel(Ev,Alvo,Vuln,Impacto)),
+//          cria_facto(motivo(inc(configuracao_por_confirmar,Ev),condicao_desconhecida(Inst,Cond))),
+//          cria_facto(incidente(inc(configuracao_por_confirmar,Ev),configuracao_por_confirmar,Alvo,[Alvo]))].
+rule "R19"
+when
+    $v : Facto(functor == "vetor_aberto/4", $ev : arg(0), $alvo : arg(1), $inst : arg(2), $vuln : arg(3))
+    $u : Facto(functor == "vulneravel/2", arg(0) == $inst, arg(1) == $vuln)
+    $i : Facto(functor == "vuln_impacto/2", arg(0) == $vuln, $impacto : arg(1))
+    $r : Facto(functor == "requer_condicao/3", arg(0) == $vuln, arg(1) == $impacto, $cond : arg(2))
+    not Facto(functor == "configuracao/3", arg(0) == $inst, arg(1) == $cond)
+    eval(CondicoesCalculadas.semCondicaoEmFalta($inst, $vuln, $impacto, base))
+then
+    List<Premissa> p = List.of(Premissa.de($v), Premissa.de($u), Premissa.de($i), Premissa.de($r),
+            Premissa.nao("configuracao", $inst, $cond, Variavel.nova()),
+            Premissa.calculada("sem_condicao_em_falta", $inst, $vuln, $impacto));
+    Termo inc = Termo.de("inc", "configuracao_por_confirmar", $ev);
+    base.cria(kcontext, 19, p, Facto.de("impacto_possivel", $ev, $alvo, $vuln, $impacto));
+    base.cria(kcontext, 19, p, Facto.de("motivo", inc, Termo.de("condicao_desconhecida", $inst, $cond)));
+    base.cria(kcontext, 19, p, Facto.de("incidente", inc, "configuracao_por_confirmar", $alvo, List.of($alvo)));
+end

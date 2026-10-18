@@ -1,0 +1,62 @@
+package regras;
+
+// D. NA DUVIDA, NAO SE CONCLUI "SEM IMPACTO" (soc_regras.txt, base v6, R14-R15)
+// Quando o inventario do ativo esta incompleto, a falta de um servico ou de um programa nao prova nada.
+// Molde e convencoes: ver B_vetor.drl e o README desta pasta.
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import cyberrangers.motores.drools.sessao.Marca;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R14: nenhum servico do programa registado como acessivel, mas o inventario de rede do ativo nao esta completo
+//      -> exploracao incerta e incidente "inventario de rede incompleto"
+//   se [alerta_ids(Ev,Alvo,Sig) e assinatura_vuln(Sig,Vuln) e vuln_afeta(Vuln,Nome) e origem_zona(Ev,Zona) e
+//       sem_servico_acessivel(Ev,Alvo,Nome,Zona) e nao cobertura(Alvo,rede,completa)]
+//   entao [cria_facto(exploracao_incerta(Ev,Alvo,Vuln)),
+//          cria_facto(incidente(inc(inventario_rede_incompleto,Ev),inventario_rede_incompleto,Alvo,[Alvo]))].
+rule "R14"
+when
+    $al : Facto(functor == "alerta_ids/3", $ev : arg(0), $alvo : arg(1), $sig : arg(2))
+    $as : Facto(functor == "assinatura_vuln/2", arg(0) == $sig, $vuln : arg(1))
+    $va : Facto(functor == "vuln_afeta/2", arg(0) == $vuln, $nome : arg(1))
+    $oz : Facto(functor == "origem_zona/2", arg(0) == $ev, $zona : arg(1))
+    Marca(functor == "destino/3")
+    eval(CondicoesCalculadas.semServicoAcessivel($ev, $alvo, $nome, $zona, base))
+    not Facto(functor == "cobertura/3", arg(0) == $alvo, arg(1) == "rede", arg(2) == "completa")
+then
+    List<Premissa> p = List.of(Premissa.de($al), Premissa.de($as), Premissa.de($va), Premissa.de($oz),
+            Premissa.calculada("sem_servico_acessivel", $ev, $alvo, $nome, $zona),
+            Premissa.nao("cobertura", $alvo, "rede", "completa"));
+    base.cria(kcontext, 14, p, Facto.de("exploracao_incerta", $ev, $alvo, $vuln));
+    base.cria(kcontext, 14, p, Facto.de("incidente", Termo.de("inc", "inventario_rede_incompleto", $ev),
+            "inventario_rede_incompleto", $alvo, List.of($alvo)));
+end
+
+// R15: nenhum servico do programa registado como acessivel, mas o inventario de software do ativo nao esta completo
+//      -> exploracao incerta e incidente "SBOM incompleto"
+//   se [alerta_ids(Ev,Alvo,Sig) e assinatura_vuln(Sig,Vuln) e vuln_afeta(Vuln,Nome) e origem_zona(Ev,Zona) e
+//       sem_servico_acessivel(Ev,Alvo,Nome,Zona) e nao cobertura(Alvo,sbom,completa)]
+//   entao [cria_facto(exploracao_incerta(Ev,Alvo,Vuln)),
+//          cria_facto(incidente(inc(sbom_incompleto,Ev),sbom_incompleto,Alvo,[Alvo]))].
+rule "R15"
+when
+    $al : Facto(functor == "alerta_ids/3", $ev : arg(0), $alvo : arg(1), $sig : arg(2))
+    $as : Facto(functor == "assinatura_vuln/2", arg(0) == $sig, $vuln : arg(1))
+    $va : Facto(functor == "vuln_afeta/2", arg(0) == $vuln, $nome : arg(1))
+    $oz : Facto(functor == "origem_zona/2", arg(0) == $ev, $zona : arg(1))
+    Marca(functor == "destino/3")
+    eval(CondicoesCalculadas.semServicoAcessivel($ev, $alvo, $nome, $zona, base))
+    not Facto(functor == "cobertura/3", arg(0) == $alvo, arg(1) == "sbom", arg(2) == "completa")
+then
+    List<Premissa> p = List.of(Premissa.de($al), Premissa.de($as), Premissa.de($va), Premissa.de($oz),
+            Premissa.calculada("sem_servico_acessivel", $ev, $alvo, $nome, $zona),
+            Premissa.nao("cobertura", $alvo, "sbom", "completa"));
+    base.cria(kcontext, 15, p, Facto.de("exploracao_incerta", $ev, $alvo, $vuln));
+    base.cria(kcontext, 15, p, Facto.de("incidente", Termo.de("inc", "sbom_incompleto", $ev),
+            "sbom_incompleto", $alvo, List.of($alvo)));
+end

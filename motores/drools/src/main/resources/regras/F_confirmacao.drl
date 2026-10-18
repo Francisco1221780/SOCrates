@@ -1,0 +1,280 @@
+package regras;
+
+// F. CONFIRMACAO: O ATAQUE RESULTOU? (soc_regras.txt, base v6, R20-R30)
+// Cada impacto deixa uma evidencia no host, que tem de aparecer DEPOIS do ataque e DENTRO de uma janela de tempo.
+// A origem da evidencia (origem_evidencia/5) diz se ela esta ligada a instancia atacada, se veio de outro processo,
+// ou se esta por confirmar. Calcula-se uma vez com "from" e a regra fica com o resultado (ex.: de_outro_processo(Qual)).
+// Molde e convencoes: ver B_vetor.drl e o README desta pasta.
+//
+// Marcas (condicao_le/2): depois e tardia leem tempo e janela; sem_ataque_intermedio le tempo; origem_evidencia le
+// evento_processo, evento_instancia, processo_componente, instancia_processo, vetor_aberto e vulneravel.
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.modelo.Variavel;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import cyberrangers.motores.drools.sessao.Marca;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+/** O resultado da origem_evidencia e o termo f(Arg) (ex.: de_outro_processo(programa(sshd))). */
+function boolean origemE(Object origem, String f) {
+    return origem instanceof Termo && ((Termo) origem).f().equals(f) && ((Termo) origem).args().size() == 1;
+}
+
+function Object argOrigem(Object origem) {
+    return ((Termo) origem).args().get(0);
+}
+
+// R20: impacto possivel + a evidencia certa no host, dentro da janela, ligada a instancia atacada -> impacto confirmado
+//   se [impacto_possivel(Ev,Alvo,Vuln,Impacto) e nao impacto_excluido(Ev,Alvo,Vuln,Impacto,_) e
+//       evidencia_impacto(Impacto,Tipo,Janela) e evento_host(EvHost,Alvo,Tipo) e depois(EvHost,Ev,Janela) e
+//       origem_evidencia(EvHost,Ev,Alvo,Vuln,ligada)]
+//   entao [cria_facto(impacto_confirmado(Alvo,Ev,Impacto))].
+rule "R20"
+when
+    $ip : Facto(functor == "impacto_possivel/4", $ev : arg(0), $alvo : arg(1), $vuln : arg(2), $impacto : arg(3))
+    not Facto(functor == "impacto_excluido/5", arg(0) == $ev, arg(1) == $alvo, arg(2) == $vuln, arg(3) == $impacto)
+    $ei : Facto(functor == "evidencia_impacto/3", arg(0) == $impacto, $tipo : arg(1), $janela : arg(2))
+    $eh : Facto(functor == "evento_host/3", $evHost : arg(0), arg(1) == $alvo, arg(2) == $tipo)
+    Marca(functor == "tempo/2")
+    Marca(functor == "janela/2")
+    eval(CondicoesCalculadas.depois($evHost, $ev, $janela, base))
+    Marca(functor == "evento_processo/2")
+    Marca(functor == "evento_instancia/2")
+    Marca(functor == "processo_componente/2")
+    Marca(functor == "instancia_processo/2")
+    Marca(functor == "vetor_aberto/4")
+    Marca(functor == "vulneravel/2")
+    $oe : Object() from CondicoesCalculadas.origemEvidencia($evHost, $ev, $alvo, $vuln, base)
+    eval("ligada".equals($oe))
+then
+    List<Premissa> p = List.of(Premissa.de($ip),
+            Premissa.nao("impacto_excluido", $ev, $alvo, $vuln, $impacto, Variavel.nova()),
+            Premissa.de($ei), Premissa.de($eh), Premissa.calculada("depois", $evHost, $ev, $janela),
+            Premissa.calculada("origem_evidencia", $evHost, $ev, $alvo, $vuln, "ligada"));
+    base.cria(kcontext, 20, p, Facto.de("impacto_confirmado", $alvo, $ev, $impacto));
+end
+
+// R21: a evidencia certa aparece dentro da janela, mas vem de outro processo -> impacto ambiguo e incidente para
+//      inspecionar os processos, sem isolar a maquina
+//   se [impacto_possivel(Ev,Alvo,Vuln,Impacto) e nao impacto_excluido(Ev,Alvo,Vuln,Impacto,_) e
+//       evidencia_impacto(Impacto,Tipo,Janela) e evento_host(EvHost,Alvo,Tipo) e depois(EvHost,Ev,Janela) e
+//       origem_evidencia(EvHost,Ev,Alvo,Vuln,de_outro_processo(Qual))]
+//   entao [cria_facto(impacto_ambiguo(Alvo,Ev)),
+//          cria_facto(motivo(inc(impacto_ambiguo,Ev),evidencia_de_outro_processo(EvHost,Qual))),
+//          cria_facto(incidente(inc(impacto_ambiguo,Ev),impacto_ambiguo,Alvo,[Alvo]))].
+rule "R21"
+when
+    $ip : Facto(functor == "impacto_possivel/4", $ev : arg(0), $alvo : arg(1), $vuln : arg(2), $impacto : arg(3))
+    not Facto(functor == "impacto_excluido/5", arg(0) == $ev, arg(1) == $alvo, arg(2) == $vuln, arg(3) == $impacto)
+    $ei : Facto(functor == "evidencia_impacto/3", arg(0) == $impacto, $tipo : arg(1), $janela : arg(2))
+    $eh : Facto(functor == "evento_host/3", $evHost : arg(0), arg(1) == $alvo, arg(2) == $tipo)
+    Marca(functor == "tempo/2")
+    Marca(functor == "janela/2")
+    eval(CondicoesCalculadas.depois($evHost, $ev, $janela, base))
+    Marca(functor == "evento_processo/2")
+    Marca(functor == "evento_instancia/2")
+    Marca(functor == "processo_componente/2")
+    Marca(functor == "instancia_processo/2")
+    Marca(functor == "vetor_aberto/4")
+    Marca(functor == "vulneravel/2")
+    $oe : Object() from CondicoesCalculadas.origemEvidencia($evHost, $ev, $alvo, $vuln, base)
+    eval(origemE($oe, "de_outro_processo"))
+then
+    Object qual = argOrigem($oe);
+    List<Premissa> p = List.of(Premissa.de($ip),
+            Premissa.nao("impacto_excluido", $ev, $alvo, $vuln, $impacto, Variavel.nova()),
+            Premissa.de($ei), Premissa.de($eh), Premissa.calculada("depois", $evHost, $ev, $janela),
+            Premissa.calculada("origem_evidencia", $evHost, $ev, $alvo, $vuln, $oe));
+    Termo inc = Termo.de("inc", "impacto_ambiguo", $ev);
+    base.cria(kcontext, 21, p, Facto.de("impacto_ambiguo", $alvo, $ev));
+    base.cria(kcontext, 21, p, Facto.de("motivo", inc, Termo.de("evidencia_de_outro_processo", $evHost, qual)));
+    base.cria(kcontext, 21, p, Facto.de("incidente", inc, "impacto_ambiguo", $alvo, List.of($alvo)));
+end
+
+// R22: a evidencia certa aparece dentro da janela, mas nao se sabe de que processo veio -> impacto provavel
+//   se [impacto_possivel(Ev,Alvo,Vuln,Impacto) e nao impacto_excluido(Ev,Alvo,Vuln,Impacto,_) e
+//       evidencia_impacto(Impacto,Tipo,Janela) e evento_host(EvHost,Alvo,Tipo) e depois(EvHost,Ev,Janela) e
+//       origem_evidencia(EvHost,Ev,Alvo,Vuln,por_confirmar(Razao)) e classe_impacto(Impacto,Classe) e
+//       tipo_provavel(Classe,TipoInc)]
+//   entao [cria_facto(impacto_provavel(Alvo,Ev,Impacto)),
+//          cria_facto(motivo(inc(TipoInc,Ev),origem_da_evidencia_por_confirmar(EvHost,Razao)))].
+rule "R22"
+when
+    $ip : Facto(functor == "impacto_possivel/4", $ev : arg(0), $alvo : arg(1), $vuln : arg(2), $impacto : arg(3))
+    not Facto(functor == "impacto_excluido/5", arg(0) == $ev, arg(1) == $alvo, arg(2) == $vuln, arg(3) == $impacto)
+    $ei : Facto(functor == "evidencia_impacto/3", arg(0) == $impacto, $tipo : arg(1), $janela : arg(2))
+    $eh : Facto(functor == "evento_host/3", $evHost : arg(0), arg(1) == $alvo, arg(2) == $tipo)
+    Marca(functor == "tempo/2")
+    Marca(functor == "janela/2")
+    eval(CondicoesCalculadas.depois($evHost, $ev, $janela, base))
+    Marca(functor == "evento_processo/2")
+    Marca(functor == "evento_instancia/2")
+    Marca(functor == "processo_componente/2")
+    Marca(functor == "instancia_processo/2")
+    Marca(functor == "vetor_aberto/4")
+    Marca(functor == "vulneravel/2")
+    $oe : Object() from CondicoesCalculadas.origemEvidencia($evHost, $ev, $alvo, $vuln, base)
+    eval(origemE($oe, "por_confirmar"))
+    $ci : Facto(functor == "classe_impacto/2", arg(0) == $impacto, $classe : arg(1))
+    $tp : Facto(functor == "tipo_provavel/2", arg(0) == $classe, $tipoInc : arg(1))
+then
+    Object razao = argOrigem($oe);
+    List<Premissa> p = List.of(Premissa.de($ip),
+            Premissa.nao("impacto_excluido", $ev, $alvo, $vuln, $impacto, Variavel.nova()),
+            Premissa.de($ei), Premissa.de($eh), Premissa.calculada("depois", $evHost, $ev, $janela),
+            Premissa.calculada("origem_evidencia", $evHost, $ev, $alvo, $vuln, $oe), Premissa.de($ci), Premissa.de($tp));
+    base.cria(kcontext, 22, p, Facto.de("impacto_provavel", $alvo, $ev, $impacto));
+    base.cria(kcontext, 22, p, Facto.de("motivo", Termo.de("inc", $tipoInc, $ev),
+            Termo.de("origem_da_evidencia_por_confirmar", $evHost, razao)));
+end
+
+// R23: EVIDENCIA TARDIA. A evidencia certa, ligada a instancia atacada, aparece FORA da janela curta mas ainda dentro
+//      da janela longa, e nao houve outro ataque ao mesmo ativo entretanto -> impacto provavel
+//   se [impacto_possivel(Ev,Alvo,Vuln,Impacto) e nao impacto_excluido(Ev,Alvo,Vuln,Impacto,_) e
+//       evidencia_impacto(Impacto,Tipo,Janela) e evento_host(EvHost,Alvo,Tipo) e janela(evidencia_tardia,JanelaLonga) e
+//       tardia(EvHost,Ev,Janela,JanelaLonga) e sem_ataque_intermedio(Ev,EvHost,Alvo) e
+//       origem_evidencia(EvHost,Ev,Alvo,Vuln,ligada) e classe_impacto(Impacto,Classe) e tipo_provavel(Classe,TipoInc)]
+//   entao [cria_facto(impacto_provavel(Alvo,Ev,Impacto)),
+//          cria_facto(motivo(inc(TipoInc,Ev),evidencia_tardia(EvHost)))].
+rule "R23"
+when
+    $ip : Facto(functor == "impacto_possivel/4", $ev : arg(0), $alvo : arg(1), $vuln : arg(2), $impacto : arg(3))
+    not Facto(functor == "impacto_excluido/5", arg(0) == $ev, arg(1) == $alvo, arg(2) == $vuln, arg(3) == $impacto)
+    $ei : Facto(functor == "evidencia_impacto/3", arg(0) == $impacto, $tipo : arg(1), $janela : arg(2))
+    $eh : Facto(functor == "evento_host/3", $evHost : arg(0), arg(1) == $alvo, arg(2) == $tipo)
+    $jl : Facto(functor == "janela/2", arg(0) == "evidencia_tardia", $janelaLonga : arg(1))
+    Marca(functor == "tempo/2")
+    Marca(functor == "janela/2")
+    eval(CondicoesCalculadas.tardia($evHost, $ev, $janela, $janelaLonga, base))
+    eval(CondicoesCalculadas.semAtaqueIntermedio($ev, $evHost, $alvo, base))
+    Marca(functor == "evento_processo/2")
+    Marca(functor == "evento_instancia/2")
+    Marca(functor == "processo_componente/2")
+    Marca(functor == "instancia_processo/2")
+    Marca(functor == "vetor_aberto/4")
+    Marca(functor == "vulneravel/2")
+    $oe : Object() from CondicoesCalculadas.origemEvidencia($evHost, $ev, $alvo, $vuln, base)
+    eval("ligada".equals($oe))
+    $ci : Facto(functor == "classe_impacto/2", arg(0) == $impacto, $classe : arg(1))
+    $tp : Facto(functor == "tipo_provavel/2", arg(0) == $classe, $tipoInc : arg(1))
+then
+    List<Premissa> p = List.of(Premissa.de($ip),
+            Premissa.nao("impacto_excluido", $ev, $alvo, $vuln, $impacto, Variavel.nova()),
+            Premissa.de($ei), Premissa.de($eh), Premissa.de($jl),
+            Premissa.calculada("tardia", $evHost, $ev, $janela, $janelaLonga),
+            Premissa.calculada("sem_ataque_intermedio", $ev, $evHost, $alvo),
+            Premissa.calculada("origem_evidencia", $evHost, $ev, $alvo, $vuln, "ligada"), Premissa.de($ci), Premissa.de($tp));
+    base.cria(kcontext, 23, p, Facto.de("impacto_provavel", $alvo, $ev, $impacto));
+    base.cria(kcontext, 23, p, Facto.de("motivo", Termo.de("inc", $tipoInc, $ev), Termo.de("evidencia_tardia", $evHost)));
+end
+
+// R24: EVIDENCIA QUE CONTRADIZ O INVENTARIO. O impacto esta excluido pela configuracao registada, mas a evidencia que
+//      esse impacto deixaria aparece no host dentro da janela -> impacto provavel, confirmar no host
+//   se [impacto_excluido(Ev,Alvo,_,Impacto,Cond) e evidencia_impacto(Impacto,Tipo,Janela) e evento_host(EvHost,Alvo,Tipo) e
+//       depois(EvHost,Ev,Janela) e classe_impacto(Impacto,Classe) e tipo_provavel(Classe,TipoInc)]
+//   entao [cria_facto(impacto_provavel(Alvo,Ev,Impacto)),
+//          cria_facto(motivo(inc(TipoInc,Ev),evidencia_de_impacto_excluido(EvHost,Cond)))].
+rule "R24"
+when
+    $ix : Facto(functor == "impacto_excluido/5", $ev : arg(0), $alvo : arg(1), $impacto : arg(3), $cond : arg(4))
+    $ei : Facto(functor == "evidencia_impacto/3", arg(0) == $impacto, $tipo : arg(1), $janela : arg(2))
+    $eh : Facto(functor == "evento_host/3", $evHost : arg(0), arg(1) == $alvo, arg(2) == $tipo)
+    Marca(functor == "tempo/2")
+    Marca(functor == "janela/2")
+    eval(CondicoesCalculadas.depois($evHost, $ev, $janela, base))
+    $ci : Facto(functor == "classe_impacto/2", arg(0) == $impacto, $classe : arg(1))
+    $tp : Facto(functor == "tipo_provavel/2", arg(0) == $classe, $tipoInc : arg(1))
+then
+    List<Premissa> p = List.of(Premissa.de($ix), Premissa.de($ei), Premissa.de($eh),
+            Premissa.calculada("depois", $evHost, $ev, $janela), Premissa.de($ci), Premissa.de($tp));
+    base.cria(kcontext, 24, p, Facto.de("impacto_provavel", $alvo, $ev, $impacto));
+    base.cria(kcontext, 24, p, Facto.de("motivo", Termo.de("inc", $tipoInc, $ev),
+            Termo.de("evidencia_de_impacto_excluido", $evHost, $cond)));
+end
+
+// R25: confirmou-se um impacto que da ao atacante o controlo da maquina -> compromisso confirmado
+//   se [impacto_confirmado(Alvo,Ev,Impacto) e classe_impacto(Impacto,controlo)]
+//   entao [cria_facto(compromisso_confirmado(Alvo,Ev))].
+rule "R25"
+when
+    $ic : Facto(functor == "impacto_confirmado/3", $alvo : arg(0), $ev : arg(1), $impacto : arg(2))
+    $ci : Facto(functor == "classe_impacto/2", arg(0) == $impacto, arg(1) == "controlo")
+then
+    List<Premissa> p = List.of(Premissa.de($ic), Premissa.de($ci));
+    base.cria(kcontext, 25, p, Facto.de("compromisso_confirmado", $alvo, $ev));
+end
+
+// R26: confirmou-se um impacto que expoe dados sem dar o controlo da maquina -> incidente "exposicao de dados"
+//   se [impacto_confirmado(Alvo,Ev,Impacto) e classe_impacto(Impacto,dados)]
+//   entao [cria_facto(exposicao_confirmada(Alvo,Ev)),
+//          cria_facto(motivo(inc(exposicao_de_dados,Ev),impacto_confirmado(Impacto))),
+//          cria_facto(incidente(inc(exposicao_de_dados,Ev),exposicao_de_dados,Alvo,[Alvo]))].
+rule "R26"
+when
+    $ic : Facto(functor == "impacto_confirmado/3", $alvo : arg(0), $ev : arg(1), $impacto : arg(2))
+    $ci : Facto(functor == "classe_impacto/2", arg(0) == $impacto, arg(1) == "dados")
+then
+    List<Premissa> p = List.of(Premissa.de($ic), Premissa.de($ci));
+    Termo inc = Termo.de("inc", "exposicao_de_dados", $ev);
+    base.cria(kcontext, 26, p, Facto.de("exposicao_confirmada", $alvo, $ev));
+    base.cria(kcontext, 26, p, Facto.de("motivo", inc, Termo.de("impacto_confirmado", $impacto)));
+    base.cria(kcontext, 26, p, Facto.de("incidente", inc, "exposicao_de_dados", $alvo, List.of($alvo)));
+end
+
+// R27: impacto provavel que daria o controlo da maquina -> compromisso provavel
+//   se [impacto_provavel(Alvo,Ev,Impacto) e classe_impacto(Impacto,controlo)]
+//   entao [cria_facto(compromisso_provavel(Alvo,Ev))].
+rule "R27"
+when
+    $ip : Facto(functor == "impacto_provavel/3", $alvo : arg(0), $ev : arg(1), $impacto : arg(2))
+    $ci : Facto(functor == "classe_impacto/2", arg(0) == $impacto, arg(1) == "controlo")
+then
+    List<Premissa> p = List.of(Premissa.de($ip), Premissa.de($ci));
+    base.cria(kcontext, 27, p, Facto.de("compromisso_provavel", $alvo, $ev));
+end
+
+// R28: impacto provavel que so expoe dados -> exposicao provavel e incidente "exposicao provavel"
+//   se [impacto_provavel(Alvo,Ev,Impacto) e classe_impacto(Impacto,dados)]
+//   entao [cria_facto(exposicao_provavel(Alvo,Ev)),
+//          cria_facto(incidente(inc(exposicao_provavel,Ev),exposicao_provavel,Alvo,[Alvo]))].
+rule "R28"
+when
+    $ip : Facto(functor == "impacto_provavel/3", $alvo : arg(0), $ev : arg(1), $impacto : arg(2))
+    $ci : Facto(functor == "classe_impacto/2", arg(0) == $impacto, arg(1) == "dados")
+then
+    List<Premissa> p = List.of(Premissa.de($ip), Premissa.de($ci));
+    base.cria(kcontext, 28, p, Facto.de("exposicao_provavel", $alvo, $ev));
+    base.cria(kcontext, 28, p, Facto.de("incidente", Termo.de("inc", "exposicao_provavel", $ev),
+            "exposicao_provavel", $alvo, List.of($alvo)));
+end
+
+// R29: compromisso confirmado (por qualquer via) -> isolar a maquina e abrir o incidente "compromisso"
+//   se [compromisso_confirmado(Alvo,Ev)]
+//   entao [cria_facto(acao(Alvo,isolar_maquina)),
+//          cria_facto(incidente(inc(compromisso,Ev),compromisso,Alvo,[Alvo]))].
+rule "R29"
+when
+    $cc : Facto(functor == "compromisso_confirmado/2", $alvo : arg(0), $ev : arg(1))
+then
+    List<Premissa> p = List.of(Premissa.de($cc));
+    base.cria(kcontext, 29, p, Facto.de("acao", $alvo, "isolar_maquina"));
+    base.cria(kcontext, 29, p, Facto.de("incidente", Termo.de("inc", "compromisso", $ev), "compromisso", $alvo, List.of($alvo)));
+end
+
+// R30: o ataque podia resultar -> incidente "exploracao possivel": verificar o host e corrigir a vulnerabilidade
+//   se [exploracao_possivel(Ev,Alvo,Vuln) e nao revisto(exploracao_possivel(Ev,Alvo,Vuln),_)]
+//   entao [cria_facto(incidente(inc(exploracao_possivel,Ev),exploracao_possivel,Alvo,[Alvo]))].
+rule "R30"
+when
+    $e : Facto(functor == "exploracao_possivel/3", $ev : arg(0), $alvo : arg(1), $vuln : arg(2))
+    not Facto(functor == "revisto/2", $e.representadoPor(arg(0)))
+then
+    List<Premissa> p = List.of(Premissa.de($e),
+            Premissa.nao("revisto", Termo.de("exploracao_possivel", $ev, $alvo, $vuln), Variavel.nova()));
+    base.cria(kcontext, 30, p, Facto.de("incidente", Termo.de("inc", "exploracao_possivel", $ev),
+            "exploracao_possivel", $alvo, List.of($alvo)));
+end
