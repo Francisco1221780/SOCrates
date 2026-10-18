@@ -131,7 +131,9 @@ swipl motores/drools/ferramentas/gera_referencia_agn.pl              # escreve o
 swipl motores/drools/ferramentas/gera_referencia_agn.pl --verificar  # código 1 se algum estiver desatualizado
 ```
 
-Duas diferenças entre os motores que o código trata para a resposta ser igual:
+Três diferenças entre os motores que o código trata para a resposta ser igual:
+
+- **Ordem das regras.** Quando duas regras ficam ativas ao mesmo tempo, o Drools dispara primeiro a que foi carregada primeiro, e isso decide a justificação de um facto concluído por duas vias. O `MotorDrools` carrega os DRL sempre pela ordem do nome (`A_afetado.drl`, `B_vetor.drl`, …), em qualquer sistema; é com essa ordem que o `ParidadeTest` passa. Um DRL novo entra pela ordem do nome.
 
 - **Reavaliação das condições calculadas.** Quando chega um facto que uma condição calculada lê (`condicao_le/2`, ex.: o `tempo` de um evento que chega depois do evento), o Prolog reavalia a regra. No Drools, a `BaseFactos` faz `update` à `Marca` desse functor e as regras com `Marca(functor == ...)` antes da condição voltam a avaliar-se.
 - **Justificação de um facto concluído por duas vias pela mesma regra.** O Prolog fica com a primeira que encontra, percorrendo os factos por número; o Drools dispara primeiro a ativação mais recente. A `BaseFactos` fica com a via de factos com números mais baixos, se for a mesma regra, no mesmo passo, e com premissas anteriores ao facto.

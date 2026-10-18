@@ -17,6 +17,20 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Path;
+import java.io.InputStream;
+import java.net.JarURLConnection;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import org.drools.kiesession.rulebase.InternalKnowledgeBase;
+import org.drools.kiesession.rulebase.KnowledgeBaseFactory;
+import org.kie.api.KieBase;
+import org.kie.api.io.ResourceType;
+import org.kie.internal.builder.KnowledgeBuilder;
+import org.kie.internal.builder.KnowledgeBuilderFactory;
+import org.kie.internal.io.ResourceFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,11 +52,11 @@ public class MotorDrools {
     public static final String VERSAO_KB = "6";
 
     private static final String MOTOR = "drools";
-    private static final String SESSAO = "sessao";
     private static final String KBASE = "soc";
+    private static final String PASTA_REGRAS = "regras";
 
     private final ObjectMapper json = new ObjectMapper();
-    private final KieContainer container;
+    private final KieBase base;
     private final FactosIniciais iniciais;
     private final EstadoMotor estado;
     private final Predicate<String> regrasAtivas;
@@ -95,19 +109,16 @@ public class MotorDrools {
     private MotorDrools(Supplier<FactosIniciais> factosIniciais, Predicate<String> regrasAtivas) {
         this.regrasAtivas = regrasAtivas;
         List<String> erros = new ArrayList<>();
-        KieContainer c = null;
+        KieBase c = null;
         try {
-            c = KieServices.Factory.get().getKieClasspathContainer();
-            for (Message m : c.verify().getMessages(Message.Level.ERROR)) {
-                erros.add("regras: " + m.getText());
-            }
+            c = baseOrdenada(erros);
         } catch (RuntimeException e) {
             erros.add("regras: " + e.getMessage());
         }
         boolean regrasOk = c != null && erros.isEmpty();
         int n = 0;
         if (regrasOk) {
-            for (var pacote : c.getKieBase(KBASE).getKiePackages()) {
+            for (var pacote : c.getKiePackages()) {
                 n += pacote.getRules().size();
             }
         }
@@ -118,9 +129,79 @@ public class MotorDrools {
         } catch (IllegalStateException e) {
             erros.add("factos iniciais: " + e.getMessage());
         }
-        this.container = c;
+        this.base = c;
         this.iniciais = fi;
         this.estado = new EstadoMotor(erros.isEmpty(), regrasOk, fi == null ? 0 : fi.quantos(), erros);
+    }
+
+    /**
+     * As regras compiladas com os DRL pela ordem do nome (A_afetado.drl, B_vetor.drl, ...), juntas uma a uma num
+     * KnowledgeBuilder. A ordem em que as regras entram decide qual de duas ativacoes ao mesmo tempo dispara primeiro
+     * (ex.: a R5 antes da R11 para o mesmo alerta), e isso decide a justificacao de um facto concluido por duas vias.
+     * Com esta ordem o Drools da o mesmo que o Prolog (ParidadeTest). O getKieClasspathContainer() le a pasta pela
+     * ordem do sistema de ficheiros (alfabetica no Windows, arbitraria no Linux), e o KieFileSystem pela ordem de um
+     * hash: os dois davam outras premissas na CI. Se a pasta nao se conseguir listar, usa o contentor do classpath.
+     */
+    private static KieBase baseOrdenada(List<String> erros) {
+        List<String> drl = ficheirosDrl();
+        if (drl.isEmpty()) {
+            KieContainer c = KieServices.Factory.get().getKieClasspathContainer();
+            for (Message m : c.verify().getMessages(Message.Level.ERROR)) {
+                erros.add("regras: " + m.getText());
+            }
+            return erros.isEmpty() ? c.getKieBase(KBASE) : null;
+        }
+        KnowledgeBuilder kb = KnowledgeBuilderFactory.newKnowledgeBuilder();
+        for (String f : drl) {
+            kb.add(ResourceFactory.newByteArrayResource(recurso(f)).setSourcePath(f), ResourceType.DRL);
+            if (kb.hasErrors()) {
+                kb.getErrors().forEach(e -> erros.add("regras: " + f + ": " + e.getMessage()));
+                return null;
+            }
+        }
+        InternalKnowledgeBase base = KnowledgeBaseFactory.newKnowledgeBase();
+        base.addPackages(kb.getKnowledgePackages());
+        return base;
+    }
+
+    /** Os .drl de regras/ no classpath (pasta ou jar), por ordem do nome; vazio se nao se conseguirem listar. */
+    private static List<String> ficheirosDrl() {
+        List<String> r = new ArrayList<>();
+        try {
+            URL url = MotorDrools.class.getClassLoader().getResource(PASTA_REGRAS);
+            if (url == null) {
+                return r;
+            }
+            if (url.getProtocol().equals("file")) {
+                try (var lista = Files.list(Path.of(url.toURI()))) {
+                    lista.map(p -> p.getFileName().toString()).filter(n -> n.endsWith(".drl"))
+                            .forEach(n -> r.add(PASTA_REGRAS + "/" + n));
+                }
+            } else if (url.openConnection() instanceof JarURLConnection jar) {
+                // sem cache: o JarFile e so desta leitura, e fecha-lo nao fecha o do class loader
+                jar.setUseCaches(false);
+                try (JarFile j = jar.getJarFile()) {
+                    j.stream().map(JarEntry::getName)
+                            .filter(n -> n.startsWith(PASTA_REGRAS + "/") && n.endsWith(".drl") && n.indexOf('/', PASTA_REGRAS.length() + 1) < 0)
+                            .forEach(r::add);
+                }
+            }
+        } catch (IOException | URISyntaxException | RuntimeException e) {
+            return new ArrayList<>();
+        }
+        r.sort(null);
+        return r;
+    }
+
+    private static byte[] recurso(String nome) {
+        try (InputStream in = MotorDrools.class.getClassLoader().getResourceAsStream(nome)) {
+            if (in == null) {
+                throw new IllegalStateException("nao existe " + nome + " no classpath");
+            }
+            return in.readAllBytes();
+        } catch (IOException e) {
+            throw new IllegalStateException(nome + ": " + e.getMessage(), e);
+        }
     }
 
     /** Quantas regras DRL compilaram (92 com a base v6 inteira). */
@@ -191,7 +272,7 @@ public class MotorDrools {
 
     /** Uma sessao nova: os factos iniciais, os passos do pedido, e no fim o que se quer da base. */
     private <T> T corre(Pedido pedido, Function<BaseFactos, T> noFim) {
-        KieSession sessao = container.newKieSession(SESSAO);
+        KieSession sessao = base.newKieSession();
         try {
             BaseFactos base = new BaseFactos(sessao);
             sessao.setGlobal("base", base);
