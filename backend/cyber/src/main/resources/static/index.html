@@ -4024,11 +4024,6 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;color:#a9d6de;font-famil
               </div>
             </div>
 
-            <div style="padding:12px;background:rgba(15,23,42,0.65);border:1px solid #1e293b;border-radius:6px">
-              <div style="font-weight:700;color:#e2e8f0;font-size:11px;margin-bottom:4px">2. MODO DEMONSTRAÇÃO (OFFLINE)</div>
-              <div style="font-size:10.5px;color:#64748b;margin-bottom:8px">Carrega feed local para testes visuais e validação do grafo sem backend ativo.</div>
-              <button type="button" class="btn" onclick="simulateApiRetrieveForTesting(false)" style="background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:6px 12px;font-size:11px;border-radius:4px;cursor:pointer;width:100%;font-weight:600">⚡ Iniciar com Telemetria Local</button>
-            </div>
           </div>
         </div>
       </div>
@@ -8160,7 +8155,7 @@ function inspect(){
       const node = byId[nodeId];
       if (!node) return '';
       const sep = idx > 0 ? '<span class="tkt-chain-sep">→</span>' : '';
-      return `${sep}<span class="tkt-chain-node" data-go="${node.id}" title="${esc(node.label)}"><b>${esc(tagOf(node))}</b> ${esc(node.code || node.id)}</span>`;
+      return `${sep}<span class="tkt-chain-node" data-go="${node.id}" title="${esc(node.label)}"><b>${esc(tagOf(node))}</b> ${esc(/^(d_|in_|kb$)/.test(node.id) ? node.label : (node.code || node.id))}</span>`;
     }).join('');
 
     box.innerHTML = `
@@ -8178,7 +8173,7 @@ function inspect(){
         <div class="insp-title" style="margin-top:6px"><span style="color:var(--cyan)">${esc(tkt.id)}</span> · ${esc(tkt.alvo)}</div>
         <div class="insp-sub">${esc(tkt.desc)}</div>
         <div class="insp-meta">
-          <span class="meta-chip">criticidade: <b style="color:${tkt.criticidade>=8?'#ff5c7a':'#ffd166'}">${tkt.criticidade}/10</b></span>
+          ${tkt.criticidade ? `<span class="meta-chip">criticidade: <b style="color:${tkt.criticidade>=8?'#ff5c7a':'#ffd166'}">${tkt.criticidade}/10</b></span>` : `<span class="meta-chip">gravidade: <b style="color:#ffd166">${esc(tkt.sev || '—')}</b></span><span class="meta-chip">prioridade: <b>${esc(tkt.prio || '—')}</b></span>`}
           <span class="meta-chip">regra: <b>${esc(tkt.regra)}</b></span>
           <span class="meta-chip">cenário: <b>${esc(tkt.scen.toUpperCase())}</b></span>
         </div>
@@ -11293,28 +11288,8 @@ render = function() {
     }
   }
 
-  // Em modo Comparador (S.engine === 'both'), adicionar selo de auditoria dupla (PL✓ | DR✓) nos nós acesos
-  if (S.engine === 'both') {
-    gN.querySelectorAll('.node.lit').forEach(gNode => {
-      const nid = gNode.getAttribute('data-id');
-      const isDivergent = S.dualMutationMode === 'drop_r13_drools' && ['r13', 'h_comp', 'r14', 'a_isolar', 'a_p1'].includes(nid);
-      el('rect', {
-        x: 8, y: -9, width: isDivergent ? 98 : 82, height: 15, rx: 3,
-        fill: isDivergent ? '#3b0a14' : '#05241b',
-        stroke: isDivergent ? '#fb7185' : '#fbbf24',
-        'stroke-width': 1
-      }, gNode);
-      const badgeTxt = el('text', {
-        x: isDivergent ? 57 : 49, y: 2,
-        'text-anchor': 'middle',
-        fill: isDivergent ? '#fda4af' : '#fde68a',
-        'font-size': '8.5px',
-        'font-weight': '700',
-        'font-family': 'JetBrains Mono'
-      }, gNode);
-      badgeTxt.textContent = isDivergent ? 'PL ✓ | DR ✕ DIFF' : 'PL ✓ == DR ✓';
-    });
-  }
+  // Em modo Comparador: selo com o número de factos de cada motor em cada caixa (dados reais)
+  if (S.engine === 'both' && typeof v62DualBadges === 'function') v62DualBadges();
 };
 
 // 8. Animação Suave de Câmara (`animateCameraToVisibleGraph`):
@@ -14199,9 +14174,8 @@ inspect = function() {
         <div style="font-weight:700;color:#fff;margin-bottom:6px">Sem Dados Carregados</div>
         <div style="font-size:11.5px;color:var(--dim);line-height:1.55;margin-bottom:14px">
           Nenhum cenário, ticket ou árvore de explicação está carregado em memória.<br>
-          Ligue o backend Spring Boot ou carregue a telemetria local para iniciar.
+          Ligue o backend Spring Boot (a API é a única fonte de dados).
         </div>
-        <button class="cbtn" onclick="simulateApiRetrieveForTesting()">⚡ Carregar Telemetria Local (13 Cenários)</button>
       </div>
     `;
     return;
@@ -15378,7 +15352,7 @@ inspect = function() {
   // Factos reais da resposta do motor cujo predicado corresponde a este nó
   const liveR = v61Res();
   const preds = new Set((nd.preds || []).map(p => p.split('/')[0]));
-  const factosNo = liveR ? (liveR.factos || []).filter(f => preds.has(f.predicado) && f.origem !== 'inicial') : [];
+  const factosNo = liveR ? (liveR.factos || []).filter(f => preds.has(f.predicado) && (nd.cat === 'kb' ? f.origem === 'inicial' : f.origem !== 'inicial')) : [];
   const matchingHow = factosNo.slice(0, 12).map(f => ({rule: f.origem === 'regra' ? 'R' + f.regra : f.origem.toUpperCase(), goal: v61Fact(f), num: f.numero, premises: []}));
 
   const howCard = document.createElement('div');
@@ -16158,8 +16132,7 @@ verifyAndRetrieveFromApi = async function(manualClick = false) {
     populateDropdownFromCenariosList(cenariosList.filter(c => emSequencia.size === 0 || emSequencia.has(c.id)));
     window._LAST_CENARIOS_LIST = cenariosList;
 
-    NODES = JSON.parse(JSON.stringify(_TEMPLATE_NODES));
-    EDGES = JSON.parse(JSON.stringify(_TEMPLATE_EDGES));
+    NODES = []; EDGES = []; SCEN = {};
     rebuildGraphIndexes();
 
     S.scen = 'all';
@@ -16184,6 +16157,432 @@ verifyAndRetrieveFromApi = async function(manualClick = false) {
       statusEl.textContent = `🔴 Sem resposta em ${baseUrl} (${err.message})`;
     }
   }
+};
+
+
+/* =====================================================================
+   v62: GRAFO DINÂMICO GERADO A PARTIR DA RESPOSTA DO MOTOR
+   - Nada de nós/arestas pré-feitos: cada caixa é um predicado que aparece
+     na resposta (entrada, base de conhecimento ou deduzido por regras).
+   - As setas saem das premissas reais (factos[].premissas) e levam as regras.
+   - Colunas 2..6 = profundidade de inferência (nível); coluna 7 = tickets,
+     perguntas e o que deles depende. Mantém o desenho, o renderizador,
+     os contadores (entram→saem), a animação e o inspetor originais.
+   ===================================================================== */
+const V62 = { active: false, model: null, stageTitles: STAGES.map(s => s.title) };
+
+function v62NodeId(f) {
+  if (f.origem === 'inicial') return 'kb';
+  return (f.origem === 'entrada' ? 'in_' : 'd_') + f.predicado;
+}
+
+function v62Rules(nums) {
+  const ns = [...new Set(nums)].filter(n => n != null).map(Number).sort((a, b) => a - b);
+  const out = [];
+  for (let i = 0; i < ns.length; i++) {
+    let j = i;
+    while (j + 1 < ns.length && ns[j + 1] === ns[j] + 1) j++;
+    out.push(j > i + 1 ? `R${ns[i]}–R${ns[j]}` : (j === i + 1 ? `R${ns[i]}, R${ns[j]}` : `R${ns[i]}`));
+    i = j;
+  }
+  return out.join(', ');
+}
+
+// Divide os níveis (já ordenados) em k grupos contíguos com o menor máximo possível
+function v62Partition(counts, k) {
+  const n = counts.length;
+  if (n <= k) return counts.map((_, i) => i);
+  const pre = [0]; counts.forEach(c => pre.push(pre[pre.length - 1] + c));
+  const best = Array.from({ length: k + 1 }, () => Array(n + 1).fill(Infinity));
+  const cut = Array.from({ length: k + 1 }, () => Array(n + 1).fill(0));
+  best[0][0] = 0;
+  for (let g = 1; g <= k; g++) {
+    for (let i = 1; i <= n; i++) {
+      for (let j = g - 1; j < i; j++) {
+        const v = Math.max(best[g - 1][j], pre[i] - pre[j]);
+        if (v < best[g][i]) { best[g][i] = v; cut[g][i] = j; }
+      }
+    }
+  }
+  const grp = Array(n).fill(0);
+  let i = n;
+  for (let g = k; g >= 1; g--) { const j = cut[g][i]; for (let x = j; x < i; x++) grp[x] = g - 1; i = j; }
+  return grp;
+}
+
+function v62Signif(factos) {
+  const m = {};
+  (factos || []).forEach(f => {
+    if (f.predicado === 'significado' && f.args && typeof f.args[0] === 'string') m[f.args[0]] = String(f.args[1] || '');
+  });
+  return m;
+}
+
+function v62SetCatOptions() {
+  const sel = $('catFilterSelect');
+  if (!sel) return;
+  const cats = [['all', 'Filtro: Todos os grupos'], ['entrada', 'Factos de entrada'], ['kb', 'Base de conhecimento'], ['deduzido', 'Deduzidos (estados intermédios)'], ['acao', 'Tickets, perguntas e ações']];
+  sel.innerHTML = cats.map(([v, t]) => `<option value="${v}" ${S.cat === v ? 'selected' : ''}>${t}</option>`).join('');
+}
+
+function v62Commit(nodes, edges, titles) {
+  NODES = nodes;
+  EDGES = edges;
+  SCEN = {};
+  titles.forEach((t, i) => { if (STAGES[i]) STAGES[i].title = t; });
+  V62.active = true;
+  if (S.cat && S.cat !== 'all' && !nodes.some(n => n.cat === S.cat)) S.cat = 'all';
+  rebuildGraphIndexes();
+  NODES.forEach(n => { n.x = colX(n.col); });
+  v62SetCatOptions();
+}
+
+// Grafo de espera (antes do ▶): só as entradas que vão ser enviadas + a base de conhecimento
+function v62BuildStandby(passos) {
+  const ins = new Map();
+  (passos || []).forEach(p => (p.factos || []).forEach(f => {
+    const id = 'in_' + f.predicado;
+    if (!ins.has(id)) ins.set(id, { pred: f.predicado, ar: (f.args || []).length, n: 0, steps: new Set() });
+    const e = ins.get(id); e.n++; e.steps.add(p.id);
+  }));
+  const nodes = [{
+    id: 'kb', t: 'fact', col: 1, y: 136, cat: 'kb', label: 'base de conhecimento',
+    sub: `KB v${S.detectedKbVersion || '?'} · carregada no motor`, preds: [], count: 0,
+    human: 'Factos iniciais da base de conhecimento (origem "inicial"). O número aparece depois de o motor responder.'
+  }];
+  let i = 1;
+  ins.forEach((e, id) => nodes.push({
+    id, t: 'fact', col: 1, y: 136 + 70 * i++, cat: 'entrada', label: e.pred,
+    sub: `${e.n} facto(s) · ${e.steps.size} passo(s)`, preds: [`${e.pred}/${e.ar}`], count: e.n,
+    human: `Facto de entrada ${e.pred}/${e.ar}, enviado nos passos do pedido.`
+  }));
+  const titles = V62.stageTitles.map((t, idx) => idx === 0 || idx === 6 ? t : 'DEDUÇÃO · aguarda ▶');
+  v62Commit(nodes, [], titles);
+}
+
+function v62BuildFromResult(res) {
+  const F = res.factos || [];
+  const byNum = new Map(F.map(f => [f.numero, f]));
+  const signif = v62Signif(F);
+  const N = new Map();
+  const get = (id, f) => {
+    if (!N.has(id)) N.set(id, { id, pred: f.predicado, ar: (f.args || []).length, origem: f.origem, facts: [], rules: new Set(), first: f.numero, predSet: new Set() });
+    return N.get(id);
+  };
+  F.forEach(f => {
+    const nd = get(v62NodeId(f), f);
+    nd.facts.push(f);
+    nd.predSet.add(`${f.predicado}/${(f.args || []).length}`);
+    if (f.origem === 'regra' && f.regra != null) nd.rules.add(f.regra);
+  });
+
+  // Arestas: premissa → conclusão, com as regras que as ligam
+  const E = new Map();
+  F.forEach(f => {
+    if (f.origem !== 'regra') return;
+    const b = v62NodeId(f);
+    (f.premissas || []).forEach(p => {
+      if (typeof p !== 'number' || !byNum.has(p)) return;
+      const a = v62NodeId(byNum.get(p));
+      if (a === b) return;
+      const k = a + '->' + b;
+      if (!E.has(k)) E.set(k, { a, b, rules: new Set(), n: 0 });
+      const e = E.get(k); e.rules.add(f.regra); e.n++;
+    });
+  });
+  const PAR = {}, CH = {};
+  N.forEach((_, id) => { PAR[id] = []; CH[id] = []; });
+  E.forEach(e => { PAR[e.b].push(e.a); CH[e.a].push(e.b); });
+
+  // Nível = cadeia mais longa de regras desde as entradas (ciclos ignorados)
+  const lvl = {}, st = {};
+  const L = id => {
+    if (!id.startsWith('d_')) return 0;
+    if (st[id] === 2) return lvl[id];
+    if (st[id] === 1) return 0;
+    st[id] = 1;
+    let v = 1;
+    PAR[id].forEach(p => { if (st[p] !== 1) v = Math.max(v, L(p) + 1); });
+    lvl[id] = v; st[id] = 2;
+    return v;
+  };
+  N.forEach((_, id) => L(id));
+
+  // Coluna 7: o que a API devolve como tickets e perguntas + o que só deles depende
+  const actionIds = new Set();
+  [...(res.tickets || []), ...(res.perguntas || [])].forEach(t => { const f = byNum.get(t.facto); if (f) actionIds.add(v62NodeId(f)); });
+  const minAct = actionIds.size ? Math.min(...[...actionIds].map(id => lvl[id] || 1)) : Infinity;
+  N.forEach((_, id) => {
+    if (!id.startsWith('d_') || actionIds.has(id)) return;
+    const isSink = CH[id].length === 0;
+    if (isSink && (lvl[id] || 0) >= minAct && PAR[id].some(p => actionIds.has(p) || (lvl[p] || 0) >= minAct)) actionIds.add(id);
+  });
+
+  const mids = [...N.keys()].filter(id => id.startsWith('d_') && !actionIds.has(id));
+  const levels = [...new Set(mids.map(id => lvl[id]))].sort((a, b) => a - b);
+  const grp = v62Partition(levels.map(l => mids.filter(id => lvl[id] === l).length), 5);
+  const colOfLevel = {}; levels.forEach((l, i) => { colOfLevel[l] = 2 + grp[i]; });
+  const col = {};
+  N.forEach((_, id) => {
+    if (!id.startsWith('d_')) col[id] = 1;
+    else if (actionIds.has(id)) col[id] = 7;
+    else col[id] = colOfLevel[lvl[id]];
+  });
+
+  // Ordem vertical: entradas pela ordem em que chegam; restantes por baricentro (ida, volta, ida)
+  const pos = {};
+  const byCol = c => [...N.keys()].filter(id => col[id] === c);
+  const c1 = byCol(1).sort((a, b) => (a === 'kb' ? -1 : b === 'kb' ? 1 : N.get(a).first - N.get(b).first));
+  c1.forEach((id, i) => { pos[id] = c1.length > 1 ? i / (c1.length - 1) : 0.5; });
+  const sweep = (cols, useChildren) => cols.forEach(c => {
+    const ids = byCol(c);
+    const bc = id => {
+      const ref = [...PAR[id], ...(useChildren ? CH[id] : [])].filter(x => pos[x] !== undefined && x !== 'kb');
+      return ref.length ? ref.reduce((s, x) => s + pos[x], 0) / ref.length : (pos[id] ?? 0.5);
+    };
+    ids.sort((a, b) => bc(a) - bc(b) || (lvl[a] - lvl[b]) || a.localeCompare(b));
+    ids.forEach((id, i) => { pos[id] = ids.length > 1 ? i / (ids.length - 1) : 0.5; });
+  });
+  sweep([2, 3, 4, 5, 6, 7], false);
+  sweep([6, 5, 4, 3, 2], true);
+  sweep([2, 3, 4, 5, 6, 7], false);
+
+  const nodes = [];
+  N.forEach((nd, id) => {
+    const isKb = id === 'kb', isIn = id.startsWith('in_');
+    const code = isKb || isIn ? '' : v62Rules([...nd.rules]);
+    const nPreds = isKb ? new Set(nd.facts.map(f => f.predicado)).size : 0;
+    const nLvl = lvl[id] || 0;
+    let sub, human;
+    if (isKb) {
+      sub = `${nd.facts.length} factos iniciais · ${nPreds} predicados`;
+      human = 'Factos iniciais da base de conhecimento (origem "inicial" na resposta do motor): inventário, catálogo e parâmetros usados como premissas.';
+    } else if (isIn) {
+      const steps = new Set(nd.facts.map(f => f.passo)).size;
+      sub = `${nd.facts.length} facto(s) · ${steps} passo(s)${CH[id].length ? '' : ' · sem uso'}`;
+      human = signif[nd.pred] || `Facto de entrada ${nd.pred}/${nd.ar}, enviado nos passos do pedido.${CH[id].length ? '' : ' Nenhuma regra o usou como premissa nesta execução.'}`;
+    } else {
+      sub = `${nd.facts.length} facto(s) · ${code}`;
+      human = (signif[nd.pred] ? signif[nd.pred] + ' ' : '') + `Deduzido por ${code} · nível ${nLvl} de inferência.`;
+    }
+    nodes.push({
+      id, t: isKb || isIn ? 'fact' : (col[id] === 7 ? 'action' : 'state'),
+      col: col[id], y: 136 + Math.round((pos[id] ?? 0) * 1000), cat: isKb ? 'kb' : isIn ? 'entrada' : (col[id] === 7 ? 'acao' : 'deduzido'),
+      label: isKb ? 'base de conhecimento' : nd.pred, sub, human, code,
+      preds: [...nd.predSet], count: nd.facts.length, level: nLvl, rules: [...nd.rules],
+      prolog: nd.facts[0] ? (typeof v61Fact === 'function' ? v61Fact(nd.facts[0]) : nd.pred) : ''
+    });
+  });
+  const edges = [...E.values()].map(e => [e.a, e.b, `${v62Rules([...e.rules])} · ${e.n} ligação(ões)`]);
+
+  const titles = V62.stageTitles.slice();
+  for (let c = 2; c <= 6; c++) {
+    const ls = levels.filter(l => colOfLevel[l] === c);
+    titles[c - 1] = ls.length ? `DEDUÇÃO · NÍVEL ${ls[0]}${ls.length > 1 ? '–' + ls[ls.length - 1] : ''}` : 'DEDUÇÃO · —';
+  }
+  v62Commit(nodes, edges, titles);
+  V62.model = { res, byNum, nodeOf: f => v62NodeId(f) };
+}
+
+// Caminho de um ticket: todos os nós por onde passam as premissas do facto do ticket
+function v62ChainOf(res, num) {
+  const byNum = new Map((res.factos || []).map(f => [f.numero, f]));
+  const seen = new Set(), ids = new Set();
+  const go = n => {
+    if (seen.has(n)) return; seen.add(n);
+    const f = byNum.get(n); if (!f) return;
+    ids.add(v62NodeId(f));
+    if (f.origem === 'regra') (f.premissas || []).forEach(p => { if (typeof p === 'number') go(p); });
+  };
+  go(num);
+  return [...ids];
+}
+
+// Espaçamento: colunas centradas na altura da coluna mais cheia
+const _v62Spacing = enforceCleanFullGraphSpacing;
+enforceCleanFullGraphSpacing = function() {
+  if (!V62.active) return _v62Spacing();
+  const TOP_Y = 136, STEP = 70, MAXSTEP = 132;
+  const cols = {};
+  NODES.forEach(n => { (cols[n.col] = cols[n.col] || []).push(n); });
+  const maxCount = Math.max(1, ...Object.values(cols).map(a => a.length));
+  const span = (maxCount - 1) * STEP;
+  Object.entries(cols).forEach(([c, arr]) => {
+    arr.sort((a, b) => (ORIGINAL[a.id]?.y ?? a.y) - (ORIGINAL[b.id]?.y ?? b.y));
+    const step = arr.length > 1 ? Math.min(MAXSTEP, span / (arr.length - 1)) : 0;
+    const start = TOP_Y + (span - (arr.length - 1) * step) / 2;
+    arr.forEach((n, i) => { n.x = colX(+c); n.y = Math.round(start + i * step); });
+  });
+};
+
+// Linha "como?" dentro da caixa: de onde vem / para onde vai, a partir das arestas reais
+deriveNodeCausalProvenanceLine = function(node) {
+  if (!node || !V62.active) return '';
+  const lbl = id => (byId[id] ? (id === 'kb' ? 'KB' : byId[id].label) : id);
+  if (node.t === 'fact') {
+    const outs = (OUT[node.id] || []).map(e => lbl(e.id));
+    return outs.length ? `↳ alimenta: ${outs.slice(0, 3).join(', ')}${outs.length > 3 ? ` +${outs.length - 3}` : ''}` : '';
+  }
+  const ins = (IN[node.id] || []).map(e => lbl(e.id));
+  if (!ins.length) return '';
+  return `← ${ins.slice(0, 3).join(' + ')}${ins.length > 3 ? ` +${ins.length - 3}` : ''}`;
+};
+
+// Sem textos fixos por nó: o subtítulo de cada caixa vem do próprio modelo
+deriveDynamicNodeOverlayForScenario = function() { return { subs: {}, timePills: {} }; };
+
+// Selo de comparação nos nós (modo Comparador): número de factos de cada motor por caixa
+function v62DualBadges() {
+  const scen = S.scen || 'all';
+  const pl = S.engineResults?.prolog?.[scen], dr = S.engineResults?.drools?.[scen];
+  if (!pl || !dr) return;
+  const count = r => { const m = {}; (r.factos || []).forEach(f => { const id = v62NodeId(f); m[id] = (m[id] || 0) + 1; }); return m; };
+  const a = count(pl), b = count(dr);
+  gN.querySelectorAll('.node').forEach(gNode => {
+    const nid = gNode.getAttribute('data-id');
+    const x = a[nid] || 0, y = b[nid] || 0;
+    const same = x === y;
+    const txt = same ? `PL = DR · ${x}` : `PL ${x} · DR ${y}`;
+    const w = Math.max(70, txt.length * 5.6 + 12);
+    el('rect', { x: 8, y: -9, width: w, height: 15, rx: 3, fill: same ? '#05241b' : '#3b0a14', stroke: same ? '#fbbf24' : '#fb7185', 'stroke-width': 1 }, gNode);
+    const t = el('text', { x: 8 + w / 2, y: 2, 'text-anchor': 'middle', fill: same ? '#fde68a' : '#fda4af', 'font-size': '8.5px', 'font-weight': '700', 'font-family': 'JetBrains Mono' }, gNode);
+    t.textContent = txt;
+  });
+}
+
+const _v62ResetStandby = resetGraphToStandby;
+resetGraphToStandby = function(reason = '') {
+  if (S.apiOnline) {
+    const passos = (S.lastExecutedPassos && S.lastExecutedPassos.length) ? S.lastExecutedPassos : (DYNAMIC_SCENARIO_PASSOS[S.scen] || []);
+    v62BuildStandby(passos);
+  }
+  _v62ResetStandby(reason);
+  if (S.apiOnline) {
+    if (typeof animateCameraToVisibleGraph === 'function') animateCameraToVisibleGraph(300);
+  }
+};
+
+applyRealEngineResultToGraph = async function(liveResult, activeEng, shouldAnimate = true) {
+  if (!liveResult) return;
+  v62BuildFromResult(liveResult);
+
+  const factos = liveResult.factos || [];
+  const byNum = new Map(factos.map(f => [f.numero, f]));
+  const firedRules = new Set(factos.filter(f => f.origem === 'regra' && f.regra != null).map(f => f.regra));
+  const allIds = new Set(NODES.map(n => n.id));
+  const allEdges = new Set(EDGES.map(([a, b]) => key(a, b)));
+
+  // Tickets do painel direito: só dados da API
+  const tickets = liveResult.tickets || [];
+  TICKETS = tickets.map((t, idx) => {
+    const prioUpper = String(t.prioridade || '').toUpperCase() || '—';
+    const acaoName = typeof t.acao === 'string' ? t.acao : (t.acao && t.acao.f ? (typeof v61Fmt === 'function' ? v61Fmt(t.acao) : t.acao.f) : '—');
+    const tFacto = byNum.get(t.facto);
+    const reg = tFacto && tFacto.regra != null ? 'R' + tFacto.regra : '—';
+    const incTxt = t.incidente ? (typeof v61Fmt === 'function' ? v61Fmt(t.incidente) : JSON.stringify(t.incidente)) : '';
+    const tktId = t.incidente && t.incidente.args ? `TKT-${t.incidente.args.map(a => typeof a === 'object' ? (a.args ? a.args.join('_') : a.f) : a).join('-')}` : `TKT-${idx + 1}`;
+    const chain = v62ChainOf(liveResult, t.facto).sort((a, b) => (byId[a]?.col || 0) - (byId[b]?.col || 0));
+    return {
+      facto: t.facto, id: tktId, prio: prioUpper, alvo: t.ativo || '—', acao: acaoName, scen: S.scen,
+      fechado: t.fechado, regra: reg, regraId: v62NodeId(tFacto || { origem: 'regra', predicado: 'ticket' }),
+      regraChain: chain.length ? chain : [...allIds],
+      sev: t.gravidade || '—', criticidade: 0,
+      desc: `${acaoName} no ativo ${t.ativo || '—'}${t.fechado ? ' [FECHADO]' : ''}`,
+      racional: `Deduzido pelo motor ${String(activeEng).toUpperCase()} (regra ${reg}, gravidade ${t.gravidade || '—'}, prioridade ${prioUpper}).`,
+      prolog: tFacto && typeof v61Fact === 'function' ? v61Fact(tFacto) : incTxt
+    };
+  });
+
+  R.blocked = new Set();
+  R.flying = new Set();
+  if (shouldAnimate) {
+    R.lit = new Set();
+    R.done = new Set();
+    R.fired = 0;
+    R.activeCols = new Set();
+    render();
+    if (typeof animateCameraToVisibleGraph === 'function') animateCameraToVisibleGraph(320);
+    const seenRules = new Set();
+    for (let c = 1; c <= 7; c++) {
+      const colNodes = NODES.filter(n => n.col === c);
+      if (!colNodes.length) continue;
+      const colIds = new Set(colNodes.map(n => n.id));
+      // setas a voar para esta coluna
+      EDGES.forEach(([a, b]) => { if (colIds.has(b) && R.lit.has(a)) R.flying.add(key(a, b)); });
+      R.activeCols.add(c);
+      if (R.flying.size) { render(); await sleep(260 / S.speed); }
+      colNodes.forEach(n => {
+        R.lit.add(n.id);
+        (n.rules || []).forEach(r => seenRules.add(r));
+        if (n.t === 'state') log(n.code || n.label, `${n.label} · ${n.count} facto(s) · nível ${n.level}`, 'st');
+        else if (n.t === 'action') log('▲ ' + (n.code || ''), `${n.label} · ${n.count} facto(s)`, 'ac');
+      });
+      R.fired = seenRules.size;
+      R.flying.forEach(k => R.done.add(k));
+      R.flying = new Set();
+      EDGES.forEach(([a, b]) => { if (R.lit.has(a) && R.lit.has(b)) R.done.add(key(a, b)); });
+      render();
+      await sleep(180 / S.speed);
+    }
+  } else {
+    R.lit = allIds;
+    R.done = allEdges;
+    R.fired = firedRules.size;
+    render();
+  }
+
+  R.finished = true;
+  R.playing = false;
+
+  const engLabel = activeEng === 'drools' ? 'Drools 8' : 'SWI-Prolog';
+  const banner = $('canvasEngineBanner');
+  if (banner) {
+    banner.className = 'active-engine-banner ' + (activeEng === 'drools' ? 'drools' : 'prolog');
+    banner.innerHTML = `<span>⚙️ MOTOR: <b>${engLabel.toUpperCase()}</b> · ${firedRules.size} regras disparadas · ${NODES.length} predicados · ${factos.length} factos (${esc(liveResult.estado)})</span>`;
+  }
+  log('grafo', `Grafo gerado da resposta: ${NODES.length} predicados, ${EDGES.length} ligações, ${firedRules.size} regras.`, 'ok');
+
+  if (liveResult.estado === 'aguarda_resposta' && liveResult.perguntas?.length > 0) {
+    const p = liveResult.perguntas[0];
+    log('pergunta pendente', `[${p.pergunta || '?'}] ${p.texto || ''}`, 'st');
+    showEngineQuestionPrompt(p);
+  } else {
+    clearEngineQuestionPrompt();
+    closeC7Modal();
+  }
+  if (TICKETS.length > 0 && S.inspTab !== 'api') S.inspTab = 'tickets';
+  updateButtons();
+  updateTimelineDockUI();
+  inspect();
+};
+
+
+// Foco: nós fora do fluxo filtrado ficam escondidos (como no modo cenário original); setas da KB discretas
+(function(){
+  const st = document.createElement('style');
+  st.textContent = '.edge.kb-edge{opacity:.22}.edge.kb-edge.lit{opacity:.35}';
+  document.head.appendChild(st);
+})();
+const _v62Render = render;
+render = function() {
+  _v62Render();
+  if (!V62.active) return;
+  const flt = S.selTicket || (S.cat && S.cat !== 'all') || S.search;
+  if (flt && S.subgraphFocus) {
+    const vis = getVisibleNodesForCurrentState();
+    gN.querySelectorAll('.node').forEach(g => { if (!vis.has(g.getAttribute('data-id'))) g.classList.add('sg-hide'); });
+  }
+  if (!S.sel && !S.selEdge && !S.selTicket) gE.querySelectorAll('path.edge[id^="e-kb->"]').forEach(p => p.classList.add('kb-edge'));
+};
+
+// Sem telemetria local pré-feita: o sistema só trabalha com a API
+simulateApiRetrieveForTesting = function() {
+  const statusEl = $('emptyApiCheckStatus');
+  if (statusEl) {
+    statusEl.style.color = '#fca5a5';
+    statusEl.textContent = 'Não há dados locais: os cenários, factos e conclusões vêm só da API. Ligue o backend e carregue em verificar.';
+  }
+  log('sistema', 'Modo local desativado: todos os dados vêm da API.', 'war');
 };
 
 // Arrancar a verificação inicial após todos os handlers estarem declarados
