@@ -1,0 +1,92 @@
+package regras;
+
+// G. SENSOR DO HOST EM BAIXO: PERGUNTA AO ANALISTA (soc_regras.txt, base v6, R31-R34; respostas: sim / nao / nao_sei)
+// Pergunta-se pela evidencia que cada impacto possivel deixaria. Um "nao" nunca da "tentativa sem impacto".
+// Molde e convencoes: ver B_vetor.drl e o README desta pasta.
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.modelo.Variavel;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import cyberrangers.motores.drools.sessao.Marca;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R31: impacto possivel, mas o sensor do host esta offline e o analista ainda nao respondeu -> pergunta ao analista
+//      pela evidencia que esse impacto deixaria, e incidente de inspecao manual
+//   se [impacto_possivel(Ev,Alvo,Vuln,Impacto) e nao impacto_excluido(Ev,Alvo,Vuln,Impacto,_) e
+//       estado_sensor(Alvo,agente_host,offline) e evidencia_impacto(Impacto,Tipo,_) e pergunta_evidencia(Tipo,Pergunta) e
+//       nao resposta_analista(Alvo,Ev,Pergunta,_)]
+//   entao [cria_facto(pergunta_analista(Alvo,Ev,Pergunta)),
+//          cria_facto(incidente(inc(inspecao_manual,Ev),inspecao_manual,Alvo,[Alvo]))].
+rule "R31"
+when
+    $ip : Facto(functor == "impacto_possivel/4", $ev : arg(0), $alvo : arg(1), $vuln : arg(2), $impacto : arg(3))
+    not Facto(functor == "impacto_excluido/5", arg(0) == $ev, arg(1) == $alvo, arg(2) == $vuln, arg(3) == $impacto)
+    $es : Facto(functor == "estado_sensor/3", arg(0) == $alvo, arg(1) == "agente_host", arg(2) == "offline")
+    $ei : Facto(functor == "evidencia_impacto/3", arg(0) == $impacto, $tipo : arg(1))
+    $pe : Facto(functor == "pergunta_evidencia/2", arg(0) == $tipo, $pergunta : arg(1))
+    not Facto(functor == "resposta_analista/4", arg(0) == $alvo, arg(1) == $ev, arg(2) == $pergunta)
+then
+    List<Premissa> p = List.of(Premissa.de($ip),
+            Premissa.nao("impacto_excluido", $ev, $alvo, $vuln, $impacto, Variavel.nova()),
+            Premissa.de($es), Premissa.de($ei), Premissa.de($pe),
+            Premissa.nao("resposta_analista", $alvo, $ev, $pergunta, Variavel.nova()));
+    base.cria(kcontext, 31, p, Facto.de("pergunta_analista", $alvo, $ev, $pergunta));
+    base.cria(kcontext, 31, p, Facto.de("incidente", Termo.de("inc", "inspecao_manual", $ev),
+            "inspecao_manual", $alvo, List.of($alvo)));
+end
+
+// R32: o analista responde sim a pergunta sobre uma evidencia que um impacto possivel deixaria -> impacto confirmado
+//   se [resposta_analista(Alvo,Ev,Pergunta,sim) e impacto_possivel(Ev,Alvo,Vuln,Impacto) e
+//       nao impacto_excluido(Ev,Alvo,Vuln,Impacto,_) e evidencia_impacto(Impacto,Tipo,_) e pergunta_evidencia(Tipo,Pergunta)]
+//   entao [cria_facto(impacto_confirmado(Alvo,Ev,Impacto))].
+rule "R32"
+when
+    $ra : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), $pergunta : arg(2), arg(3) == "sim")
+    $ip : Facto(functor == "impacto_possivel/4", arg(0) == $ev, arg(1) == $alvo, $vuln : arg(2), $impacto : arg(3))
+    not Facto(functor == "impacto_excluido/5", arg(0) == $ev, arg(1) == $alvo, arg(2) == $vuln, arg(3) == $impacto)
+    $ei : Facto(functor == "evidencia_impacto/3", arg(0) == $impacto, $tipo : arg(1))
+    $pe : Facto(functor == "pergunta_evidencia/2", arg(0) == $tipo, arg(1) == $pergunta)
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($ip),
+            Premissa.nao("impacto_excluido", $ev, $alvo, $vuln, $impacto, Variavel.nova()),
+            Premissa.de($ei), Premissa.de($pe));
+    base.cria(kcontext, 32, p, Facto.de("impacto_confirmado", $alvo, $ev, $impacto));
+end
+
+// R33: o analista responde nao a TODAS as perguntas sobre as evidencias que os impactos possiveis deixariam
+//      -> sem evidencia observada (NAO e tentativa sem impacto)
+//   se [resposta_analista(Alvo,Ev,Pergunta,nao) e pergunta_evidencia(_,Pergunta) e exploracao_possivel(Ev,Alvo,Vuln) e
+//       evidencias_negadas(Alvo,Ev,Vuln)]
+//   entao [cria_facto(sem_evidencia_observada(Ev,Alvo)),
+//          cria_facto(motivo(inc(exploracao_possivel,Ev),analista_nao_viu_evidencias))].
+rule "R33"
+when
+    $ra : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), $pergunta : arg(2), arg(3) == "nao")
+    $pe : Facto(functor == "pergunta_evidencia/2", arg(1) == $pergunta)
+    $ep : Facto(functor == "exploracao_possivel/3", arg(0) == $ev, arg(1) == $alvo, $vuln : arg(2))
+    Marca(functor == "resposta_analista/4")
+    Marca(functor == "impacto_excluido/5")
+    eval(CondicoesCalculadas.evidenciasNegadas($alvo, $ev, $vuln, base))
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($pe), Premissa.de($ep),
+            Premissa.calculada("evidencias_negadas", $alvo, $ev, $vuln));
+    base.cria(kcontext, 33, p, Facto.de("sem_evidencia_observada", $ev, $alvo));
+    base.cria(kcontext, 33, p, Facto.de("motivo", Termo.de("inc", "exploracao_possivel", $ev), "analista_nao_viu_evidencias"));
+end
+
+// R34: o analista responde nao_sei a uma das perguntas sobre as evidencias -> suspeita
+//   se [resposta_analista(Alvo,Ev,Pergunta,nao_sei) e pergunta_evidencia(_,Pergunta) e exploracao_possivel(Ev,Alvo,_)]
+//   entao [cria_facto(suspeita(Alvo,Ev))].
+rule "R34"
+when
+    $ra : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), $pergunta : arg(2), arg(3) == "nao_sei")
+    $pe : Facto(functor == "pergunta_evidencia/2", arg(1) == $pergunta)
+    $ep : Facto(functor == "exploracao_possivel/3", arg(0) == $ev, arg(1) == $alvo)
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($pe), Premissa.de($ep));
+    base.cria(kcontext, 34, p, Facto.de("suspeita", $alvo, $ev));
+end

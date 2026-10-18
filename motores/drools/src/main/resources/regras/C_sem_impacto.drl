@@ -1,0 +1,87 @@
+package regras;
+
+// C. TENTATIVA SEM IMPACTO (soc_regras.txt, base v6, R10-R13)
+// Nao e falso positivo: o ataque foi real, so nao podia resultar. Fica registada e a origem passa a ser vigiada.
+// Molde e convencoes: ver B_vetor.drl e o README desta pasta.
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.modelo.Variavel;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import cyberrangers.motores.drools.sessao.Marca;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R10: vetor aberto ate uma instalacao nao afetada, e TODAS as instalacoes do programa ao alcance do ataque estao nao
+//      afetadas -> tentativa sem impacto (versao corrigida)
+//   se [vetor_aberto(Ev,Alvo,Inst,Vuln) e nao_afetado(Inst,Vuln) e todas_ao_alcance_nao_afetadas(Ev,Alvo,Vuln)]
+//   entao [cria_facto(tentativa_sem_impacto(Ev,Alvo,versao_corrigida))].
+rule "R10"
+when
+    $v : Facto(functor == "vetor_aberto/4", $ev : arg(0), $alvo : arg(1), $inst : arg(2), $vuln : arg(3))
+    $n : Facto(functor == "nao_afetado/2", arg(0) == $inst, arg(1) == $vuln)
+    Marca(functor == "destino/3")
+    Marca(functor == "nao_afetado/2")
+    eval(CondicoesCalculadas.todasAoAlcanceNaoAfetadas($ev, $alvo, $vuln, base))
+then
+    List<Premissa> p = List.of(Premissa.de($v), Premissa.de($n),
+            Premissa.calculada("todas_ao_alcance_nao_afetadas", $ev, $alvo, $vuln));
+    base.cria(kcontext, 10, p, Facto.de("tentativa_sem_impacto", $ev, $alvo, "versao_corrigida"));
+end
+
+// R11: o ativo nao tem o programa atacado e o seu inventario de software esta completo
+//      -> tentativa sem impacto (componente ausente)
+//   se [alerta_ids(Ev,Alvo,Sig) e assinatura_vuln(Sig,Vuln) e vuln_afeta(Vuln,Nome) e nao componente(_,Alvo,Nome) e
+//       cobertura(Alvo,sbom,completa)]
+//   entao [cria_facto(tentativa_sem_impacto(Ev,Alvo,componente_ausente))].
+rule "R11"
+when
+    $al : Facto(functor == "alerta_ids/3", $ev : arg(0), $alvo : arg(1), $sig : arg(2))
+    $as : Facto(functor == "assinatura_vuln/2", arg(0) == $sig, $vuln : arg(1))
+    $va : Facto(functor == "vuln_afeta/2", arg(0) == $vuln, $nome : arg(1))
+    not Facto(functor == "componente/3", arg(1) == $alvo, arg(2) == $nome)
+    $cs : Facto(functor == "cobertura/3", arg(0) == $alvo, arg(1) == "sbom", arg(2) == "completa")
+then
+    List<Premissa> p = List.of(Premissa.de($al), Premissa.de($as), Premissa.de($va),
+            Premissa.nao("componente", Variavel.nova(), $alvo, $nome), Premissa.de($cs));
+    base.cria(kcontext, 11, p, Facto.de("tentativa_sem_impacto", $ev, $alvo, "componente_ausente"));
+end
+
+// R12: qualquer tentativa sem impacto -> a origem fica marcada como hostil e abre-se o incidente "tentativa sem impacto"
+//   se [tentativa_sem_impacto(Ev,Alvo,_) e origem(Ev,Ip)]
+//   entao [cria_facto(origem_hostil(Ip,Ev)),
+//          cria_facto(incidente(inc(tentativa_sem_impacto,Ev),tentativa_sem_impacto,Alvo,[Alvo]))].
+rule "R12"
+when
+    $t : Facto(functor == "tentativa_sem_impacto/3", $ev : arg(0), $alvo : arg(1))
+    $o : Facto(functor == "origem/2", arg(0) == $ev, $ip : arg(1))
+then
+    List<Premissa> p = List.of(Premissa.de($t), Premissa.de($o));
+    base.cria(kcontext, 12, p, Facto.de("origem_hostil", $ip, $ev));
+    base.cria(kcontext, 12, p, Facto.de("incidente", Termo.de("inc", "tentativa_sem_impacto", $ev),
+            "tentativa_sem_impacto", $alvo, List.of($alvo)));
+end
+
+// R13: exploracao possivel (em vigor) vinda de uma origem que JA tinha sido marcada como hostil por um evento ANTERIOR
+//      -> ataque dirigido e bloqueio da ORIGEM do ataque
+//   se [exploracao_possivel(Ev,Alvo,Vuln) e nao revisto(exploracao_possivel(Ev,Alvo,Vuln),_) e origem(Ev,Ip) e
+//       origem_hostil(Ip,EvAnterior) e anterior(EvAnterior,Ev)]
+//   entao [cria_facto(ataque_dirigido(Ev,Alvo)),
+//          cria_facto(acao(Alvo,bloquear_origem(Ip)))].
+rule "R13"
+when
+    $e : Facto(functor == "exploracao_possivel/3", $ev : arg(0), $alvo : arg(1), $vuln : arg(2))
+    not Facto(functor == "revisto/2", $e.representadoPor(arg(0)))
+    $o : Facto(functor == "origem/2", arg(0) == $ev, $ip : arg(1))
+    $h : Facto(functor == "origem_hostil/2", arg(0) == $ip, $evAnterior : arg(1))
+    Marca(functor == "tempo/2")
+    eval(CondicoesCalculadas.anterior($evAnterior, $ev, base))
+then
+    List<Premissa> p = List.of(Premissa.de($e),
+            Premissa.nao("revisto", Termo.de("exploracao_possivel", $ev, $alvo, $vuln), Variavel.nova()),
+            Premissa.de($o), Premissa.de($h), Premissa.calculada("anterior", $evAnterior, $ev));
+    base.cria(kcontext, 13, p, Facto.de("ataque_dirigido", $ev, $alvo));
+    base.cria(kcontext, 13, p, Facto.de("acao", $alvo, Termo.de("bloquear_origem", $ip)));
+end

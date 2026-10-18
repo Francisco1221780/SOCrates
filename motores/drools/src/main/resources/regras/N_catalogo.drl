@@ -1,0 +1,66 @@
+package regras;
+
+// N. VALIDACAO DO CATALOGO (soc_regras.txt, base v6, R89-R92)
+// A confirmacao (grupo F) e as perguntas ao analista (grupo G) dependem de cada impacto ter uma evidencia esperada, de
+// cada evidencia ter uma pergunta, de cada impacto ter uma classe e de cada classe ter um tipo de incidente provavel.
+// Estas regras assinalam as falhas no catalogo. Com o catalogo da base v6 completo, nao disparam.
+// Molde e convencoes: ver B_vetor.drl e o README desta pasta.
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.modelo.Variavel;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R89: uma vulnerabilidade tem um impacto que nao tem nenhuma evidencia esperada -> falha no catalogo
+//   se [vuln_impacto(Vuln,Impacto) e nao evidencia_impacto(Impacto,_,_)]
+//   entao [cria_facto(falha_catalogo(Vuln,impacto_sem_evidencia(Impacto)))].
+rule "R89"
+when
+    $vi : Facto(functor == "vuln_impacto/2", $vuln : arg(0), $impacto : arg(1))
+    not Facto(functor == "evidencia_impacto/3", arg(0) == $impacto)
+then
+    List<Premissa> p = List.of(Premissa.de($vi),
+            Premissa.nao("evidencia_impacto", $impacto, Variavel.nova(), Variavel.nova()));
+    base.cria(kcontext, 89, p, Facto.de("falha_catalogo", $vuln, Termo.de("impacto_sem_evidencia", $impacto)));
+end
+
+// R90: uma evidencia esperada de um impacto usado nao tem pergunta para o analista -> falha no catalogo
+//   se [vuln_impacto(Vuln,Impacto) e evidencia_impacto(Impacto,Tipo,_) e nao pergunta_evidencia(Tipo,_)]
+//   entao [cria_facto(falha_catalogo(Vuln,evidencia_sem_pergunta(Tipo)))].
+rule "R90"
+when
+    $vi : Facto(functor == "vuln_impacto/2", $vuln : arg(0), $impacto : arg(1))
+    $ei : Facto(functor == "evidencia_impacto/3", arg(0) == $impacto, $tipo : arg(1))
+    not Facto(functor == "pergunta_evidencia/2", arg(0) == $tipo)
+then
+    List<Premissa> p = List.of(Premissa.de($vi), Premissa.de($ei), Premissa.nao("pergunta_evidencia", $tipo, Variavel.nova()));
+    base.cria(kcontext, 90, p, Facto.de("falha_catalogo", $vuln, Termo.de("evidencia_sem_pergunta", $tipo)));
+end
+
+// R91: um impacto usado nao tem classe (controlo ou dados) -> falha no catalogo
+//   se [vuln_impacto(Vuln,Impacto) e nao classe_impacto(Impacto,_)]
+//   entao [cria_facto(falha_catalogo(Vuln,impacto_sem_classe(Impacto)))].
+rule "R91"
+when
+    $vi : Facto(functor == "vuln_impacto/2", $vuln : arg(0), $impacto : arg(1))
+    not Facto(functor == "classe_impacto/2", arg(0) == $impacto)
+then
+    List<Premissa> p = List.of(Premissa.de($vi), Premissa.nao("classe_impacto", $impacto, Variavel.nova()));
+    base.cria(kcontext, 91, p, Facto.de("falha_catalogo", $vuln, Termo.de("impacto_sem_classe", $impacto)));
+end
+
+// R92: a classe de um impacto usado nao tem tipo de incidente provavel -> falha no catalogo
+//   se [vuln_impacto(Vuln,Impacto) e classe_impacto(Impacto,Classe) e nao tipo_provavel(Classe,_)]
+//   entao [cria_facto(falha_catalogo(Vuln,classe_sem_tipo_provavel(Classe)))].
+rule "R92"
+when
+    $vi : Facto(functor == "vuln_impacto/2", $vuln : arg(0), $impacto : arg(1))
+    $ci : Facto(functor == "classe_impacto/2", arg(0) == $impacto, $classe : arg(1))
+    not Facto(functor == "tipo_provavel/2", arg(0) == $classe)
+then
+    List<Premissa> p = List.of(Premissa.de($vi), Premissa.de($ci), Premissa.nao("tipo_provavel", $classe, Variavel.nova()));
+    base.cria(kcontext, 92, p, Facto.de("falha_catalogo", $vuln, Termo.de("classe_sem_tipo_provavel", $classe)));
+end

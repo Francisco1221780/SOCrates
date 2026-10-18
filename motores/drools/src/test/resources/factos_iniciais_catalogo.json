@@ -1,0 +1,14 @@
+{
+  "versaoKB": "6",
+  "factos": [
+    {"predicado": "vuln_impacto", "args": ["vuln_x", "impacto_sem_evidencia"]},
+    {"predicado": "vuln_impacto", "args": ["vuln_x", "impacto_sem_pergunta"]},
+    {"predicado": "evidencia_impacto", "args": ["impacto_sem_pergunta", "evidencia_sem_pergunta", 60]},
+    {"predicado": "classe_impacto", "args": ["impacto_sem_pergunta", "classe_sem_tipo"]},
+    {"predicado": "vuln_impacto", "args": ["vuln_x", "impacto_completo"]},
+    {"predicado": "evidencia_impacto", "args": ["impacto_completo", "evidencia_completa", 60]},
+    {"predicado": "pergunta_evidencia", "args": ["evidencia_completa", "pergunta_completa"]},
+    {"predicado": "classe_impacto", "args": ["impacto_completo", "controlo"]},
+    {"predicado": "tipo_provavel", "args": ["controlo", "compromisso_provavel"]}
+  ]
+}

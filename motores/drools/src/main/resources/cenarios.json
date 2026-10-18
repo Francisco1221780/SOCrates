@@ -1,0 +1,1109 @@
+{
+  "versaoKB":"6",
+  "cenarios": [
+    {
+      "id":"c1",
+      "ordem":1,
+      "grupo":"telemetria",
+      "descricao":"tentativa sem impacto (versao corrigida)",
+      "ficheiro":"cenarios/cenario_01.txt",
+      "depende": [],
+      "alternativas": [],
+      "passo": {
+        "id":"c1",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_b1", "web_srv_02", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_b1", "ip_203_0_113_50" ]},
+          {"predicado":"origem_zona","args": ["ev_b1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_b1", 900 ]}
+        ]
+      }
+    },
+    {
+      "id":"c2",
+      "ordem":2,
+      "grupo":"telemetria",
+      "descricao":"execucao remota confirmada; ataque dirigido de uma origem reincidente",
+      "ficheiro":"cenarios/cenario_02.txt",
+      "depende": ["c1" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c2",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_a1", "web_srv_01", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_a1", "ip_203_0_113_50" ]},
+          {"predicado":"origem_zona","args": ["ev_a1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_a1", 1000 ]},
+          {"predicado":"evento_host","args": ["ev_a2", "web_srv_01", "shell_iniciada" ]},
+          {"predicado":"evento_processo","args": ["ev_a2", "httpd" ]},
+          {"predicado":"tempo","args": ["ev_a2", 1012 ]}
+        ]
+      }
+    },
+    {
+      "id":"c3",
+      "ordem":3,
+      "grupo":"telemetria",
+      "descricao":"movimento lateral a partir de uma maquina comprometida",
+      "ficheiro":"cenarios/cenario_03.txt",
+      "depende": ["c2" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c3",
+        "factos": [
+          {"predicado":"login_ok","args": ["ev_i1", "db_srv_01", "web_srv_01", "ssh" ]},
+          {"predicado":"tempo","args": ["ev_i1", 1100 ]},
+          {"predicado":"login_ok","args": ["ev_i2", "db_srv_01", "jumpbox_admin", "ssh" ]},
+          {"predicado":"tempo","args": ["ev_i2", 1200 ]}
+        ]
+      }
+    },
+    {
+      "id":"c4",
+      "ordem":4,
+      "grupo":"telemetria",
+      "descricao":"correcao aplicada sem mudar a versao (backport)",
+      "ficheiro":"cenarios/cenario_04.txt",
+      "depende": ["c3" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c4",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_c1", "web_srv_03", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_c1", "ip_198_51_100_20" ]},
+          {"predicado":"origem_zona","args": ["ev_c1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_c1", 2000 ]}
+        ]
+      }
+    },
+    {
+      "id":"c5",
+      "ordem":5,
+      "grupo":"telemetria",
+      "descricao":"ruido: o ativo nao tem o programa atacado",
+      "ficheiro":"cenarios/cenario_05.txt",
+      "depende": ["c4" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c5",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_d1", "db_srv_01", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_d1", "ip_198_51_100_21" ]},
+          {"predicado":"origem_zona","args": ["ev_d1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_d1", 2100 ]}
+        ]
+      }
+    },
+    {
+      "id":"c6",
+      "ordem":6,
+      "grupo":"telemetria",
+      "descricao":"versao desconhecida",
+      "ficheiro":"cenarios/cenario_06.txt",
+      "depende": ["c5" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c6",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_f1", "web_srv_05", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_f1", "ip_198_51_100_22" ]},
+          {"predicado":"origem_zona","args": ["ev_f1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_f1", 2200 ]}
+        ]
+      }
+    },
+    {
+      "id":"c7",
+      "ordem":7,
+      "grupo":"telemetria",
+      "descricao":"sensor do host em baixo: pergunta ao analista",
+      "ficheiro":"cenarios/cenario_07.txt",
+      "depende": ["c6" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c7",
+        "factos": [
+          {"predicado":"estado_sensor","args": ["web_srv_04", "agente_host", "offline" ]},
+          {"predicado":"alerta_ids","args": ["ev_e1", "web_srv_04", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_e1", "ip_198_51_100_23" ]},
+          {"predicado":"origem_zona","args": ["ev_e1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_e1", 3000 ]}
+        ]
+      }
+    },
+    {
+      "id":"c8",
+      "ordem":8,
+      "grupo":"telemetria",
+      "descricao":"Log4Shell com evidencia tardia",
+      "ficheiro":"cenarios/cenario_08.txt",
+      "depende": ["c7" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c8",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_g1", "app_srv_01", "sig_log4shell_jndi" ]},
+          {"predicado":"origem","args": ["ev_g1", "ip_203_0_113_77" ]},
+          {"predicado":"origem_zona","args": ["ev_g1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_g1", 4000 ]},
+          {"predicado":"evento_host","args": ["ev_g2", "app_srv_01", "shell_iniciada" ]},
+          {"predicado":"evento_processo","args": ["ev_g2", "java_loja" ]},
+          {"predicado":"tempo","args": ["ev_g2", 4600 ]}
+        ]
+      }
+    },
+    {
+      "id":"c9",
+      "ordem":9,
+      "grupo":"telemetria",
+      "descricao":"SQL injection confirmada: exposicao de dados",
+      "ficheiro":"cenarios/cenario_09.txt",
+      "depende": ["c8" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c9",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_h1", "app_srv_01", "sig_sqli_union" ]},
+          {"predicado":"origem","args": ["ev_h1", "ip_203_0_113_88" ]},
+          {"predicado":"origem_zona","args": ["ev_h1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_h1", 5000 ]},
+          {"predicado":"evento_host","args": ["ev_h2", "app_srv_01", "resposta_volumosa" ]},
+          {"predicado":"evento_processo","args": ["ev_h2", "java_loja" ]},
+          {"predicado":"tempo","args": ["ev_h2", 5030 ]}
+        ]
+      }
+    },
+    {
+      "id":"c10",
+      "ordem":10,
+      "grupo":"telemetria",
+      "descricao":"reconhecimento",
+      "ficheiro":"cenarios/cenario_10.txt",
+      "depende": ["c9" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c10",
+        "factos": [
+          {"predicado":"reconhecimento","args": ["ev_j1", "web_srv_02", "ip_192_0_2_77" ]},
+          {"predicado":"portos_sondados","args": ["ev_j1", 450 ]},
+          {"predicado":"falhas_login","args": ["ev_j1", 12 ]},
+          {"predicado":"falhas_janela","args": ["ev_j1", 180 ]},
+          {"predicado":"origem","args": ["ev_j1", "ip_192_0_2_77" ]},
+          {"predicado":"tempo","args": ["ev_j1", 6000 ]}
+        ]
+      }
+    },
+    {
+      "id":"c10b",
+      "ordem":11,
+      "grupo":"telemetria",
+      "descricao":"acesso depois do reconhecimento",
+      "ficheiro":"cenarios/cenario_10b.txt",
+      "depende": ["c10" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c10b",
+        "factos": [
+          {"predicado":"login_ok","args": ["ev_j2", "web_srv_02", "ip_192_0_2_77", "ssh" ]},
+          {"predicado":"tempo","args": ["ev_j2", 6300 ]}
+        ]
+      }
+    },
+    {
+      "id":"c10c",
+      "ordem":12,
+      "grupo":"telemetria",
+      "descricao":"C2 depois de um acesso suspeito",
+      "ficheiro":"cenarios/cenario_10c.txt",
+      "depende": ["c10b" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c10c",
+        "factos": [
+          {"predicado":"trafego_saida","args": ["ev_j3", "web_srv_02", "c2_198_51_100_7" ]},
+          {"predicado":"tempo","args": ["ev_j3", 7500 ]}
+        ]
+      }
+    },
+    {
+      "id":"c11",
+      "ordem":13,
+      "grupo":"telemetria",
+      "descricao":"C2 sem ligacao conhecida ao ataque",
+      "ficheiro":"cenarios/cenario_11.txt",
+      "depende": ["c10c" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c11",
+        "factos": [
+          {"predicado":"trafego_saida","args": ["ev_k1", "app_srv_01", "c2_203_0_113_9" ]},
+          {"predicado":"tempo","args": ["ev_k1", 7600 ]}
+        ]
+      }
+    },
+    {
+      "id":"c11b",
+      "ordem":14,
+      "grupo":"telemetria",
+      "descricao":"a ligacao aparece: C2 feito pelo processo atacado",
+      "ficheiro":"cenarios/cenario_11b.txt",
+      "depende": ["c11" ],
+      "alternativas": [],
+      "passo": {"id":"c11b","factos": [ {"predicado":"evento_processo","args": ["ev_k1", "java_loja" ]} ]}
+    },
+    {
+      "id":"c12",
+      "ordem":15,
+      "grupo":"telemetria",
+      "descricao":"shell de outro programa: impacto ambiguo",
+      "ficheiro":"cenarios/cenario_12.txt",
+      "depende": ["c11b" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c12",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_l1", "web_srv_06", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_l1", "ip_198_51_100_30" ]},
+          {"predicado":"origem_zona","args": ["ev_l1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_l1", 8000 ]},
+          {"predicado":"evento_host","args": ["ev_l2", "web_srv_06", "shell_iniciada" ]},
+          {"predicado":"evento_processo","args": ["ev_l2", "sshd" ]},
+          {"predicado":"tempo","args": ["ev_l2", 8020 ]}
+        ]
+      }
+    },
+    {
+      "id":"c13",
+      "ordem":16,
+      "grupo":"telemetria",
+      "descricao":"inventario incompleto",
+      "ficheiro":"cenarios/cenario_13.txt",
+      "depende": ["c12" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c13",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_m1", "web_srv_07", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_m1", "ip_198_51_100_31" ]},
+          {"predicado":"origem_zona","args": ["ev_m1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_m1", 9000 ]}
+        ]
+      }
+    },
+    {
+      "id":"c14",
+      "ordem":17,
+      "grupo":"telemetria",
+      "descricao":"C2 nao corroborado",
+      "ficheiro":"cenarios/cenario_14.txt",
+      "depende": ["c13" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c14",
+        "factos": [
+          {"predicado":"trafego_saida","args": ["ev_p1", "jumpbox_admin", "c2_198_51_100_7" ]},
+          {"predicado":"tempo","args": ["ev_p1", 9500 ]}
+        ]
+      }
+    },
+    {
+      "id":"c15",
+      "ordem":18,
+      "grupo":"telemetria",
+      "descricao":"ramo corrigido a parte",
+      "ficheiro":"cenarios/cenario_15.txt",
+      "depende": ["c14" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c15",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_q1", "app_srv_02", "sig_log4shell_jndi" ]},
+          {"predicado":"origem","args": ["ev_q1", "ip_203_0_113_99" ]},
+          {"predicado":"origem_zona","args": ["ev_q1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_q1", 9800 ]}
+        ]
+      }
+    },
+    {
+      "id":"c16",
+      "ordem":19,
+      "grupo":"telemetria",
+      "descricao":"duas instalacoes do mesmo programa, so a corrigida ao alcance",
+      "ficheiro":"cenarios/cenario_16.txt",
+      "depende": ["c15" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c16",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_r1", "web_srv_08", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_r1", "ip_203_0_113_120" ]},
+          {"predicado":"origem_zona","args": ["ev_r1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_r1", 10000 ]}
+        ]
+      }
+    },
+    {
+      "id":"c17",
+      "ordem":20,
+      "grupo":"telemetria",
+      "descricao":"C2 com evidencia fraca",
+      "ficheiro":"cenarios/cenario_17.txt",
+      "depende": ["c16" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c17",
+        "factos": [
+          {"predicado":"trafego_saida","args": ["ev_s1", "web_srv_05", "c2_203_0_113_9" ]},
+          {"predicado":"tempo","args": ["ev_s1", 10200 ]}
+        ]
+      }
+    },
+    {
+      "id":"c18",
+      "ordem":21,
+      "grupo":"telemetria",
+      "descricao":"movimento lateral a partir de uma maquina nao comprometida",
+      "ficheiro":"cenarios/cenario_18.txt",
+      "depende": ["c17" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c18",
+        "factos": [
+          {"predicado":"login_ok","args": ["ev_t1", "jumpbox_admin", "web_srv_02", "ssh" ]},
+          {"predicado":"tempo","args": ["ev_t1", 10400 ]}
+        ]
+      }
+    },
+    {
+      "id":"c19",
+      "ordem":22,
+      "grupo":"telemetria",
+      "descricao":"sensor em baixo numa SQL injection",
+      "ficheiro":"cenarios/cenario_19.txt",
+      "depende": ["c18" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c19",
+        "factos": [
+          {"predicado":"estado_sensor","args": ["app_srv_03", "agente_host", "offline" ]},
+          {"predicado":"alerta_ids","args": ["ev_w1", "app_srv_03", "sig_sqli_union" ]},
+          {"predicado":"origem","args": ["ev_w1", "ip_203_0_113_140" ]},
+          {"predicado":"origem_zona","args": ["ev_w1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_w1", 10600 ]}
+        ]
+      }
+    },
+    {
+      "id":"c20",
+      "ordem":23,
+      "grupo":"telemetria",
+      "descricao":"evidencia sem telemetria de processo",
+      "ficheiro":"cenarios/cenario_20.txt",
+      "depende": ["c19" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c20",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_u1", "web_srv_06", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_u1", "ip_198_51_100_40" ]},
+          {"predicado":"origem_zona","args": ["ev_u1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_u1", 10800 ]},
+          {"predicado":"evento_host","args": ["ev_u2", "web_srv_06", "shell_iniciada" ]},
+          {"predicado":"tempo","args": ["ev_u2", 10815 ]}
+        ]
+      }
+    },
+    {
+      "id":"c20b",
+      "ordem":24,
+      "grupo":"telemetria",
+      "descricao":"a telemetria do processo chega depois",
+      "ficheiro":"cenarios/cenario_20b.txt",
+      "depende": ["c20" ],
+      "alternativas": [],
+      "passo": {"id":"c20b","factos": [ {"predicado":"evento_processo","args": ["ev_u2", "httpd" ]} ]}
+    },
+    {
+      "id":"c21",
+      "ordem":25,
+      "grupo":"telemetria",
+      "descricao":"catalogo sem intervalos de versoes",
+      "ficheiro":"cenarios/cenario_21.txt",
+      "depende": ["c20b" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c21",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_x1", "app_srv_01", "sig_loja_upload_jsp" ]},
+          {"predicado":"origem","args": ["ev_x1", "ip_203_0_113_150" ]},
+          {"predicado":"origem_zona","args": ["ev_x1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_x1", 11000 ]}
+        ]
+      }
+    },
+    {
+      "id":"c22",
+      "ordem":26,
+      "grupo":"telemetria",
+      "descricao":"porto de destino conhecido",
+      "ficheiro":"cenarios/cenario_22.txt",
+      "depende": ["c21" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c22",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_v1", "web_srv_08", "sig_apache_path_traversal" ]},
+          {"predicado":"destino","args": ["ev_v1", 80, "tcp" ]},
+          {"predicado":"origem","args": ["ev_v1", "ip_192_0_2_140" ]},
+          {"predicado":"origem_zona","args": ["ev_v1", "rede_interna" ]},
+          {"predicado":"tempo","args": ["ev_v1", 11200 ]}
+        ]
+      }
+    },
+    {
+      "id":"c23",
+      "ordem":27,
+      "grupo":"telemetria",
+      "descricao":"processo nao classificado",
+      "ficheiro":"cenarios/cenario_23.txt",
+      "depende": ["c22" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c23",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_y1", "web_srv_06", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_y1", "ip_198_51_100_41" ]},
+          {"predicado":"origem_zona","args": ["ev_y1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_y1", 11400 ]},
+          {"predicado":"evento_host","args": ["ev_y2", "web_srv_06", "shell_iniciada" ]},
+          {"predicado":"evento_processo","args": ["ev_y2", "python3" ]},
+          {"predicado":"tempo","args": ["ev_y2", 11410 ]}
+        ]
+      }
+    },
+    {
+      "id":"c24",
+      "ordem":28,
+      "grupo":"telemetria",
+      "descricao":"CGI desligado: execucao remota excluida",
+      "ficheiro":"cenarios/cenario_24.txt",
+      "depende": ["c23" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c24",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_z1", "web_srv_09", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_z1", "ip_198_51_100_50" ]},
+          {"predicado":"origem_zona","args": ["ev_z1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_z1", 11600 ]}
+        ]
+      }
+    },
+    {
+      "id":"c24b",
+      "ordem":29,
+      "grupo":"telemetria",
+      "descricao":"shell num servidor sem CGI",
+      "ficheiro":"cenarios/cenario_24b.txt",
+      "depende": ["c24" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c24b",
+        "factos": [
+          {"predicado":"evento_host","args": ["ev_z3", "web_srv_09", "shell_iniciada" ]},
+          {"predicado":"evento_processo","args": ["ev_z3", "httpd" ]},
+          {"predicado":"tempo","args": ["ev_z3", 11630 ]}
+        ]
+      }
+    },
+    {
+      "id":"c25",
+      "ordem":30,
+      "grupo":"telemetria",
+      "descricao":"configuracao desconhecida",
+      "ficheiro":"cenarios/cenario_25.txt",
+      "depende": ["c24b" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c25",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_n1", "web_srv_10", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_n1", "ip_198_51_100_51" ]},
+          {"predicado":"origem_zona","args": ["ev_n1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_n1", 11800 ]}
+        ]
+      }
+    },
+    {
+      "id":"c25b",
+      "ordem":31,
+      "grupo":"telemetria",
+      "descricao":"a configuracao chega depois",
+      "ficheiro":"cenarios/cenario_25b.txt",
+      "depende": ["c25" ],
+      "alternativas": [],
+      "passo": {"id":"c25b","factos": [ {"predicado":"configuracao","args": ["web_srv_10_apache", "cgi_ativo", "nao" ]} ]}
+    },
+    {
+      "id":"c26",
+      "ordem":32,
+      "grupo":"telemetria",
+      "descricao":"C2 numa maquina ja comprometida",
+      "ficheiro":"cenarios/cenario_26.txt",
+      "depende": ["c25b" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c26",
+        "factos": [
+          {"predicado":"trafego_saida","args": ["ev_o1", "web_srv_01", "c2_203_0_113_9" ]},
+          {"predicado":"tempo","args": ["ev_o1", 12200 ]}
+        ]
+      }
+    },
+    {
+      "id":"c27",
+      "ordem":33,
+      "grupo":"telemetria",
+      "descricao":"versao num formato desconhecido",
+      "ficheiro":"cenarios/cenario_27.txt",
+      "depende": ["c26" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c27",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_aa1", "web_srv_11", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_aa1", "ip_198_51_100_52" ]},
+          {"predicado":"origem_zona","args": ["ev_aa1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_aa1", 12400 ]}
+        ]
+      }
+    },
+    {
+      "id":"c28",
+      "ordem":34,
+      "grupo":"telemetria",
+      "descricao":"movimento lateral horas depois do compromisso",
+      "ficheiro":"cenarios/cenario_28.txt",
+      "depende": ["c27" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c28",
+        "factos": [
+          {"predicado":"login_ok","args": ["ev_i3", "db_srv_01", "web_srv_01", "ssh" ]},
+          {"predicado":"tempo","args": ["ev_i3", 15000 ]}
+        ]
+      }
+    },
+    {
+      "id":"c29",
+      "ordem":35,
+      "grupo":"telemetria",
+      "descricao":"SQL injection sem telemetria de processo: exposicao provavel",
+      "ficheiro":"cenarios/cenario_29.txt",
+      "depende": ["c28" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c29",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_ab1", "app_srv_01", "sig_sqli_union" ]},
+          {"predicado":"origem","args": ["ev_ab1", "ip_203_0_113_160" ]},
+          {"predicado":"origem_zona","args": ["ev_ab1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_ab1", 15200 ]},
+          {"predicado":"evento_host","args": ["ev_ab2", "app_srv_01", "resposta_volumosa" ]},
+          {"predicado":"tempo","args": ["ev_ab2", 15230 ]}
+        ]
+      }
+    },
+    {
+      "id":"c29b",
+      "ordem":36,
+      "grupo":"telemetria",
+      "descricao":"a telemetria do processo chega depois (em alternativa ao 29c)",
+      "ficheiro":"cenarios/cenario_29b.txt",
+      "depende": ["c29" ],
+      "alternativas": ["c29c" ],
+      "passo": {"id":"c29b","factos": [ {"predicado":"evento_processo","args": ["ev_ab2", "java_loja" ]} ]}
+    },
+    {
+      "id":"c35",
+      "ordem":37,
+      "grupo":"telemetria",
+      "descricao":"duas instalacoes ao alcance, uma corrigida e outra vulneravel",
+      "ficheiro":"cenarios/cenario_35.txt",
+      "depende": ["c29" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c35",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_ac1", "web_srv_08", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_ac1", "ip_192_0_2_150" ]},
+          {"predicado":"origem_zona","args": ["ev_ac1", "rede_interna" ]},
+          {"predicado":"tempo","args": ["ev_ac1", 17000 ]}
+        ]
+      }
+    },
+    {
+      "id":"c35b",
+      "ordem":38,
+      "grupo":"telemetria",
+      "descricao":"shell de um httpd sem se saber de que instancia",
+      "ficheiro":"cenarios/cenario_35b.txt",
+      "depende": ["c35" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c35b",
+        "factos": [
+          {"predicado":"evento_host","args": ["ev_ac2", "web_srv_08", "shell_iniciada" ]},
+          {"predicado":"evento_processo","args": ["ev_ac2", "httpd" ]},
+          {"predicado":"tempo","args": ["ev_ac2", 17020 ]}
+        ]
+      }
+    },
+    {
+      "id":"c35c",
+      "ordem":39,
+      "grupo":"telemetria",
+      "descricao":"a instancia e a atacada (em alternativa ao 35d)",
+      "ficheiro":"cenarios/cenario_35c.txt",
+      "depende": ["c35b" ],
+      "alternativas": ["c35d" ],
+      "passo": {"id":"c35c","factos": [ {"predicado":"evento_instancia","args": ["ev_ac2", "web_srv_08_httpd_consola" ]} ]}
+    },
+    {
+      "id":"c36",
+      "ordem":40,
+      "grupo":"telemetria",
+      "descricao":"acesso com a politica incompleta: politica por confirmar",
+      "ficheiro":"cenarios/cenario_36.txt",
+      "depende": ["c35b" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c36",
+        "factos": [
+          {"predicado":"login_ok","args": ["ev_ad1", "db_srv_01", "web_srv_04", "postgresql" ]},
+          {"predicado":"tempo","args": ["ev_ad1", 17400 ]}
+        ]
+      }
+    },
+    {
+      "id":"c36b",
+      "ordem":41,
+      "grupo":"telemetria",
+      "descricao":"a politica fica completa: violacao (em alternativa ao 36c)",
+      "ficheiro":"cenarios/cenario_36b.txt",
+      "depende": ["c36" ],
+      "alternativas": ["c36c" ],
+      "passo": {"id":"c36b","factos": [ {"predicado":"cobertura_politica","args": ["db_srv_01", "postgresql", "completa" ]} ]}
+    },
+    {
+      "id":"c37",
+      "ordem":42,
+      "grupo":"telemetria",
+      "descricao":"ataque sem porto de destino",
+      "ficheiro":"cenarios/cenario_37.txt",
+      "depende": ["c36" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c37",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_ae1", "web_srv_08", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_ae1", "ip_192_0_2_160" ]},
+          {"predicado":"origem_zona","args": ["ev_ae1", "rede_interna" ]},
+          {"predicado":"tempo","args": ["ev_ae1", 17600 ]}
+        ]
+      }
+    },
+    {
+      "id":"c37b",
+      "ordem":43,
+      "grupo":"telemetria",
+      "descricao":"o porto de destino chega depois",
+      "ficheiro":"cenarios/cenario_37b.txt",
+      "depende": ["c37" ],
+      "alternativas": [],
+      "passo": {"id":"c37b","factos": [ {"predicado":"destino","args": ["ev_ae1", 80, "tcp" ]} ]}
+    },
+    {
+      "id":"c38",
+      "ordem":44,
+      "grupo":"telemetria",
+      "descricao":"shell sem hora",
+      "ficheiro":"cenarios/cenario_38.txt",
+      "depende": ["c37b" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c38",
+        "factos": [
+          {"predicado":"alerta_ids","args": ["ev_af1", "web_srv_01", "sig_apache_path_traversal" ]},
+          {"predicado":"origem","args": ["ev_af1", "ip_198_51_100_60" ]},
+          {"predicado":"origem_zona","args": ["ev_af1", "internet" ]},
+          {"predicado":"tempo","args": ["ev_af1", 17800 ]},
+          {"predicado":"evento_host","args": ["ev_af2", "web_srv_01", "shell_iniciada" ]},
+          {"predicado":"evento_processo","args": ["ev_af2", "httpd" ]}
+        ]
+      }
+    },
+    {
+      "id":"c38b",
+      "ordem":45,
+      "grupo":"telemetria",
+      "descricao":"a hora chega depois",
+      "ficheiro":"cenarios/cenario_38b.txt",
+      "depende": ["c38" ],
+      "alternativas": [],
+      "passo": {"id":"c38b","factos": [ {"predicado":"tempo","args": ["ev_af2", 17815 ]} ]}
+    },
+    {
+      "id":"c39",
+      "ordem":46,
+      "grupo":"telemetria",
+      "descricao":"maquina recuperada",
+      "ficheiro":"cenarios/cenario_39.txt",
+      "depende": ["c38b" ],
+      "alternativas": [],
+      "passo": {"id":"c39","factos": [ {"predicado":"recuperado","args": ["web_srv_01", "ev_a1" ]} ]}
+    },
+    {
+      "id":"c6b",
+      "ordem":47,
+      "grupo":"atualizacao",
+      "descricao":"versao de web_srv_05 (corrigida): fecha a duvida do cenario 6 e o provavel do cenario 17",
+      "ficheiro":"cenarios/cenario_06b.txt",
+      "depende": ["c39" ],
+      "alternativas": [],
+      "passo": {"id":"c6b","factos": [ {"predicado":"versao","args": ["web_srv_05_apache",  {"f":"v","args": [2, 4, 52 ]} ]} ]}
+    },
+    {
+      "id":"c13b",
+      "ordem":48,
+      "grupo":"atualizacao",
+      "descricao":"inventario de web_srv_07: fecha os dois incidentes de inventario do cenario 13",
+      "ficheiro":"cenarios/cenario_13b.txt",
+      "depende": ["c39" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c13b",
+        "factos": [
+          {"predicado":"cobertura","args": ["web_srv_07", "rede", "completa" ]},
+          {"predicado":"cobertura","args": ["web_srv_07", "sbom", "completa" ]}
+        ]
+      }
+    },
+    {
+      "id":"c21b",
+      "ordem":49,
+      "grupo":"atualizacao",
+      "descricao":"intervalos da falha de upload: fecha o catalogo incompleto do cenario 21",
+      "ficheiro":"cenarios/cenario_21b.txt",
+      "depende": ["c39" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c21b",
+        "factos": [
+          {
+            "predicado":"intervalo_afetado",
+            "args": ["vuln_interna_upload_loja",  {"f":"v","args": [1, 0, 0 ]},  {"f":"v","args": [1, 2, 0 ]} ]
+          }
+        ]
+      }
+    },
+    {
+      "id":"c27b",
+      "ordem":50,
+      "grupo":"atualizacao",
+      "descricao":"versao valida de web_srv_11: fecha a duvida do cenario 27",
+      "ficheiro":"cenarios/cenario_27b.txt",
+      "depende": ["c39" ],
+      "alternativas": [],
+      "passo": {"id":"c27b","factos": [ {"predicado":"versao","args": ["web_srv_11_apache",  {"f":"v","args": [2, 4, 49 ]} ]} ]}
+    },
+    {
+      "id":"c30",
+      "ordem":51,
+      "grupo":"normal",
+      "descricao":"Normal: shell de um administrador numa maquina que nao foi atacada",
+      "ficheiro":"cenarios/cenario_30.txt",
+      "depende": [],
+      "alternativas": [],
+      "passo": {
+        "id":"c30",
+        "factos": [
+          {"predicado":"evento_host","args": ["ev_ok1", "jumpbox_admin", "shell_iniciada" ]},
+          {"predicado":"evento_processo","args": ["ev_ok1", "sshd" ]},
+          {"predicado":"tempo","args": ["ev_ok1", 19000 ]}
+        ]
+      }
+    },
+    {
+      "id":"c31",
+      "ordem":52,
+      "grupo":"normal",
+      "descricao":"Normal: trafego de saida para um endereco que nao e um C2 conhecido",
+      "ficheiro":"cenarios/cenario_31.txt",
+      "depende": [],
+      "alternativas": [],
+      "passo": {
+        "id":"c31",
+        "factos": [
+          {"predicado":"trafego_saida","args": ["ev_ok2", "web_srv_03", "ip_198_51_100_200" ]},
+          {"predicado":"tempo","args": ["ev_ok2", 19200 ]}
+        ]
+      }
+    },
+    {
+      "id":"c32",
+      "ordem":53,
+      "grupo":"normal",
+      "descricao":"Normal: sondagem abaixo dos limiares do reconhecimento",
+      "ficheiro":"cenarios/cenario_32.txt",
+      "depende": [],
+      "alternativas": [],
+      "passo": {
+        "id":"c32",
+        "factos": [
+          {"predicado":"reconhecimento","args": ["ev_ok3", "web_srv_03", "ip_192_0_2_90" ]},
+          {"predicado":"portos_sondados","args": ["ev_ok3", 40 ]},
+          {"predicado":"falhas_login","args": ["ev_ok3", 2 ]},
+          {"predicado":"falhas_janela","args": ["ev_ok3", 120 ]},
+          {"predicado":"origem","args": ["ev_ok3", "ip_192_0_2_90" ]},
+          {"predicado":"tempo","args": ["ev_ok3", 19400 ]}
+        ]
+      }
+    },
+    {
+      "id":"c33",
+      "ordem":54,
+      "grupo":"normal",
+      "descricao":"Normal: login que a politica permite",
+      "ficheiro":"cenarios/cenario_33.txt",
+      "depende": [],
+      "alternativas": [],
+      "passo": {
+        "id":"c33",
+        "factos": [
+          {"predicado":"login_ok","args": ["ev_ok4", "db_srv_01", "jumpbox_admin", "ssh" ]},
+          {"predicado":"tempo","args": ["ev_ok4", 19600 ]}
+        ]
+      }
+    },
+    {
+      "id":"c34",
+      "ordem":55,
+      "grupo":"normal",
+      "descricao":"Normal: shell num servidor que so teve uma tentativa sem impacto",
+      "ficheiro":"cenarios/cenario_34.txt",
+      "depende": ["c4" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c34",
+        "factos": [
+          {"predicado":"evento_host","args": ["ev_ok5", "web_srv_03", "shell_iniciada" ]},
+          {"predicado":"evento_processo","args": ["ev_ok5", "httpd" ]},
+          {"predicado":"tempo","args": ["ev_ok5", 19800 ]}
+        ]
+      }
+    },
+    {
+      "id":"c7b_sim",
+      "ordem":56,
+      "grupo":"resposta",
+      "descricao":"Analista: resposta \"sim\" a pergunta do cenario 7",
+      "ficheiro":"cenarios/cenario_07b_sim.txt",
+      "depende": ["c7" ],
+      "alternativas": ["c7b_nao", "c7b_nao_sei" ],
+      "passo": {
+        "id":"c7b_sim",
+        "factos": [ {"predicado":"resposta_analista","args": ["web_srv_04", "ev_e1", "shell_servico", "sim" ]} ]
+      }
+    },
+    {
+      "id":"c7b_nao",
+      "ordem":57,
+      "grupo":"resposta",
+      "descricao":"Analista: resposta \"nao\" a pergunta do cenario 7",
+      "ficheiro":"cenarios/cenario_07b_nao.txt",
+      "depende": ["c7" ],
+      "alternativas": ["c7b_nao_sei", "c7b_sim" ],
+      "passo": {
+        "id":"c7b_nao",
+        "factos": [ {"predicado":"resposta_analista","args": ["web_srv_04", "ev_e1", "shell_servico", "nao" ]} ]
+      }
+    },
+    {
+      "id":"c7b_nao_sei",
+      "ordem":58,
+      "grupo":"resposta",
+      "descricao":"Analista: resposta \"nao sei\" a pergunta do cenario 7",
+      "ficheiro":"cenarios/cenario_07b_nao_sei.txt",
+      "depende": ["c7" ],
+      "alternativas": ["c7b_nao", "c7b_sim" ],
+      "passo": {
+        "id":"c7b_nao_sei",
+        "factos": [ {"predicado":"resposta_analista","args": ["web_srv_04", "ev_e1", "shell_servico", "nao_sei" ]} ]
+      }
+    },
+    {
+      "id":"c19b_sim",
+      "ordem":59,
+      "grupo":"resposta",
+      "descricao":"Analista: resposta \"sim\" a pergunta do cenario 19",
+      "ficheiro":"cenarios/cenario_19b_sim.txt",
+      "depende": ["c19" ],
+      "alternativas": ["c19b_nao", "c19b_nao_sei" ],
+      "passo": {
+        "id":"c19b_sim",
+        "factos": [ {"predicado":"resposta_analista","args": ["app_srv_03", "ev_w1", "resposta_volumosa_servico", "sim" ]} ]
+      }
+    },
+    {
+      "id":"c19b_nao",
+      "ordem":60,
+      "grupo":"resposta",
+      "descricao":"Analista: resposta \"nao\" a pergunta do cenario 19",
+      "ficheiro":"cenarios/cenario_19b_nao.txt",
+      "depende": ["c19" ],
+      "alternativas": ["c19b_nao_sei", "c19b_sim" ],
+      "passo": {
+        "id":"c19b_nao",
+        "factos": [ {"predicado":"resposta_analista","args": ["app_srv_03", "ev_w1", "resposta_volumosa_servico", "nao" ]} ]
+      }
+    },
+    {
+      "id":"c19b_nao_sei",
+      "ordem":61,
+      "grupo":"resposta",
+      "descricao":"Analista: resposta \"nao sei\" a pergunta do cenario 19",
+      "ficheiro":"cenarios/cenario_19b_nao_sei.txt",
+      "depende": ["c19" ],
+      "alternativas": ["c19b_nao", "c19b_sim" ],
+      "passo": {
+        "id":"c19b_nao_sei",
+        "factos": [ {"predicado":"resposta_analista","args": ["app_srv_03", "ev_w1", "resposta_volumosa_servico", "nao_sei" ]} ]
+      }
+    },
+    {
+      "id":"c3b",
+      "ordem":62,
+      "grupo":"resposta",
+      "descricao":"o analista confirma o compromisso do cenario 3: propagacao",
+      "ficheiro":"cenarios/cenario_03b.txt",
+      "depende": ["c3" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c3b",
+        "factos": [ {"predicado":"resposta_analista","args": ["db_srv_01", "ev_i1", "compromisso_no_host", "sim" ]} ]
+      }
+    },
+    {
+      "id":"c10d",
+      "ordem":63,
+      "grupo":"resposta",
+      "descricao":"o analista descarta o compromisso provavel do cenario 10c",
+      "ficheiro":"cenarios/cenario_10d.txt",
+      "depende": ["c10c" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c10d",
+        "factos": [ {"predicado":"resposta_analista","args": ["web_srv_02", "ev_j3", "compromisso_no_host", "nao" ]} ]
+      }
+    },
+    {
+      "id":"c17b",
+      "ordem":64,
+      "grupo":"resposta",
+      "descricao":"o analista ainda nao conseguiu verificar o cenario 17",
+      "ficheiro":"cenarios/cenario_17b.txt",
+      "depende": ["c17" ],
+      "alternativas": [],
+      "passo": {
+        "id":"c17b",
+        "factos": [ {"predicado":"resposta_analista","args": ["web_srv_05", "ev_s1", "compromisso_no_host", "nao_sei" ]} ]
+      }
+    },
+    {
+      "id":"c29c",
+      "ordem":65,
+      "grupo":"resposta",
+      "descricao":"o analista confirma a exposicao do cenario 29 (em alternativa ao 29b)",
+      "ficheiro":"cenarios/cenario_29c.txt",
+      "depende": ["c29" ],
+      "alternativas": ["c29b" ],
+      "passo": {
+        "id":"c29c",
+        "factos": [ {"predicado":"resposta_analista","args": ["app_srv_01", "ev_ab1", "exposicao_no_host", "sim" ]} ]
+      }
+    },
+    {
+      "id":"c35d",
+      "ordem":66,
+      "grupo":"resposta",
+      "descricao":"a shell do 35b veio da outra instancia (em alternativa ao 35c): impacto ambiguo",
+      "ficheiro":"cenarios/cenario_35d.txt",
+      "depende": ["c35b" ],
+      "alternativas": ["c35c" ],
+      "passo": {"id":"c35d","factos": [ {"predicado":"evento_instancia","args": ["ev_ac2", "web_srv_08_httpd_site" ]} ]}
+    },
+    {
+      "id":"c36c",
+      "ordem":67,
+      "grupo":"resposta",
+      "descricao":"a politica autoriza o acesso do cenario 36 (em alternativa ao 36b)",
+      "ficheiro":"cenarios/cenario_36c.txt",
+      "depende": ["c36" ],
+      "alternativas": ["c36b" ],
+      "passo": {"id":"c36c","factos": [ {"predicado":"permitido","args": ["db_srv_01", "postgresql", "web_srv_04" ]} ]}
+    }
+  ],
+  "sequencias": {
+    "base": [
+      "c1",
+      "c2",
+      "c3",
+      "c4",
+      "c5",
+      "c6",
+      "c7",
+      "c8",
+      "c9",
+      "c10",
+      "c10b",
+      "c10c",
+      "c11",
+      "c11b",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c20b",
+      "c21",
+      "c22",
+      "c23",
+      "c24",
+      "c24b",
+      "c25",
+      "c25b",
+      "c26",
+      "c27",
+      "c28",
+      "c29",
+      "c29b",
+      "c35",
+      "c35b",
+      "c35c",
+      "c36",
+      "c36b",
+      "c37",
+      "c37b",
+      "c38",
+      "c38b",
+      "c39"
+    ],
+    "atualizacoes": ["c6b", "c13b", "c21b", "c27b" ],
+    "normal": ["c30", "c31", "c32", "c33", "c34" ]
+  }
+}

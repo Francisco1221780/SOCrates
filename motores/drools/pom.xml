@@ -37,11 +37,13 @@
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
         </dependency>
+        <!-- Logger para quando o modulo corre sozinho (consola no IntelliJ, exec:java, testes), com o nivel em
+             simplelogger.properties. Optional: nao passa para o backend, que usa o logger do Spring Boot. -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>2.0.16</version>
-            <scope>test</scope>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -57,6 +59,12 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
+                <configuration>
+                    <!-- nos testes, o nivel por omissao do slf4j-simple (os avisos do Drools ficam no log) -->
+                    <systemPropertyVariables>
+                        <org.slf4j.simpleLogger.defaultLogLevel>info</org.slf4j.simpleLogger.defaultLogLevel>
+                    </systemPropertyVariables>
+                </configuration>
             </plugin>
             <!-- Correr so o motor, sem o backend: pedido no stdin, resposta no stdout (como o wrapper.pl) -->
             <plugin>
@@ -64,24 +72,10 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
                 <configuration>
+                    <!-- o logger fica so com os erros (simplelogger.properties): dentro do exec:java o Maven junta o
+                         stderr ao stdout, e o stdout tem de ficar so com o JSON da resposta -->
                     <mainClass>cyberrangers.motores.drools.MotorDrools</mainClass>
-                    <!-- logger so para esta execucao, so erros: dentro do exec:java o Maven junta o stderr ao stdout,
-                         e o stdout tem de ficar so com o JSON da resposta -->
-                    <includePluginDependencies>true</includePluginDependencies>
-                    <systemProperties>
-                        <systemProperty>
-                            <key>org.slf4j.simpleLogger.defaultLogLevel</key>
-                            <value>error</value>
-                        </systemProperty>
-                    </systemProperties>
                 </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-simple</artifactId>
-                        <version>2.0.16</version>
-                    </dependency>
-                </dependencies>
             </plugin>
         </plugins>
     </build>
