@@ -17224,7 +17224,7 @@ setScenario = function(k) {
   }
   _v66SetScen(k);
   const cur = S.engineResults?.[S.engine === 'drools' ? 'drools' : 'prolog']?.[chosen];
-  if (cur && cur._filteredFrom) log('cenário', `${chosen.toUpperCase()}: parte do estado global já inferido (${cur.factos.length} factos · ${cur.tickets.length} tickets · ${cur.perguntas.length} perguntas). ▶ volta a correr só este cenário.`, 'c');
+  if (cur && cur._filteredFrom) log('cenário', `${chosen.toUpperCase()}: parte do estado global já inferido (${cur.factos.length} factos · ${cur.tickets.length} tickets · ${cur.perguntas.length} perguntas). ▶ volta a inferir tudo.`, 'c');
 };
 
 // As respostas pertencem ao estado global: não se perdem ao mudar de vista
@@ -17363,6 +17363,170 @@ v62SetCatOptions = function() {
     setCategoryFilter(o.dataset.v);
     v62SetCatOptions();
   }));
+};
+
+
+/* =====================================================================
+   v67: ▶ = INFERÊNCIA TOTAL (o cenário é só uma vista) + FAIXAS QUE
+        PREENCHEM O ECRÃ + UMA SÓ LINHA DE DETALHE NA LINHA TEMPORAL
+   ===================================================================== */
+
+// 1) Faixas: experimenta cada altura-alvo (nº de linhas) e escolhe a que dá o maior zoom.
+//    (a versão anterior parava cedo: acrescentar uma faixa a uma só fase não baixava a altura total)
+v66Layout = function() {
+  if (!window.__v62 || !NODES.length) return;
+  const phases = {};
+  for (let p = 1; p <= 7; p++) phases[p] = [];
+  NODES.forEach(n => { if (n.phase == null) n.phase = n.col; if (n.ord == null) n.ord = n.y; (phases[n.phase] = phases[n.phase] || []).push(n); });
+  Object.values(phases).forEach(a => a.sort((x, y) => x.ord - y.ord));
+  const P = Object.keys(phases).map(Number).sort((a, b) => a - b);
+  const c = $('canvas')?.getBoundingClientRect();
+  const aw = Math.max(300, (c?.width || 1200) - 20), ah = Math.max(200, (c?.height || 700) - 76);
+  const rows = (p, k) => Math.max(1, ...v66Split(phases[p], k, p).map(g => g.nodes.length));
+  const MAXL = 4;
+  let best = null;
+  const maxRows = Math.max(...P.map(p => rows(p, 1)));
+  for (let R = maxRows; R >= 1; R--) {
+    const lanes = {};
+    let ok = true;
+    P.forEach(p => {
+      let k = 1;
+      while (k < MAXL && phases[p].length > k && rows(p, k) > R) k++;
+      lanes[p] = k;
+      if (rows(p, k) > R) ok = false;
+    });
+    const nl = P.reduce((s, p) => s + lanes[p], 0);
+    const realRows = Math.max(...P.map(p => rows(p, lanes[p])));
+    const w = 40 + (nl - 1) * COLW + W + 48;
+    const h = 70 + (realRows - 1) * 68 + H + 30;
+    const z = Math.min(aw / w, ah / h);
+    if (!best || z > best.z * 1.01) best = { z, lanes };
+    if (!ok) break;
+  }
+  const lanes = best.lanes;
+  const titles = V62.titles || V62.stageTitles;
+  STAGES.length = 0;
+  let col = 1;
+  P.forEach(p => {
+    const groups = v66Split(phases[p], lanes[p], p);
+    if (!groups.length) groups.push({ nodes: [], kind: '' });
+    groups.forEach(g => {
+      g.nodes.forEach(n => { n.col = col; n.y = n.ord; });
+      STAGES.push({ col, num: String(p).padStart(2, '0'), title: (titles[p - 1] || '') + (g.kind ? ' · ' + g.kind : '') });
+      col++;
+    });
+  });
+  rebuildGraphIndexes();
+  NODES.forEach(n => { n.x = colX(n.col); });
+  _arcCache.clear();
+};
+// Com 3+ faixas numa fase de dedução, as regras e as conclusões continuam separadas
+v66Split = function(arr, k, phase) {
+  if (k === 1) return [{ nodes: arr, kind: '' }];
+  const chunk = (a, m, tag) => {
+    const size = Math.ceil(a.length / m), out = [];
+    for (let i = 0; i < m; i++) { const part = a.slice(i * size, (i + 1) * size); if (part.length) out.push({ nodes: part, kind: tag + (m > 1 ? ` (${i + 1}/${m})` : '') }); }
+    return out;
+  };
+  const rules = arr.filter(n => n.t === 'rule'), rest = arr.filter(n => n.t !== 'rule');
+  if (phase > 1 && rules.length && rest.length) {
+    const kr = Math.max(1, Math.round(k * rules.length / arr.length));
+    const ks = Math.max(1, k - kr);
+    return [...chunk(rules, kr, 'REGRAS'), ...chunk(rest, ks, 'CONCLUSÕES')];
+  }
+  return chunk(arr, k, '').map(g => ({ nodes: g.nodes, kind: g.kind.trim() }));
+};
+
+// 2) ▶ envia SEMPRE a telemetria toda (sequências do catálogo + respostas do analista) e guarda o
+//    resultado como estado global. O cenário escolhido é só um filtro de visualização desse estado.
+function v67GlobalPassos(eng) {
+  const g = S.engineResults?.[eng]?.all;
+  return JSON.parse(JSON.stringify(g?._passos || v61PassosDoCenario('all')));
+}
+async function v67Run(passos, engines, animate) {
+  const view = S.scen || 'all';
+  S.scen = 'all';
+  let rs;
+  try { rs = await Promise.all(engines.map(e => v61Inferir(e, passos))); }
+  finally { S.scen = view; }
+  if (!rs[0]) return null;
+  S.lastExecutedPassos = JSON.parse(JSON.stringify(passos));
+  if (view !== 'all') engines.forEach((e, i) => { if (rs[i]) S.engineResults[e][view] = v66FilterResult(rs[i], view) || rs[i]; });
+  const live = S.engineResults[engines[0]][view];
+  await applyRealEngineResultToGraph(live, engines[0], animate);
+  return live;
+}
+const v67Engines = () => S.engine === 'both' ? ['prolog', 'drools'] : [S.engine === 'drools' ? 'drools' : 'prolog'];
+
+const _v67Play = play;
+play = async function() {
+  if (!S.apiOnline || !S.apiLoaded) return _v67Play();
+  if (R.playing) { R.playing = false; updateButtons(); updateTimelineDockUI(); return; }
+  if (S.v62Pending && !R.finished && S.timelineSnapshots?.length) { await v62RunWaves(); return; }
+  const engines = v67Engines();
+  const passos = v67GlobalPassos(engines[0]);
+  if (!passos.length) { showV61Error('O catálogo não tem passos'); return; }
+  S.currentPendingQuestion = null; S.v61Exp = null; S.v61Whynot = {};
+  log('motor', `inferência total: ${passos.length} passos (toda a telemetria${passos.some(p => p.id.startsWith('resposta_')) ? ' + respostas do analista' : ''})${(S.scen || 'all') !== 'all' ? ` · vista filtrada: ${S.scen.toUpperCase()}` : ''}`, 'c');
+  R.playing = true; updateButtons();
+  try { await v67Run(passos, engines, true); if (S.engine === 'both') S.inspTab = 'api'; }
+  finally { R.playing = false; updateButtons(); updateTimelineDockUI(); inspect(); }
+};
+window.play = play;
+
+v64SendAnswers = async function() {
+  const answers = Object.values(S.v64Answers);
+  if (!answers.length) return;
+  closeC7Modal(); clearEngineQuestionPrompt();
+  const engines = v67Engines();
+  const passos = v67GlobalPassos(engines[0]);
+  answers.forEach(a => {
+    const step = { id: `resposta_${a.ativo}_${a.evento}_${a.pergunta}`, factos: [{ predicado: 'resposta_analista', args: [a.ativo, a.evento, a.pergunta, a.valor] }] };
+    const i = passos.findIndex(x => x.id === step.id);
+    if (i >= 0) passos[i] = step; else passos.push(step);
+  });
+  S.v64Answers = {}; S.currentPendingQuestion = null;
+  log('analista', `a enviar ${answers.length} resposta(s): inferência total com ${passos.length} passos`, 'c');
+  const live = await v67Run(passos, engines, true);
+  if (!live) log('erro api resposta', 'o motor devolveu um erro (ver a consola de eventos)', 'bl');
+  updateHeaderC7PendingPill();
+};
+window.v64SendAnswers = v64SendAnswers;
+
+v61CorrerAmbos = async function() {
+  const passos = v67GlobalPassos('prolog');
+  log('comparação', `mesmo pedido (${passos.length} passos) ao Prolog e ao Drools`, 'c');
+  await v67Run(passos, ['prolog', 'drools'], false);
+  S.inspTab = 'api';
+  inspect();
+};
+v61RetirarPasso = async function(id) {
+  const engines = v67Engines();
+  const passos = v67GlobalPassos(engines[0]).filter(p => p.id !== id);
+  log('rewind (AC11)', `passo "${id}" retirado; inferência total com ${passos.length} passos`, 'st');
+  await v67Run(passos, engines, true);
+  inspect();
+};
+
+// 4) Linha temporal: uma só linha de detalhe (a de baixo), que muda ao passar o rato; sem caixa flutuante
+(function() {
+  const st = document.createElement('style');
+  st.textContent = '#v66StepInfo{white-space:normal !important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.45;min-height:30px}';
+  document.head.appendChild(st);
+})();
+const _v67Pins = v65RenderPins;
+v65RenderPins = function() {
+  _v67Pins();
+  const row = $('timelinePinsRow');
+  const info = $('v66StepInfo');
+  if (!row || !info) return;
+  const cur = Math.min(S.timelineStep || 0, Math.max(0, (S.timelineSnapshots || []).length - 1));
+  row.querySelectorAll('.di-step-chip').forEach((chip, i) => {
+    const clone = chip.cloneNode(true); // remove os eventos anteriores (incluindo a caixa flutuante)
+    chip.replaceWith(clone);
+    clone.addEventListener('mouseenter', () => { info.innerHTML = v66StepInfo(i); });
+    clone.addEventListener('mouseleave', () => { info.innerHTML = v66StepInfo(cur); });
+  });
 };
 
 // Arrancar a verificação inicial após todos os handlers estarem declarados
