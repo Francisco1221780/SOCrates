@@ -1,0 +1,108 @@
+package regras;
+
+// K. CONFIRMACAO NO HOST DE CONCLUSOES PROVAVEIS (soc_regras.txt, base v6, R48-R52)
+//
+// R48: incidente provavel em aberto e ainda sem resposta -> pergunta ao analista
+// R49: analista confirma compromisso provavel (nao vindo de impacto) -> compromisso confirmado
+// R50: analista confirma provavel vindo de impacto -> impacto confirmado
+// R51: analista nao confirma -> incidente fica resolvido (descartado)
+// R52: propagacao: compromisso confirmado do destino que veio de login de maquina comprometida
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.modelo.Termo;
+import cyberrangers.motores.drools.modelo.Variavel;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R48: incidente(inc(Tipo,Ev),Tipo,Alvo,_) e pergunta_confirmacao(Tipo,Pergunta)
+//      e nao resposta_analista(Alvo,Ev,Pergunta,_) e em_aberto(inc(Tipo,Ev))
+//      -> pergunta_analista(Alvo,Ev,Pergunta)
+//
+// Nota: $incId e Termo("inc",[tipo,ev]); extrai o ev via eval e bind antes do not.
+rule "R48"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), $tipo : arg(1), $alvo : arg(2))
+    eval($incId instanceof Termo && "inc".equals(((Termo)$incId).f()) && ((Termo)$incId).args().size() >= 2)
+    $pc  : Facto(functor == "pergunta_confirmacao/2", arg(0) == $tipo, $pergunta : arg(1))
+    eval(CondicoesCalculadas.emAberto($incId, base))
+    // Verificar que nao existe resposta para o Ev extraido do incId
+    eval(!base.existe(Facto.de("resposta_analista", $alvo, ((Termo)$incId).args().get(1), $pergunta, "sim"))
+      && !base.existe(Facto.de("resposta_analista", $alvo, ((Termo)$incId).args().get(1), $pergunta, "nao")))
+then
+    Object $ev = ((Termo)$incId).args().get(1);
+    List<Premissa> p = List.of(
+        Premissa.de($inc), Premissa.de($pc),
+        Premissa.nao("resposta_analista", $alvo, $ev, $pergunta, Variavel.nova()),
+        Premissa.calculada("em_aberto", $incId)
+    );
+    base.cria(kcontext, 48, p, Facto.de("pergunta_analista", $alvo, $ev, $pergunta));
+end
+
+// R49: compromisso_provavel(Alvo,Ev) e resposta_analista(Alvo,Ev,compromisso_no_host,sim)
+//      e nao impacto_provavel(Alvo,Ev,_)
+//      -> compromisso_confirmado(Alvo,Ev) + motivo(confirmado_no_host_pelo_analista)
+rule "R49"
+when
+    $cp : Facto(functor == "compromisso_provavel/2", $alvo : arg(0), $ev : arg(1))
+    $ra : Facto(functor == "resposta_analista/4", arg(0) == $alvo, arg(1) == $ev, arg(2) == "compromisso_no_host", arg(3) == "sim")
+    not Facto(functor == "impacto_provavel/3", arg(0) == $alvo, arg(1) == $ev)
+then
+    List<Premissa> p = List.of(
+        Premissa.de($cp), Premissa.de($ra),
+        Premissa.nao("impacto_provavel", $alvo, $ev, Variavel.nova())
+    );
+    Termo inc = Termo.de("inc", "compromisso", $ev);
+    base.cria(kcontext, 49, p, Facto.de("compromisso_confirmado", $alvo, $ev));
+    base.cria(kcontext, 49, p, Facto.de("motivo", inc, "confirmado_no_host_pelo_analista"));
+end
+
+// R50: impacto_provavel(Alvo,Ev,Impacto) e classe_impacto(Impacto,Classe) e tipo_provavel(Classe,TipoInc)
+//      e pergunta_confirmacao(TipoInc,Pergunta) e resposta_analista(Alvo,Ev,Pergunta,sim)
+//      -> impacto_confirmado(Alvo,Ev,Impacto)
+rule "R50"
+when
+    $pr : Facto(functor == "impacto_provavel/3", $alvo : arg(0), $ev : arg(1), $impacto : arg(2))
+    $ci : Facto(functor == "classe_impacto/2", arg(0) == $impacto, $classe : arg(1))
+    $tp : Facto(functor == "tipo_provavel/2", arg(0) == $classe, $tipoInc : arg(1))
+    $pc : Facto(functor == "pergunta_confirmacao/2", arg(0) == $tipoInc, $pergunta : arg(1))
+    $ra : Facto(functor == "resposta_analista/4", arg(0) == $alvo, arg(1) == $ev, arg(2) == $pergunta, arg(3) == "sim")
+then
+    List<Premissa> p = List.of(
+        Premissa.de($pr), Premissa.de($ci), Premissa.de($tp), Premissa.de($pc), Premissa.de($ra)
+    );
+    base.cria(kcontext, 50, p, Facto.de("impacto_confirmado", $alvo, $ev, $impacto));
+end
+
+// R51: incidente(inc(Tipo,Ev),Tipo,Alvo,_) e pergunta_confirmacao(Tipo,Pergunta)
+//      e resposta_analista(Alvo,Ev,Pergunta,nao)
+//      -> resolvido(inc(Tipo,Ev),descartado_pelo_analista)
+rule "R51"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), $tipo : arg(1), $alvo : arg(2))
+    eval($incId instanceof Termo && "inc".equals(((Termo)$incId).f()) && ((Termo)$incId).args().size() >= 2)
+    $pc  : Facto(functor == "pergunta_confirmacao/2", arg(0) == $tipo, $pergunta : arg(1))
+    $ra  : Facto(functor == "resposta_analista/4", arg(0) == $alvo, arg(2) == $pergunta, arg(3) == "nao")
+    eval($ra.arg(1).equals(((Termo)$incId).args().get(1)))
+then
+    List<Premissa> p = List.of(Premissa.de($inc), Premissa.de($pc), Premissa.de($ra));
+    base.cria(kcontext, 51, p, Facto.de("resolvido", $incId, "descartado_pelo_analista"));
+end
+
+// R52: compromisso_confirmado(Destino,Ev) e motivo(inc(compromisso_provavel,Ev),login_a_partir_de_ativo_comprometido(Origem,_))
+//      -> incidente(inc(propagacao,Ev),propagacao,Destino,[Destino,Origem])
+rule "R52"
+when
+    $cc : Facto(functor == "compromisso_confirmado/2", $destino : arg(0), $ev : arg(1))
+    $m  : Facto(functor == "motivo/2", arg(0) == Termo.de("inc", "compromisso_provavel", $ev), $mot : arg(1))
+    eval($mot instanceof Termo
+        && "login_a_partir_de_ativo_comprometido".equals(((Termo)$mot).f()))
+then
+    Termo motTermo = (Termo) $m.arg(1);
+    Object $origem = motTermo.args().get(0);
+    List<Premissa> p = List.of(Premissa.de($cc), Premissa.de($m));
+    Termo inc = Termo.de("inc", "propagacao", $ev);
+    base.cria(kcontext, 52, p, Facto.de("incidente", inc, "propagacao", $destino, List.of($destino, $origem)));
+end
