@@ -14370,6 +14370,8 @@ inspect = function() {
         </div>
       </div>
     `;
+  } else if (S.inspTab === 'fases' && window.__v62 && typeof window.v68FasesHtml === 'function') {
+    tabContent = window.v68FasesHtml();
   } else if (S.inspTab === 'fases') {
     tabContent = `
       <div class="icard">
@@ -17528,6 +17530,194 @@ v65RenderPins = function() {
     clone.addEventListener('mouseleave', () => { info.innerHTML = v66StepInfo(cur); });
   });
 };
+
+
+/* =====================================================================
+   v68: MENU DE CENÁRIOS COM A VISTA ATUAL MARCADA · RELÓGIO A PARTIR DA
+        RESPOSTA DO MOTOR (com a origem de cada valor) · SEPARADOR "FASES"
+        GERADO DO GRAFO · ENTRADAS LIDAS EM CONDIÇÕES CALCULADAS
+   ===================================================================== */
+
+// 1) Menu de cenários: marcar sempre a vista atual (antes ficava o C1 marcado desde o arranque)
+function v68MarkScenMenu() {
+  const cur = S.scen || 'all';
+  document.querySelectorAll('#socScenMenu .soc-scen-opt').forEach(opt => {
+    const m = (opt.getAttribute('onclick') || '').match(/selectSocScenarioFromMenu\('([^']+)'\)/);
+    opt.classList.toggle('active', !!m && m[1] === cur);
+  });
+}
+const _v68Toggle = toggleSocScenMenu;
+toggleSocScenMenu = function(ev) { v68MarkScenMenu(); return _v68Toggle(ev); };
+window.toggleSocScenMenu = toggleSocScenMenu;
+const _v68SetScen = setScenario;
+setScenario = function(k) { _v68SetScen(k); v68MarkScenMenu(); };
+
+// 2) Relógio: factos tempo/2 da RESPOSTA do motor (origem "entrada"), com número, passo e evento
+function v68TempoFacts() {
+  const r = typeof v61Res === 'function' ? v61Res() : null;
+  if (r && Array.isArray(r.factos)) {
+    return { fonte: 'resposta', motor: r.motor || (S.engine === 'drools' ? 'drools' : 'prolog'), at: r._at,
+      factos: r.factos.filter(f => f.predicado === 'tempo' && f.origem === 'entrada' && typeof f.args?.[1] === 'number') };
+  }
+  const passos = DYNAMIC_SCENARIO_PASSOS[S.scen || 'all'] || [];
+  const out = [];
+  passos.forEach(p => (p.factos || []).forEach(f => { if (f.predicado === 'tempo' && typeof f.args?.[1] === 'number') out.push({ ...f, passo: p.id }); }));
+  return { fonte: 'catalogo', factos: out };
+}
+getDynamicScenarioClock = function() {
+  const t = v68TempoFacts();
+  const xs = t.factos.map(f => f.args[1]);
+  if (!xs.length) return { t0: 0, tEnd: 0, events: [], label: 'sem factos tempo/2' };
+  const t0 = Math.min(...xs), tEnd = Math.max(...xs);
+  return { t0, tEnd, events: t.factos.map(f => ({ ev: f.args[0], sec: f.args[1] })), label: `${t.factos.length} factos tempo/2 (${t.fonte === 'resposta' ? 'resposta do motor' : 'catálogo'}): ${t0}s .. ${tEnd}s` };
+};
+
+function v68ClockPopoverHtml() {
+  const t = v68TempoFacts();
+  const fs = t.factos.slice().sort((a, b) => a.args[1] - b.args[1]);
+  const quando = t.at ? new Date(t.at).toLocaleTimeString() : '';
+  const head = t.fonte === 'resposta'
+    ? `Valores lidos dos <b>factos tempo/2 devolvidos pelo motor ${esc(String(t.motor).toUpperCase())}</b> em <code>factos[]</code> da resposta a <code>POST /api/${esc(t.motor)}/infer</code>${quando ? ` (${quando})` : ''}. São factos de <b>entrada</b>: a telemetria enviada nos passos, registada pelo motor com número próprio.`
+    : `Ainda não há resposta do motor: valores dos factos tempo/2 dos passos do catálogo (<code>GET /api/cenarios</code>).`;
+  return `
+    <div style="font-size:10.5px;line-height:1.5;color:#cbd5e1;margin-bottom:6px">${head}<br>
+      Unidade: <b>segundos</b> num relógio relativo da telemetria (a base declara as janelas em segundos, ex. <code>janela(Nome, Segundos)</code>). Não é a duração da inferência: as etapas do notch são níveis lógicos de dedução.</div>
+    <div style="max-height:220px;overflow:auto;font-family:var(--mono);font-size:10.5px;border-top:1px dashed rgba(255,255,255,.12);padding-top:4px">
+      ${fs.map(f => `<div style="display:flex;justify-content:space-between;gap:10px;padding:1px 0">
+        <span>${f.numero != null ? `<b style="color:var(--eng-accent)">#${f.numero}</b> ` : ''}tempo(${esc(String(f.args[0]))}, ${f.args[1]})</span>
+        <span style="color:var(--dim)">${esc(f.passo || '')}</span></div>`).join('') || '<i>sem factos tempo/2</i>'}
+    </div>
+    <div style="margin-top:6px;font-size:10px;color:var(--dim)">Confirmar fora do browser: <code>curl -s -X POST localhost:8080/api/${esc(t.motor || 'prolog')}/infer -H 'Content-Type: application/json' -d @pedido.json | jq '.factos[] | select(.predicado=="tempo")'</code> (o pedido exato está no separador API / JSON).</div>`;
+}
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `#spdTimeBadge{cursor:pointer}#spdTimeBadge:hover{filter:brightness(1.25)}
+    #v68ClockPop{position:fixed;z-index:9900;width:430px;max-width:92vw;background:rgba(7,14,23,.98);border:1px solid var(--eng-accent);border-radius:8px;padding:10px 12px;box-shadow:0 18px 48px rgba(0,0,0,.92);display:none}
+    #v68ClockPop .v68-x{position:absolute;top:6px;right:8px;cursor:pointer;color:var(--dim)}`;
+  document.head.appendChild(st);
+  const pop = document.createElement('div');
+  pop.id = 'v68ClockPop';
+  document.body.appendChild(pop);
+  document.addEventListener('click', ev => { if (!pop.contains(ev.target) && ev.target.closest('#spdTimeBadge') == null) pop.style.display = 'none'; });
+  document.addEventListener('click', ev => {
+    const b = ev.target.closest('#spdTimeBadge');
+    if (!b) return;
+    ev.stopPropagation();
+    const r = b.getBoundingClientRect();
+    pop.innerHTML = `<span class="v68-x" onclick="this.parentNode.style.display='none'">✕</span><div style="font-weight:700;color:#fff;margin-bottom:6px;font-size:11.5px">⏱ De onde vêm estes tempos?</div>` + v68ClockPopoverHtml();
+    pop.style.display = 'block';
+    pop.style.top = Math.round(r.bottom + 8) + 'px';
+    pop.style.left = Math.round(Math.max(8, Math.min(window.innerWidth - 440, r.left + r.width / 2 - 215))) + 'px';
+  }, true);
+})();
+const _v68Dock = updateTimelineDockUI;
+updateTimelineDockUI = function() {
+  _v68Dock();
+  const tb = $('spdTimeBadge');
+  if (!tb || !window.__v62) return;
+  const clk = getDynamicScenarioClock();
+  tb.innerHTML = clk.events.length ? `<span class="clk-hms">⏱ ${clk.t0}–${clk.tEnd} s</span>` : '<span class="clk-hms">⏱ —</span>';
+  tb.title = 'Clique para ver de onde vêm estes valores';
+};
+
+// 3) Entradas que o motor leu dentro de condições calculadas (ex.: depois(ev_a2, ev_a1, 60)).
+//    A API dá a condição como termo nas premissas, sem o número dos factos que leu; o UI mostra
+//    que o evento da entrada aparece nessas condições (não inventa ligações no grafo).
+function v68CondUse(res) {
+  const byAtom = new Map();
+  const atoms = (t, out) => { if (t == null) return; if (typeof t === 'string') out.add(t); else if (Array.isArray(t)) t.forEach(x => atoms(x, out)); else if (typeof t === 'object') (t.args || []).forEach(x => atoms(x, out)); };
+  (res.factos || []).forEach(f => {
+    if (f.origem !== 'regra') return;
+    (f.premissas || []).forEach(p => {
+      if (typeof p === 'number' || !p || typeof p !== 'object' || p.f === 'nao') return;
+      const s = new Set((p.args || []).filter(a => typeof a === 'string')); // só argumentos diretos da condição
+      s.forEach(a => { if (!byAtom.has(a)) byAtom.set(a, new Map()); const m = byAtom.get(a); if (!m.has(p.f)) m.set(p.f, new Set()); m.get(p.f).add(f.regra); });
+    });
+  });
+  return byAtom;
+}
+const _v68Build = v62BuildFromResult;
+v62BuildFromResult = function(res) {
+  _v68Build(res);
+  const byAtom = v68CondUse(res);
+  NODES.forEach(n => {
+    if (!n.id.startsWith('in_') || (OUT[n.id] || []).length) return;
+    const pred = n.id.slice(3);
+    const uses = new Map();
+    (res.factos || []).forEach(f => {
+      if (f.origem !== 'entrada' || f.predicado !== pred) return;
+      const m = byAtom.get(String(f.args?.[0]));
+      if (m) m.forEach((rules, cond) => { if (!uses.has(cond)) uses.set(cond, new Set()); rules.forEach(r => uses.get(cond).add(r)); });
+    });
+    if (!uses.size) return;
+    n.condUse = [...uses.entries()].map(([cond, rules]) => `${cond} (${v62Rules([...rules])})`);
+    n.human = `Facto de entrada ${pred}: não aparece como premissa direta; os seus eventos aparecem nas condições calculadas ${n.condUse.join(', ')} (premissas não numéricas devolvidas pelo motor).`;
+  });
+};
+const _v68Prov = deriveNodeCausalProvenanceLine;
+deriveNodeCausalProvenanceLine = function(node, k) {
+  if (node && node.condUse && !(OUT[node.id] || []).length) return `↳ em condições: ${node.condUse.map(c => c.split(' ')[0]).join(', ')}`;
+  return _v68Prov(node, k);
+};
+
+// 4) Separador "Fases": gerado do grafo atual (antes era uma lista fixa de regras da base antiga)
+window.v68FasesHtml = function() {
+  if (!NODES.length) return `<div class="icard"><span class="ict">fases do grafo</span><div style="font-size:11px;color:var(--dim)">Carregue em ▶ para inferir.</div></div>`;
+  const byPhase = {};
+  NODES.forEach(n => { (byPhase[n.phase] = byPhase[n.phase] || []).push(n); });
+  const titles = V62.titles || V62.stageTitles;
+  const cards = Object.keys(byPhase).map(Number).sort((a, b) => a - b).map(p => {
+    const ns = byPhase[p].slice().sort((a, b) => a.ord - b.ord);
+    const c = t => ns.filter(n => n.t === t).length;
+    const facts = ns.filter(n => n.t !== 'rule').reduce((s, n) => s + (n.count || 0), 0);
+    const disparos = ns.filter(n => n.t === 'rule').reduce((s, n) => s + (n.count || 0), 0);
+    const resumo = [c('fact') && `${c('fact')} entrada(s)`, c('rule') && `${c('rule')} grupo(s) de regras · ${disparos} disparo(s)`, c('state') && `${c('state')} conclusão(ões)`, c('action') && `${c('action')} ação(ões)`, facts && `${facts} facto(s)`].filter(Boolean).join(' · ');
+    return `<details style="border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:5px 8px;margin-bottom:6px;background:rgba(255,255,255,.02)">
+      <summary style="display:list-item;cursor:pointer;font-size:11px;color:#e2e8f0;white-space:normal"><b style="color:var(--eng-accent)">FASE ${String(p).padStart(2, '0')}</b> · ${esc(titles[p - 1] || '')} <span style="color:var(--dim)">(${ns.length})</span></summary>
+      <div style="font-size:10.5px;color:var(--dim);margin:4px 0 6px">${resumo}</div>
+      <div class="tree-box">${ns.map(n => `<div class="tree-item" data-go="${esc(n.id)}"><span class="t-lbl">${n.t === 'rule' ? `<b>${esc(n.codeFull || n.code)}</b> ` : esc(tagOf(n)) + ' '}${esc(n.label)}</span><span class="t-pred">${n.t === 'rule' ? `${n.count} disparo(s)` : `${n.count || 0} facto(s)`}</span></div>`).join('')}</div>
+    </details>`;
+  }).join('');
+  const nRegras = new Set(NODES.flatMap(n => n.t === 'rule' ? n.rules : [])).size;
+  return `<div class="icard">
+    <span class="ict">fases do grafo · gerado da resposta do motor</span>
+    <div style="font-size:11px;color:var(--dim);margin-bottom:8px">${NODES.length} nós · ${EDGES.length} ligações · ${nRegras} regras disparadas. A fase de cada nó é o seu nível de dedução (cadeia mais longa de regras desde as entradas). Clique num nó para o selecionar no grafo.</div>
+    ${cards}
+  </div>`;
+};
+
+
+/* =====================================================================
+   v69: "JANELA DETALHADA" DA PERGUNTA GERADA DA PERGUNTA DO MOTOR
+   (antes tinha título, texto e consequências escritos à mão para o cenário 7)
+   ===================================================================== */
+openC7Modal = function() {
+  const m = $('c7ModalBackdrop');
+  if (!m) return;
+  const p = S.currentPendingQuestion || getPendingEngineQuestions()[0];
+  const box = m.querySelector('.c7-modal-box');
+  if (!p || !box) { m.classList.remove('open'); return; }
+  const { total, done } = v64Progress();
+  const ops = (p.opcoes || []).map(o => typeof o === 'object' ? o : { valor: o, texto: o });
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+      <span class="prio-badge p2" style="font-size:10.5px">⚠️ PERGUNTA DO MOTOR AO ANALISTA${total > 1 ? ` · ${done + 1}/${total}` : ''}</span>
+      <button class="btn-xs" onclick="closeC7Modal()">Minimizar ✕</button>
+    </div>
+    <div style="font-family:var(--brand);font-size:15px;font-weight:700;color:#fff;margin-bottom:6px">
+      ${esc(p.pergunta || '')} · <span style="color:var(--cyan)">${esc(p.ativo || p.alvo || '')}</span> <span style="color:var(--dim);font-size:12px">(evento ${esc(p.evento || '')})</span>
+    </div>
+    <div style="font-size:12px;color:var(--txt);line-height:1.55;background:#081018;border:1px solid var(--line2);border-left:3px solid var(--and);padding:10px 12px;border-radius:4px">${esc(p.texto || '')}</div>
+    <div style="font-size:11px;color:var(--dim);margin-top:8px">Texto e opções devolvidos pelo motor em <code>perguntas[]</code> (facto #${esc(String(p.facto ?? '?'))}). A resposta fica registada como <code>resposta_analista(${esc(p.ativo || p.alvo || '')}, ${esc(p.evento || '')}, ${esc(p.pergunta || '')}, Valor)</code> e é enviada com as restantes.</div>
+    <div class="c7-opt-grid">
+      ${ops.map(o => `<button class="c7-opt-btn ${o.valor === 'sim' ? 'sim' : o.valor === 'nao' ? 'nao' : 'unk'}" onclick="submitAnalystResponse('${esc(o.valor)}')">
+        <span style="font-size:13px">${esc(o.texto || o.valor)}</span>
+        <span style="font-size:9.5px;color:var(--dim);font-weight:400">valor: ${esc(o.valor)}</span></button>`).join('')}
+    </div>`;
+  m.classList.add('open');
+};
+window.openC7Modal = openC7Modal;
+(function() { const b = $('c7ModalBackdrop')?.querySelector('.c7-modal-box'); if (b) b.innerHTML = ''; })(); // sem texto pré-escrito até haver pergunta do motor
 
 // Arrancar a verificação inicial após todos os handlers estarem declarados
 verifyAndRetrieveFromApi(false);
