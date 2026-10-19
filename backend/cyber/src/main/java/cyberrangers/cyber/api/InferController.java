@@ -4,8 +4,6 @@ import cyberrangers.cyber.application.InferenceService;
 import cyberrangers.cyber.domain.Resultado;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -57,12 +55,7 @@ public class InferController {
     public ResponseEntity<String> infere(
             @Parameter(description = "Motor de inferencia", schema = @Schema(allowableValues = {"drools", "prolog"}))
             @PathVariable String motor,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Pedido: versaoKB e passos",
-                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, examples = {
-                            @ExampleObject(name = "R7: versao por confirmar (os dois motores)", value = ExemplosOpenApi.R7),
-                            @ExampleObject(name = "Cenario 7: pergunta ao analista", value = ExemplosOpenApi.PERGUNTA),
-                            @ExampleObject(name = "Cenario 7 + resposta sim", value = ExemplosOpenApi.RESPOSTA),
-                            @ExampleObject(name = "Versao da base errada (400)", value = ExemplosOpenApi.VERSAO_ERRADA)}))
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Pedido: versaoKB e passos")
             @RequestBody(required = false) String corpo) {
         Resultado resultado = inferenceService.infere(motor, corpo == null ? "" : corpo);
         return ResponseEntity.status(codigoHttp(resultado.tipoResultado())).body(resultado.jsonResultado());
