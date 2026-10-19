@@ -247,7 +247,7 @@ public final class CondicoesCalculadas {
             Object inst = va.arg(2);
             boolean revisto = false;
             for (Facto r : base.factos()) {
-                if ("revisto/2".equals(r.getFunctor()) && Objects.equals(r.arg(0), va)) {
+                if ("revisto/2".equals(r.getFunctor()) && estaRevisto(r.arg(0), va)) {
                     revisto = true;
                     break;
                 }
@@ -591,7 +591,7 @@ public final class CondicoesCalculadas {
             Facto motivoFacto = Facto.de("motivo", inc, m);
             boolean revisto = false;
             for (Facto r : base.factos()) {
-                if ("revisto/2".equals(r.getFunctor()) && Objects.equals(r.arg(0), motivoFacto)) {
+                if ("revisto/2".equals(r.getFunctor()) && estaRevisto(r.arg(0), motivoFacto)) {
                     revisto = true;
                     break;
                 }
@@ -599,5 +599,15 @@ public final class CondicoesCalculadas {
             if (!revisto) return false;
         }
         return temMotivo;
+    }
+
+    /**
+     * Verifica se o argumento do revisto/2 representa o facto: pode ser o proprio Facto ou um Termo equivalente.
+     */
+    private static boolean estaRevisto(Object argRevisto, Facto facto) {
+        if (Objects.equals(argRevisto, facto)) return true;
+        if (argRevisto instanceof Termo t)
+            return t.f().equals(facto.getPredicado()) && t.args().equals(facto.getArgs());
+        return false;
     }
 }

@@ -10,6 +10,7 @@ import cyberrangers.motores.drools.modelo.Premissa;
 import cyberrangers.motores.drools.modelo.Termo;
 import cyberrangers.motores.drools.modelo.Variavel;
 import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import cyberrangers.motores.drools.sessao.Marca;
 import java.util.List;
 
 global cyberrangers.motores.drools.sessao.BaseFactos base;
@@ -175,7 +176,7 @@ when
     $ep : Facto(functor == "exploracao_possivel/3", arg(0) == $ev, arg(1) == $alvo, arg(2) == $vuln)
 then
     List<Premissa> p = List.of(Premissa.de($ei), Premissa.de($ep));
-    base.cria(kcontext, 64, p, Facto.de("revisto", $ei, Termo.de("esclarecida", "exploracao_possivel")));
+    base.cria(kcontext, 64, p, Facto.de("revisto", new Termo($ei.getPredicado(), $ei.getArgs()), Termo.de("esclarecida", "exploracao_possivel")));
 end
 
 // R65: exploracao_incerta(Ev,Alvo,Vuln) e tentativa_sem_impacto(Ev,Alvo,_)
@@ -186,7 +187,7 @@ when
     $tsi : Facto(functor == "tentativa_sem_impacto/3", arg(0) == $ev, arg(1) == $alvo)
 then
     List<Premissa> p = List.of(Premissa.de($ei), Premissa.de($tsi));
-    base.cria(kcontext, 65, p, Facto.de("revisto", $ei, Termo.de("esclarecida", "tentativa_sem_impacto")));
+    base.cria(kcontext, 65, p, Facto.de("revisto", new Termo($ei.getPredicado(), $ei.getArgs()), Termo.de("esclarecida", "tentativa_sem_impacto")));
 end
 
 // R66: vetor_aberto(Ev,Alvo,Inst,Vuln) e fora_do_destino(Ev,Inst)
@@ -194,13 +195,14 @@ end
 rule "R66"
 when
     $va : Facto(functor == "vetor_aberto/4", $ev : arg(0), $alvo : arg(1), $inst : arg(2), $vuln : arg(3))
+    Marca(functor == "destino/3")
     eval(CondicoesCalculadas.foraDoDestino($ev, $inst, base))
 then
     List<Premissa> p = List.of(
         Premissa.de($va),
         Premissa.calculada("fora_do_destino", $ev, $inst)
     );
-    base.cria(kcontext, 66, p, Facto.de("revisto", $va, "porto_de_destino"));
+    base.cria(kcontext, 66, p, Facto.de("revisto", new Termo($va.getPredicado(), $va.getArgs()), "porto_de_destino"));
 end
 
 // R67: exploracao_possivel(Ev,Alvo,Vuln) e revisto(vetor_aberto(Ev,Alvo,_,Vuln),_)
@@ -210,17 +212,20 @@ rule "R67"
 when
     $ep : Facto(functor == "exploracao_possivel/3", $ev : arg(0), $alvo : arg(1), $vuln : arg(2))
     $rv : Facto(functor == "revisto/2", $vaRev : arg(0))
-    eval($vaRev instanceof Facto && "vetor_aberto/4".equals(((Facto)$vaRev).getFunctor())
-        && ((Facto)$vaRev).arg(0).equals($ev)
-        && ((Facto)$vaRev).arg(1).equals($alvo)
-        && ((Facto)$vaRev).arg(3).equals($vuln))
+    eval($vaRev instanceof Termo
+        && "vetor_aberto".equals(((Termo)$vaRev).f())
+        && ((Termo)$vaRev).args().size() == 4
+        && ((Termo)$vaRev).args().get(0).equals($ev)
+        && ((Termo)$vaRev).args().get(1).equals($alvo)
+        && ((Termo)$vaRev).args().get(3).equals($vuln))
+    Marca(functor == "revisto/2")
     eval(CondicoesCalculadas.semVetorExploravel($ev, $alvo, $vuln, base))
 then
     List<Premissa> p = List.of(
         Premissa.de($ep), Premissa.de($rv),
         Premissa.calculada("sem_vetor_exploravel", $ev, $alvo, $vuln)
     );
-    base.cria(kcontext, 67, p, Facto.de("revisto", $ep, "sem_vetor_ate_instalacao_vulneravel"));
+    base.cria(kcontext, 67, p, Facto.de("revisto", new Termo($ep.getPredicado(), $ep.getArgs()), "sem_vetor_ate_instalacao_vulneravel"));
 end
 
 // R68: incidente(inc(exploracao_possivel,Ev),...,Alvo,...) e revisto(exploracao_possivel(Ev,Alvo,_),_)
@@ -229,10 +234,11 @@ rule "R68"
 when
     $inc : Facto(functor == "incidente/4", $incId : arg(0), arg(1) == "exploracao_possivel", $alvo : arg(2))
     $rv  : Facto(functor == "revisto/2", $epRev : arg(0))
-    eval($epRev instanceof Facto && "exploracao_possivel/3".equals(((Facto)$epRev).getFunctor()))
+    eval($epRev instanceof Termo && "exploracao_possivel".equals(((Termo)$epRev).f())
+        && ((Termo)$epRev).args().size() == 3)
     eval($incId instanceof Termo
-        && ((Termo)$incId).args().get(1).equals(((Facto)$epRev).arg(0))
-        && $alvo.equals(((Facto)$epRev).arg(1)))
+        && ((Termo)$incId).args().get(1).equals(((Termo)$epRev).args().get(0))
+        && $alvo.equals(((Termo)$epRev).args().get(1)))
 then
     List<Premissa> p = List.of(Premissa.de($inc), Premissa.de($rv));
     base.cria(kcontext, 68, p, Facto.de("resolvido", $incId, "exploracao_revista"));
@@ -248,12 +254,13 @@ when
     $eh : Facto(functor == "evento_host/3", $evHost : arg(0), $alvo : arg(1))
     eval($evHost.equals(((Termo)$mot).args().get(0)))
     $ai : Facto(functor == "alerta_ids/3", $outro : arg(0), arg(1) == $alvo)
+    Marca(functor == "tempo/2")
     eval($incId instanceof Termo
         && CondicoesCalculadas.entre($outro, ((Termo)$incId).args().get(1), $evHost, base))
 then
     List<Premissa> p = List.of(Premissa.de($m), Premissa.de($eh), Premissa.de($ai),
         Premissa.calculada("entre", $outro, ((Termo)$incId).args().get(1), $evHost));
-    base.cria(kcontext, 69, p, Facto.de("revisto", $m, Termo.de("ataque_intermedio", $outro)));
+    base.cria(kcontext, 69, p, Facto.de("revisto", new Termo($m.getPredicado(), $m.getArgs()), Termo.de("ataque_intermedio", $outro)));
 end
 
 // R70: motivo(inc(Tipo,Ev),c2_com_exploracao_incerta(EvAtaque)) e revisto(exploracao_incerta(EvAtaque,_,_),_)
@@ -263,12 +270,13 @@ when
     $m  : Facto(functor == "motivo/2", $incId : arg(0), $mot : arg(1))
     eval($mot instanceof Termo && "c2_com_exploracao_incerta".equals(((Termo)$mot).f()))
     $rv : Facto(functor == "revisto/2", $eiRev : arg(0))
-    eval($eiRev instanceof Facto && "exploracao_incerta/3".equals(((Facto)$eiRev).getFunctor())
-        && ((Facto)$eiRev).arg(0).equals(((Termo)$mot).args().get(0)))
+    eval($eiRev instanceof Termo && "exploracao_incerta".equals(((Termo)$eiRev).f())
+        && ((Termo)$eiRev).args().size() == 3
+        && ((Termo)$eiRev).args().get(0).equals(((Termo)$mot).args().get(0)))
 then
     Object evAtaque = ((Termo) $m.arg(1)).args().get(0);
     List<Premissa> p = List.of(Premissa.de($m), Premissa.de($rv));
-    base.cria(kcontext, 70, p, Facto.de("revisto", $m, Termo.de("base_esclarecida", evAtaque)));
+    base.cria(kcontext, 70, p, Facto.de("revisto", new Termo($m.getPredicado(), $m.getArgs()), Termo.de("base_esclarecida", evAtaque)));
 end
 
 // R71: motivo(inc(Tipo,Ev),c2_no_ativo_atacado(EvAtaque)) e revisto(exploracao_possivel(EvAtaque,_,_),_)
@@ -278,12 +286,13 @@ when
     $m  : Facto(functor == "motivo/2", $incId : arg(0), $mot : arg(1))
     eval($mot instanceof Termo && "c2_no_ativo_atacado".equals(((Termo)$mot).f()))
     $rv : Facto(functor == "revisto/2", $epRev : arg(0))
-    eval($epRev instanceof Facto && "exploracao_possivel/3".equals(((Facto)$epRev).getFunctor())
-        && ((Facto)$epRev).arg(0).equals(((Termo)$mot).args().get(0)))
+    eval($epRev instanceof Termo && "exploracao_possivel".equals(((Termo)$epRev).f())
+        && ((Termo)$epRev).args().size() == 3
+        && ((Termo)$epRev).args().get(0).equals(((Termo)$mot).args().get(0)))
 then
     Object evAtaque = ((Termo) $m.arg(1)).args().get(0);
     List<Premissa> p = List.of(Premissa.de($m), Premissa.de($rv));
-    base.cria(kcontext, 71, p, Facto.de("revisto", $m, Termo.de("base_revista", evAtaque)));
+    base.cria(kcontext, 71, p, Facto.de("revisto", new Termo($m.getPredicado(), $m.getArgs()), Termo.de("base_revista", evAtaque)));
 end
 
 // R72: motivo(inc(Tipo,Ev),origem_da_evidencia_por_confirmar(EvHost,Razao))
@@ -303,7 +312,7 @@ when
 then
     Object qual = ((Termo) $m2.arg(1)).args().get(1);
     List<Premissa> p = List.of(Premissa.de($m1), Premissa.de($m2));
-    base.cria(kcontext, 72, p, Facto.de("revisto", $m1, Termo.de("origem_identificada", qual)));
+    base.cria(kcontext, 72, p, Facto.de("revisto", new Termo($m1.getPredicado(), $m1.getArgs()), Termo.de("origem_identificada", qual)));
 end
 
 // R73: revisto(motivo(Inc,_),_) e todos_motivos_revistos(Inc)
@@ -311,10 +320,12 @@ end
 rule "R73"
 when
     $rv : Facto(functor == "revisto/2", $motRev : arg(0))
-    eval($motRev instanceof Facto && "motivo/2".equals(((Facto)$motRev).getFunctor()))
-    eval(CondicoesCalculadas.todosMotivosRevistos(((Facto)$motRev).arg(0), base))
+    eval($motRev instanceof Termo && "motivo".equals(((Termo)$motRev).f())
+        && ((Termo)$motRev).args().size() == 2)
+    Marca(functor == "revisto/2")
+    eval(CondicoesCalculadas.todosMotivosRevistos(((Termo)$motRev).args().get(0), base))
 then
-    Object inc = ((Facto) $rv.arg(0)).arg(0);
+    Object inc = ((Termo) $rv.arg(0)).args().get(0);
     List<Premissa> p = List.of(
         Premissa.de($rv),
         Premissa.calculada("todos_motivos_revistos", inc)
