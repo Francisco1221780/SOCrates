@@ -1,3 +1,12 @@
 spring:
   application:
     name: cyber
+
+# Motor Prolog (config/PrologProperties). Os valores abaixo sao os de omissao.
+cyber:
+  prolog:
+    swipl: swipl          # nome no PATH ou caminho do executavel
+    # home:               # raiz com motores/prolog/ e base_conhecimento/; sem valor, usa a copia do jar
+    timeout: 10s          # a sequencia base inteira (46 passos) demora ~1,8 s
+    max-processos: 4
+    espera: 2s            # espera por um lugar livre antes de responder "ocupado"

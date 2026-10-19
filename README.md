@@ -52,7 +52,7 @@ ninguém assumir uma peça que ainda não corre.
 | Base de conhecimento v6 (`base_conhecimento/`) | Feito: factos, 92 regras, 67 ficheiros de cenário e `soc_cenarios.pl` |
 | Motor Prolog (`soc_motor.pl`) | Feito: corre a v6; resultados de referência em `motores/prolog/referencia_prolog/` |
 | `wrapper.pl` (`motores/prolog/`) | Feito: pedido e resposta JSON, passos, erros (issue #9) |
-| `PrologAdapter` | Por fazer |
+| `PrologAdapter` e `PrologInstaller` | Feito (issue #11): lança o `wrapper.pl` num processo `swipl` por pedido, com timeout, limite de processos e cópia dos ficheiros Prolog dentro do jar |
 | Controllers, validação do pedido, UI, comparador | Por fazer |
 | Scripts de geração (`gera_meta.pl`, `gera_json.pl`) | Feito: `gera_json.pl` gera `factos_iniciais.json` e `cenarios.json` (issue #10); `gera_meta.pl --verificar` diz se o metaconhecimento está em dia (AC13) |
 
@@ -85,7 +85,7 @@ flowchart TD
     API["api<br/><i>controllers e DTOs</i>"]
     APP["application<br/><i>InferenceService, MotorInferencia</i>"]
     DA["engine.drools<br/><i>DroolsAdapter</i>"]
-    PA["engine.prolog<br/><i>PrologAdapter (previsto)</i>"]
+    PA["engine.prolog<br/><i>PrologAdapter, PrologInstaller</i>"]
     MD["motores/drools<br/><i>MotorDrools + regras DRL</i>"]
     MP["motores/prolog<br/><i>wrapper.pl + soc_motor.pl (processo swipl)</i>"]
     KB["base_conhecimento<br/><i>factos, regras, cenários v6</i>"]
@@ -93,9 +93,9 @@ flowchart TD
     UI -.-> API
     API --> APP
     DA --> APP
-    PA -.-> APP
+    PA --> APP
     DA --> MD
-    PA -.-> MP
+    PA --> MP
     KB -.-> MP
     KB -.-> MD
 ```
@@ -201,7 +201,10 @@ limita-se a adaptadores. Há quatro blocos.
 - **`base_conhecimento`** — 314 factos fixos, 92 regras e 67 ficheiros de cenário (39 cenários numerados, com variantes e
   respostas do analista); é o que os dois motores têm de reproduzir de forma igual.
 - **`backend/cyber`** — `CyberApplication` e os pacotes da tabela de arquitetura; hoje contém a interface
-  `MotorInferencia` e o `DroolsAdapter`.
+  `MotorInferencia`, o `DroolsAdapter`, o `PrologAdapter` (um processo `swipl` por pedido, configurado por
+  `cyber.prolog.*` em `PrologProperties`) e o `PrologInstaller`. Sem `cyber.prolog.home`, o `PrologInstaller` copia
+  o `wrapper.pl`, o `soc_motor.pl` e a `base_conhecimento/` que o Maven pôs no jar (`prolog-dist/`) para uma pasta
+  temporária, apagada quando a aplicação termina; com ele, usa essa pasta (por exemplo, a raiz do repositório).
 
 > **Motor Prolog e base v6.** A v6 pede ao motor que reavalie uma regra quando chega um facto lido por uma
 > condição calculada (`condicao_le/2`, em `soc_suporte.txt`). O `soc_motor.pl` faz essa reavaliação; os
@@ -217,7 +220,7 @@ limita-se a adaptadores. Há quatro blocos.
 | :--- | :--- | :--- |
 | **JDK 25** | Compilar e correr o backend | `JAVA_HOME` tem de apontar para ele; um JDK mais antigo falha com a versão do `pom.xml` |
 | **Ligação à internet** | O Maven Wrapper descarrega o Maven 3.10.0 e as dependências | Só na primeira execução |
-| **SWI-Prolog 10.x** | Correr o motor Prolog à mão e, mais tarde, o `PrologAdapter` | *Opcional* hoje: o backend e o módulo Drools não o usam |
+| **SWI-Prolog 10.x** | O `PrologAdapter` lança o `swipl`; também corre o motor Prolog à mão | Tem de estar no `PATH`, ou indicado em `cyber.prolog.swipl`; os testes do backend precisam dele |
 
 ### Build e testes
 
@@ -274,6 +277,9 @@ A consola do Drools tem o menu do Prolog (opções 0–13, os mesmos textos) e a
 # Só o módulo Drools
 .\mvnw.cmd -pl motores/drools test
 
+# Só o backend (compila também o módulo Drools; precisa do SWI-Prolog no PATH)
+.\mvnw.cmd -pl backend/cyber -am verify
+
 # Lado Prolog: wrapper e JSON gerados (precisa do SWI-Prolog)
 swipl -g run_tests -t halt motores/prolog/testes/testes.pl
 ```
@@ -287,19 +293,21 @@ swipl -g run_tests -t halt motores/prolog/testes/testes.pl
 | `ConsolaDroolsTest`, `TermoTextoTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/consola/` | A consola com entradas escritas no teste: cenários, perguntas com "porque", factos em sintaxe Prolog, "como?", recuperação, pedido de um ficheiro |
 | `PorqueNaoTest`, `UnificacaoTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/consola/`, `.../explicacao/` | O "porque não?" igual, linha a linha, ao `whynot/1` do Prolog em 10 factos; unificação e condições calculadas com variáveis por ligar |
 | `DroolsAdapterTest` | `backend/cyber/src/test/java/cyberrangers/cyber/engine/drools/` | O adaptador chama o `MotorDrools` e devolve a conclusão da R7 |
-| `CyberApplicationTests` | `backend/cyber/src/test/java/cyberrangers/cyber/` | O contexto Spring arranca com o Drools carregado |
+| `CyberApplicationTests` | `backend/cyber/src/test/java/cyberrangers/cyber/` | O contexto Spring arranca com o Drools carregado e o `PrologInstaller` copia os ficheiros Prolog |
+| `PrologPropertiesTest` | `backend/cyber/src/test/java/cyberrangers/cyber/config/` | Valores de omissão de `cyber.prolog.*`, nomes do YAML e recusa de valores inválidos |
+| `PrologAdapterTest` | `backend/cyber/src/test/java/cyberrangers/cyber/engine/prolog/` | AC1–AC7 do #11 com o `swipl` real: resposta normal, cópia do jar sem `home` (AC6), acentos (AC2), resposta acima do buffer do pipe (AC4), timeout sem processos vivos (AC5), "ocupado" (AC7), erros do motor e executável em falta; `wrapper.pl` falsos numa pasta temporária provocam as falhas |
 | `testes.pl` (plunit) | `motores/prolog/testes/` | O wrapper cumpre os AC2, AC3, AC10–AC12 e M9; os JSON gerados (AC18) e as referências do motor estão em dia |
 
 Naming: `<Classe>Test.java` para testes unitários e `<Classe>Tests.java` no teste de contexto do Spring.
 
-CI: em cada PR e em cada push para `develop` e `main` correm duas GitHub Actions:
+CI: em cada PR e em cada push para `develop` e `main` correm três GitHub Actions:
 
 | Workflow | O que corre |
 | :--- | :--- |
 | `.github/workflows/prolog.yml` | Os testes Prolog (`motores/prolog/testes/testes.pl`) |
 | `.github/workflows/drools.yml` | O módulo Drools: `./mvnw -B -pl motores/drools verify`, com o JDK 25 |
+| `.github/workflows/backend.yml` | O backend: `./mvnw -B -pl backend/cyber -am verify`, com o JDK 25 e o SWI-Prolog |
 
-Os testes do backend ainda correm só localmente; o CI do backend fica com quem fizer a parte do backend (#12).
 
 ---
 
