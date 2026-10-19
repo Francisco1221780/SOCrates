@@ -57,6 +57,34 @@ public final class PorqueNao {
         return p.linhas;
     }
 
+    /** Os nomes dos factos que alguma regra pode concluir (o "entao" das regras), por ordem alfabetica. */
+    public static List<String> predicadosConcluidos() {
+        Set<String> nomes = new java.util.TreeSet<>();
+        for (Regras.Regra r : regras().todas()) {
+            for (JsonNode t : r.entao()) {
+                nomes.add(t.isTextual() ? t.asText() : t.path("f").asText());
+            }
+        }
+        return new ArrayList<>(nomes);
+    }
+
+    /**
+     * A regra {@code id} como esta no soc_regras.txt, com os nomes originais das variaveis: {@code {id, se, entao}},
+     * cada condicao do {@code se} e um termo, {@code {"nao": termo}} ou {@code {"avalia": termo}}. Null se nao existe.
+     */
+    public static JsonNode regra(int id) {
+        for (Regras.Regra r : regras().todas()) {
+            if (r.id() == id) {
+                ObjectNode o = JSON.objectNode();
+                o.put("id", r.id());
+                o.set("se", r.se());
+                o.set("entao", r.entao());
+                return o;
+            }
+        }
+        return null;
+    }
+
     /**
      * As regras que tem no "se" uma condicao (positiva) que unifica com o termo, por numero e sem repetir. E o
      * escreve_regras_que_usam_resposta/1 do Prolog (ex.: as regras que usam resposta_analista(_,_,shell_servico,_)).
@@ -122,13 +150,41 @@ public final class PorqueNao {
         }
         for (Falhadas r : porRegra) {
             linha("regra", nivel, null, s);
-            ((ObjectNode) linhas.get(linhas.size() - 1)).put("regra", r.regra());
+            ObjectNode l = (ObjectNode) linhas.get(linhas.size() - 1);
+            l.put("regra", r.regra());
+            juntaRegraCompleta(l, r);
             explicaPorqueNao(r, nivel + 1);
         }
     }
 
-    /** Uma regra que podia concluir o facto, as premissas que falham e as ligacoes com que ficaram. */
-    private record Falhadas(int regra, List<Regras.Condicao> premissas, Map<Var, Object> ligacoes) {
+    /** Como ficou uma condicao do "se" depois de percorrido: se se verificou e, num facto, o numero dele. */
+    private record Estado(Regras.Condicao condicao, boolean verificada, Integer numero) {
+    }
+
+    /**
+     * Uma regra que podia concluir o facto, as premissas que falham, as ligacoes com que ficaram, o estado de todas as
+     * condicoes do "se" (por ordem) e o "entao".
+     */
+    private record Falhadas(int regra, List<Regras.Condicao> premissas, Map<Var, Object> ligacoes,
+            List<Estado> estados, List<Object> entao) {
+    }
+
+    /** Junta a uma linha "regra" o "se" completo (cada condicao com o estado) e o "entao", com as ligacoes feitas. */
+    private void juntaRegraCompleta(ObjectNode linha, Falhadas f) {
+        Map<Var, Object> s = f.ligacoes();
+        ArrayNode se = linha.putArray("se");
+        for (Estado e : f.estados()) {
+            ObjectNode c = se.addObject();
+            c.put("tipo", e.condicao() instanceof Regras.Nao ? "nao" : e.condicao() instanceof Regras.Avalia
+                    ? "avalia" : "facto");
+            c.set("termo", Unificacao.json(e.condicao().termo(), s));
+            c.put("verificada", e.verificada());
+            if (e.numero() != null) {
+                c.put("numero", e.numero());
+            }
+        }
+        ArrayNode entao = linha.putArray("entao");
+        f.entao().forEach(t -> entao.add(Unificacao.json(t, s)));
     }
 
     private boolean regraConclui(Object f, Map<Var, Object> s) {
@@ -150,7 +206,7 @@ public final class PorqueNao {
             for (Object conclusao : inst.entao()) {
                 Map<Var, Object> s2 = Unificacao.unifica(f, conclusao, s);
                 if (s2 != null) {
-                    Falhadas falhadas = premissasFalsas(inst.id(), inst.se(), s2);
+                    Falhadas falhadas = premissasFalsas(inst.id(), inst.se(), inst.entao(), s2);
                     if (!falhadas.premissas().isEmpty()) {
                         r.add(falhadas);
                     }
@@ -164,15 +220,20 @@ public final class PorqueNao {
      * premissas_falsas/3: uma condicao que se verifica liga as variaveis; uma que falha vai para a lista. Uma condicao
      * que partilha variaveis com uma que ja falhou so se testa, sem ligar nada.
      */
-    private Falhadas premissasFalsas(int regra, List<Regras.Condicao> se, Map<Var, Object> s) {
+    private Falhadas premissasFalsas(int regra, List<Regras.Condicao> se, List<Object> entao, Map<Var, Object> s) {
         List<Regras.Condicao> falsas = new ArrayList<>();
         List<Var> varsFalhadas = new ArrayList<>();
+        List<Estado> estados = new ArrayList<>();
         for (Regras.Condicao c : se) {
             List<Var> vars = new ArrayList<>();
             Unificacao.variaveis(c.termo(), s, vars);
             boolean partilha = vars.stream().anyMatch(v -> varsFalhadas.stream().anyMatch(x -> x == v));
             Optional<Map<Var, Object>> r = suporte.verifica(c, s);
+            Integer numero = null;
             if (r.isPresent()) {
+                if (c instanceof Regras.Positiva && !regras.calculada(c.termo())) {
+                    numero = suporte.facto(c.termo(), s).findFirst().map(Suporte.Solucao::numero).orElse(null);
+                }
                 if (!partilha) {
                     s = r.get();
                 }
@@ -180,8 +241,9 @@ public final class PorqueNao {
                 falsas.add(c);
                 varsFalhadas.addAll(vars);
             }
+            estados.add(new Estado(c, r.isPresent(), numero));
         }
-        return new Falhadas(regra, falsas, s);
+        return new Falhadas(regra, falsas, s, estados, entao);
     }
 
     /** explica_porque_nao/2. */
@@ -200,6 +262,7 @@ public final class PorqueNao {
                 ObjectNode l = (ObjectNode) linhas.get(linhas.size() - 1);
                 if (sol.isPresent()) {
                     l.put("numero", sol.get().numero());
+                    l.set("encontrado", Unificacao.json(t, sol.get().ligacoes()));
                 } else {
                     l.putNull("numero");
                 }
