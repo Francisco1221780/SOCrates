@@ -46,27 +46,28 @@ Mensagens que podem aparecer antes do menu, e o que fazer com elas:
 - **`SLF4J: No SLF4J providers were found`** não deve aparecer. O módulo traz o `slf4j-simple` como dependência `optional` (não passa para o backend), com o nível em `error` no `src/main/resources/simplelogger.properties`. Se aparecer, o IntelliJ está a correr com um classpath antigo: *Reload* do projeto Maven.
 - **`WARNING: sun.misc.Unsafe::objectFieldOffset ...`** é o JDK 25 a avisar que a `xstream`, que o Drools usa por dentro, chama um método interno que vai ser removido. Não afeta o motor. Para não o ver, na *Run Configuration* da `ConsolaDrools`, em *VM options*: `--sun-misc-unsafe-memory-access=allow` (opção da JVM; fica na configuração de cada um, não no projeto).
 
-O menu é o do `soc_motor.pl` (`menu/0`): as mesmas opções, com os mesmos números e textos. As respostas escrevem-se como no Prolog, com ou sem o ponto final (`1.`, `c6.`, `sim.`).
+O menu é o do `soc_motor.pl` (`menu/0`): as mesmas opções, numeradas por ordem de 0 a 14: o "porque?" (10) fica junto do "como?" (9) e do "porque não?" (11), por isso as opções a partir da 10 têm um número a mais do que no Prolog. Depois de cada opção a consola pára até carregares em Enter (para o menu não tapar o que a opção escreveu); cada pedido mostra as escolhas que há (cenários, perguntas, predicados com conclusões, o que as regras podem concluir). Não se escreve sintaxe Prolog: os factos escrevem-se `nome(arg, arg)`, sem plicas, e as respostas não levam ponto final (`1`, `c6`, `sim`). O ponto final e as plicas do Prolog continuam a ser aceites, e as listas e os cenários `.txt` do Prolog também.
 
 | Opção | O que faz |
 | --- | --- |
-| 1 | Carregar a base de conhecimento: `base.` (ou Enter) recomeça com a base do módulo; um caminho carrega outro ficheiro de factos iniciais, no formato do `factos_iniciais.json`. As regras são sempre as do módulo |
+| 1 | Carregar a base de conhecimento: `base` (ou Enter) recomeça com a base do módulo; um caminho carrega outro ficheiro de factos iniciais, no formato do `factos_iniciais.json`. As regras são sempre as do módulo |
 | 2 | Correr o motor (o Drools corre sempre até ao ponto fixo, por isso dá `Nao ha conclusoes novas.`) |
-| 3 | Injetar um cenário: um id (`c6`), uma lista (`[c1,c2]`) ou um ficheiro: `.txt` no formato dos cenários Prolog (`'cenarios/cenario_30.txt'`), ou `.json` com um pedido. Recusa um repetido ou alternativo de um que já entrou, e avisa se falta uma dependência |
-| 4 | Introduzir um facto ou uma lista, em sintaxe Prolog: `[alerta_ids(ev_1,web_srv_02,sig_apache_path_traversal), tempo(ev_1,900)]` |
-| 5 | Responder às perguntas ao analista (o valor, `sim.`, ou o número da opção). `porque.` mostra a regra que fez a pergunta, as premissas e as regras que vão usar a resposta |
+| 3 | Injetar um cenário: um id (`c6`), vários (`c1 c2`) ou um ficheiro: `.txt` no formato dos cenários Prolog (`cenarios/cenario_30.txt`), ou `.json` com um pedido. Recusa um repetido ou alternativo de um que já entrou, e avisa se falta uma dependência |
+| 4 | Introduzir factos, um por linha e uma linha vazia para acabar: `alerta_ids(ev_1, web_srv_02, sig_apache_path_traversal)`. Um valor como `2.4.49-ubuntu1` escreve-se sem plicas |
+| 5 | Responder às perguntas ao analista (o valor, `sim`, ou o número da opção). `porque` mostra a regra que fez a pergunta (escrita por inteiro), os factos que a levaram e as regras que vão usar a resposta |
 | 6 / 7 | Tickets abertos (por prioridade) e fechados, incidentes sem ticket / ações recomendadas por ativo |
 | 8 | Registar a recuperação de uma máquina comprometida (`recuperado(Ativo, Evento)`) |
-| 9 | "Como?": a árvore de regras e premissas de um facto (pelo número ou pelo facto) |
-| 10 | "Porque não?": porque é que um facto não se concluiu, regra a regra, como o `whynot/1` (o facto pode ter variáveis, ex.: `compromisso_confirmado(web_srv_05,Ev)`) |
-| 11 | Mostrar factos: `todos.`, `concluidos.` ou os de um predicado |
-| 12 | Opções do motor: `mostrar_conclusoes` (escreve cada conclusão nova), `passo_a_passo` (espera por Enter depois de cada uma), `profundidade_whynot` (4) |
-| 13 | Injetar todos os cenários de uma vez: volta a carregar a base e injeta as sequências `base` e `normal` (sem respostas), como o `injeta_todos` |
+| 9 | "Como?": a árvore de factos de uma conclusão, com o número da regra de cada um (pelo número ou pelo facto) |
+| 10 | "Porque?": a mesma conclusão com cada regra escrita por inteiro (`SE` … `ENTAO`) e os factos que a satisfizeram, até aos dados |
+| 11 | "Porque não?": porque é que um facto não se concluiu. Para cada regra que o podia concluir, a regra inteira com cada condição marcada (`[ok]` ou `[FALTA]`) e, por baixo, o que falta e porquê, até aos dados de entrada. O facto pode ter variáveis, ex.: `compromisso_confirmado(web_srv_05, Ev)` |
+| 12 | Mostrar factos: `todos`, `concluidos` ou os de um predicado (a consola lista os predicados que há) |
+| 13 | Opções do motor: `mostrar_conclusoes` (escreve cada conclusão nova), `passo_a_passo` (espera por Enter depois de cada uma), `profundidade_whynot` (4) |
+| 14 | Injetar todos os cenários de uma vez: volta a carregar a base e injeta as sequências `base` e `normal` (sem respostas), como o `injeta_todos` |
 | 0 | Sair (também com o fim da entrada, Ctrl+D) |
 
-Diferenças para o menu do Prolog: arranca já com a base carregada (no Prolog é preciso a opção 1, e depois a 2); a dica de profundidade do "porque não?" aponta para a opção 12, em vez do `define_opcao/2`; e as perguntas por responder são as da resposta do motor (sem as já respondidas com "nao sei").
+Diferenças para o menu do Prolog: arranca já com a base carregada (no Prolog é preciso a opção 1, e depois a 2); a dica de profundidade do "porque não?" aponta para a opção 13, em vez do `define_opcao/2`; e as perguntas por responder são as da resposta do motor (sem as já respondidas com "nao sei").
 
-O "porque não?" usa as regras como dados (`src/main/resources/regras.json`, gerado pelo `gera_json.pl`) e está também na API: `MotorDrools.porqueNao(pedido, facto, profundidade)`. O `PorqueNaoTest` compara-o, linha a linha, com o `whynot/1` do Prolog (referência gerada por `ferramentas/gera_porque_nao.pl`).
+As três explicações (9, 10 e 11) estão na classe `consola/Explicacoes` e mostram os factos como `nome(arg, arg)`. O "porque não?" usa as regras como dados (`src/main/resources/regras.json`, gerado pelo `gera_json.pl`) e está também na API: `MotorDrools.porqueNao(pedido, facto, profundidade)`. O texto do "porque não?" é próprio da consola Drools, mas o `PorqueNaoTest` compara as mesmas linhas, escritas no formato do `whynot/1`, com o do Prolog (referência gerada por `ferramentas/gera_porque_nao.pl`).
 
 O motor não guarda estado entre pedidos: a consola guarda a lista de passos e envia o pedido inteiro ao `MotorDrools.infere` a cada ação. O que mostra é o que o backend e o comparador recebem.
 
@@ -94,6 +95,22 @@ Get-Content pedido.json | swipl motores/prolog/wrapper.pl base_conhecimento > re
 ```
 
 Os passos prontos a enviar de cada cenário estão no `backend/cyber/src/main/resources/generated/cenarios.json`.
+
+## API do motor (o que o menu faz, em código)
+
+Tudo o que o menu da consola faz está também no `MotorDrools`, com respostas JSON no mesmo envelope (`estado`, `motor`, `versaoKB`, `erro`). A consola chama estes métodos, por isso mostra o que um cliente da API recebe. O motor não guarda estado: cada método recebe o pedido (`{"versaoKB", "passos"}`) e volta a corrê-lo; um cliente que peça várias explicações paga uma corrida por pedido.
+
+| Método | O que devolve | Opção do menu |
+| --- | --- | --- |
+| `infere(pedido)` | A resposta: `factos` (com `regra` e `premissas`), `perguntas`, `incidentes`, `tickets` | 2, 3, 4, 5, 6, 7, 8, 12, 14 (injetar é juntar `passos`; o resto lê-se da resposta) |
+| `como(pedido, facto)` | `arvore`: o facto, a regra que o concluiu e as premissas (facto, `nao` ou condição calculada), até aos dados | 9 |
+| `porque(pedido, facto)` | O mesmo, e cada nó concluído traz `regraCompleta` (`id`, `se`, `entao`, com os nomes das variáveis) | 10 |
+| `porquePergunta(pedido, ativo, evento, pergunta)` | `geradaPor` (o "porque" do facto que gerou a pergunta, ou `null` se foi à mão), `regrasQueUsamAResposta` | 5 (`porque`) |
+| `porqueNao(pedido, facto, profundidade)` | `explicacao`: linhas planas com `nivel` e `tipo`; as linhas `regra` trazem o `se` completo (cada condição com `verificada`) e o `entao` | 11 |
+| `predicadosConcluidos()` | `predicados`: o que as regras podem concluir | 11 (a lista de escolhas) |
+| `cenarios()` | O `cenarios.json`: cada cenário com `passo` pronto a enviar, e as `sequencias` | 3, 14 |
+
+Um facto escolhe-se por `{"numero": N}` (o `numero` da resposta do `infere`) ou por `{"predicado", "args"}`; o `porqueNao` aceita variáveis (`{"var": "Ev"}`). Um facto que não existe, um pedido inválido ou um motor não pronto dão `estado: "erro"` com a mensagem. Um nó de `como`/`porque` que já apareceu antes na mesma árvore tem `jaExplicado: true` e não repete as premissas.
 
 ## Modelo de factos
 
