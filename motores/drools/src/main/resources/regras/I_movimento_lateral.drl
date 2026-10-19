@@ -13,6 +13,7 @@ import cyberrangers.motores.drools.modelo.Premissa;
 import cyberrangers.motores.drools.modelo.Termo;
 import cyberrangers.motores.drools.modelo.Variavel;
 import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import cyberrangers.motores.drools.sessao.Marca;
 import java.util.List;
 
 global cyberrangers.motores.drools.sessao.BaseFactos base;
@@ -82,6 +83,8 @@ when
     $ml : Facto(functor == "movimento_lateral/3", $ev : arg(0), $destino : arg(1), $origem : arg(2))
     $cc : Facto(functor == "compromisso_confirmado/2", arg(0) == $origem, $evOrigem : arg(1))
     $jw : Facto(functor == "janela/2", arg(0) == "movimento_lateral_apos_compromisso", $janela : arg(1))
+    Marca(functor == "tempo/2")
+    Marca(functor == "janela/2")
     eval(CondicoesCalculadas.depois($ev, $evOrigem, $janela, base))
     not Facto(functor == "recuperado/2", arg(0) == $origem, arg(1) == $evOrigem)
 then

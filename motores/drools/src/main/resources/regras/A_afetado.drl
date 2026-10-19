@@ -1,0 +1,62 @@
+package regras;
+
+// A. O ATIVO ESTA AFETADO POR UMA VULNERABILIDADE? (soc_regras.txt, base v6, R1-R3)
+// Cruza o software instalado em cada ativo (SBOM) com o catalogo de vulnerabilidades, por instalacao.
+// Molde e convencoes: ver B_vetor.drl (R7) e o README desta pasta.
+
+import cyberrangers.motores.drools.modelo.Facto;
+import cyberrangers.motores.drools.modelo.Premissa;
+import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import cyberrangers.motores.drools.sessao.Marca;
+import java.util.List;
+
+global cyberrangers.motores.drools.sessao.BaseFactos base;
+
+// R1: a instalacao tem uma versao dentro de um intervalo afetado e sem correcao aplicada -> instalacao vulneravel
+//   se [componente(Inst,_,Nome) e vuln_afeta(Vuln,Nome) e versao(Inst,V) e intervalo_afetado(Vuln,Min,Max) e
+//       versao_cmp(V,>=,Min) e versao_cmp(V,=<,Max) e nao corrigido_backport(Inst,Vuln)]
+//   entao [cria_facto(vulneravel(Inst,Vuln))].
+rule "R1"
+when
+    $c : Facto(functor == "componente/3", $inst : arg(0), $nome : arg(2))
+    $a : Facto(functor == "vuln_afeta/2", $vuln : arg(0), arg(1) == $nome)
+    $v : Facto(functor == "versao/2", arg(0) == $inst, $ver : arg(1))
+    $i : Facto(functor == "intervalo_afetado/3", arg(0) == $vuln, $min : arg(1), $max : arg(2))
+    eval(CondicoesCalculadas.versaoCmp($ver, ">=", $min) && CondicoesCalculadas.versaoCmp($ver, "=<", $max))
+    not Facto(functor == "corrigido_backport/2", arg(0) == $inst, arg(1) == $vuln)
+then
+    List<Premissa> p = List.of(Premissa.de($c), Premissa.de($a), Premissa.de($v), Premissa.de($i),
+            Premissa.calculada("versao_cmp", $ver, ">=", $min), Premissa.calculada("versao_cmp", $ver, "=<", $max),
+            Premissa.nao("corrigido_backport", $inst, $vuln));
+    base.cria(kcontext, 1, p, Facto.de("vulneravel", $inst, $vuln));
+end
+
+// R2: a versao da instalacao nao esta em nenhum dos intervalos afetados -> instalacao nao afetada
+//   se [componente(Inst,_,Nome) e vuln_afeta(Vuln,Nome) e versao(Inst,V) e fora_dos_intervalos(V,Vuln)]
+//   entao [cria_facto(nao_afetado(Inst,Vuln))].
+// fora_dos_intervalos le intervalo_afetado (condicao_le): a Marca reavalia a regra quando chega um intervalo.
+rule "R2"
+when
+    $c : Facto(functor == "componente/3", $inst : arg(0), $nome : arg(2))
+    $a : Facto(functor == "vuln_afeta/2", $vuln : arg(0), arg(1) == $nome)
+    $v : Facto(functor == "versao/2", arg(0) == $inst, $ver : arg(1))
+    Marca(functor == "intervalo_afetado/3")
+    eval(CondicoesCalculadas.foraDosIntervalos($ver, $vuln, base))
+then
+    List<Premissa> p = List.of(Premissa.de($c), Premissa.de($a), Premissa.de($v),
+            Premissa.calculada("fora_dos_intervalos", $ver, $vuln));
+    base.cria(kcontext, 2, p, Facto.de("nao_afetado", $inst, $vuln));
+end
+
+// R3: a correcao foi aplicada sem mudar o numero da versao (backport) -> instalacao nao afetada
+//   se [componente(Inst,_,Nome) e vuln_afeta(Vuln,Nome) e corrigido_backport(Inst,Vuln)]
+//   entao [cria_facto(nao_afetado(Inst,Vuln))].
+rule "R3"
+when
+    $c : Facto(functor == "componente/3", $inst : arg(0), $nome : arg(2))
+    $a : Facto(functor == "vuln_afeta/2", $vuln : arg(0), arg(1) == $nome)
+    $b : Facto(functor == "corrigido_backport/2", arg(0) == $inst, arg(1) == $vuln)
+then
+    List<Premissa> p = List.of(Premissa.de($c), Premissa.de($a), Premissa.de($b));
+    base.cria(kcontext, 3, p, Facto.de("nao_afetado", $inst, $vuln));
+end

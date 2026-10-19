@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import cyberrangers.motores.drools.modelo.Facto;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,6 +35,25 @@ public final class FactosIniciais {
             if (in == null) {
                 throw new IllegalStateException("nao existe " + recurso + " no classpath (gera-se com gera_json.pl)");
             }
+            return le(in, recurso, versaoKB, json);
+        } catch (IOException e) {
+            throw new IllegalStateException(recurso + " invalido: " + e.getMessage(), e);
+        }
+    }
+
+    /** O mesmo, a partir de um ficheiro (a opcao 1 da consola: outra base de factos iniciais). */
+    public static FactosIniciais carrega(Path ficheiro, String versaoKB, ObjectMapper json) {
+        try (InputStream in = Files.newInputStream(ficheiro)) {
+            return le(in, ficheiro.toString(), versaoKB, json);
+        } catch (NoSuchFileException e) {
+            throw new IllegalStateException("nao existe " + ficheiro, e);
+        } catch (IOException e) {
+            throw new IllegalStateException(ficheiro + " invalido: " + e.getMessage(), e);
+        }
+    }
+
+    private static FactosIniciais le(InputStream in, String recurso, String versaoKB, ObjectMapper json) {
+        try {
             JsonNode raiz = json.readTree(in);
             JsonNode lista = raiz == null ? null : raiz.get("factos");
             if (lista == null || !lista.isArray()) {

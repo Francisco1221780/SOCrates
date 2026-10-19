@@ -12,6 +12,7 @@ import cyberrangers.motores.drools.modelo.Premissa;
 import cyberrangers.motores.drools.modelo.Termo;
 import cyberrangers.motores.drools.modelo.Variavel;
 import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import cyberrangers.motores.drools.sessao.Marca;
 import java.util.List;
 
 global cyberrangers.motores.drools.sessao.BaseFactos base;
@@ -31,11 +32,7 @@ when
     eval(((Number) $nJanela).longValue() <= ((Number) $janela).longValue())
 then
     List<Premissa> p = List.of(
-        Premissa.de($r),
-        Premissa.calculada("portos_sondados", $ev, ">=", 100L),
-        Premissa.calculada("falhas_login", $ev, ">=", 5L),
-        Premissa.de($jw),
-        Premissa.calculada("falhas_janela", $ev, "=<", $janela)
+        Premissa.de($r), Premissa.de($ps), Premissa.de($fl), Premissa.de($jw), Premissa.de($fj)
     );
     base.cria(kcontext, 35, p, Facto.de("suspeita", $alvo, $ev));
     base.cria(kcontext, 35, p, Facto.de("origem_hostil", $origem, $ev));

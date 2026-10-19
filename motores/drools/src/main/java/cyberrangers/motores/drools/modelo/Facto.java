@@ -46,6 +46,15 @@ public final class Facto {
         return args.get(i);
     }
 
+    /**
+     * Se o termo e este facto, quando aparece dentro de outro (ex.: o 1.o argumento de
+     * {@code revisto(exploracao_possivel(...), _)}). Aceita-o como {@link Termo} (o formato do modelo, que e o que
+     * chega por JSON) ou como Facto (o que algumas regras H-M poem no argumento).
+     */
+    public boolean representadoPor(Object termo) {
+        return equals(termo) || new Termo(predicado, args).equals(termo);
+    }
+
     @Override
     public boolean equals(Object o) {
         return o instanceof Facto f && predicado.equals(f.predicado) && args.equals(f.args);
