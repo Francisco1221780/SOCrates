@@ -35,6 +35,11 @@ final class Cenarios {
         json.get("sequencias").fields().forEachRemaining(e -> sequencias.put(e.getKey(), textos(e.getValue())));
     }
 
+    /** Os cenarios do {@code cenarios.json} (o {@code MotorDrools.cenarios()}). */
+    static Cenarios de(JsonNode json) {
+        return new Cenarios(json);
+    }
+
     static Cenarios carrega(ObjectMapper json) {
         try (InputStream in = Cenarios.class.getResourceAsStream(RECURSO)) {
             if (in == null) {

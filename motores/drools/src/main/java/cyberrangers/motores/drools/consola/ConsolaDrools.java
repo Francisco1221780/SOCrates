@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import cyberrangers.motores.drools.EstadoMotor;
 import cyberrangers.motores.drools.MotorDrools;
-import cyberrangers.motores.drools.explicacao.PorqueNao;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -24,10 +23,11 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * Consola interativa do motor Drools, com o menu/0 do soc_motor.pl: as mesmas opcoes (0 a 13), os mesmos textos e o
- * mesmo comportamento, incluindo o "porque nao?" (10) e as opcoes do motor (12). A diferenca e que arranca ja com a
- * base do modulo carregada (as regras, o factos_iniciais.json e o cenarios.json vem no classpath); a opcao 1 volta a
- * carrega-la, ou carrega outro ficheiro de factos iniciais.
+ * Consola interativa do motor Drools, com o menu/0 do soc_motor.pl: as mesmas opcoes e os mesmos textos, mas numeradas
+ * por ordem (0 a 14), porque o "porque?" (10) entra junto do "como?" (9) e do "porque nao?" (11), que no Prolog e a 10.
+ * As tres explicacoes estao na {@link Explicacoes}. A diferenca para o Prolog e que arranca ja com a base do modulo
+ * carregada (as regras, o factos_iniciais.json e o cenarios.json vem no classpath); a opcao 1 volta a carrega-la, ou
+ * carrega outro ficheiro de factos iniciais.
  *
  * <p>O motor nao guarda estado entre pedidos: a consola guarda os passos e envia o pedido inteiro a cada acao. Os
  * textos escrevem os termos como o Prolog: com plicas nas explicacoes (o legivel/2), sem plicas nas listagens (o ~w).
@@ -41,6 +41,7 @@ public final class ConsolaDrools {
     private final PrintStream out;
     private final ObjectMapper json = new ObjectMapper();
     private final Cenarios cenarios;
+    private final Explicacoes explicacoes;
     private MotorDrools motor;
     private SessaoConsola sessao;
     private int contador;
@@ -50,15 +51,32 @@ public final class ConsolaDrools {
     private boolean passoAPasso;
     private int profundidadeWhynot = 4;
 
+    /** Pausa depois de cada opcao, ate se carregar em Enter, para o menu nao tapar o que a opcao escreveu. */
+    private final boolean pausa;
+
     ConsolaDrools(MotorDrools motor, BufferedReader in, PrintStream out) {
+        this(motor, in, out, false);
+    }
+
+    ConsolaDrools(MotorDrools motor, BufferedReader in, PrintStream out, boolean pausa) {
         this.motor = motor;
         this.in = in;
         this.out = out;
-        this.cenarios = Cenarios.carrega(json);
+        this.pausa = pausa;
+        this.cenarios = Cenarios.de(lerJson(motor.cenarios()));
+        this.explicacoes = new Explicacoes(out);
+    }
+
+    private JsonNode lerJson(String texto) {
+        try {
+            return json.readTree(texto);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     public static void main(String[] args) {
-        new ConsolaDrools(new MotorDrools(), new BufferedReader(new InputStreamReader(System.in)), System.out).corre();
+        new ConsolaDrools(new MotorDrools(), new BufferedReader(new InputStreamReader(System.in)), System.out, true).corre();
     }
 
     /** O ciclo do menu, ate a opcao 0 ou ao fim da entrada. */
@@ -81,6 +99,9 @@ public final class ConsolaDrools {
             } catch (RuntimeException ex) {
                 out.println("Erro: " + ex.getMessage());
             }
+            if (pausa && le("\nEnter para voltar ao menu") == null) {
+                return;
+            }
         }
     }
 
@@ -97,10 +118,11 @@ public final class ConsolaDrools {
         out.println(" 7. Acoes recomendadas");
         out.println(" 8. Registar a recuperacao de uma maquina");
         out.println(" 9. Explicar como se concluiu um facto (como?)");
-        out.println("10. Explicar porque nao se concluiu um facto (porque nao?)");
-        out.println("11. Mostrar factos");
-        out.println("12. Opcoes do motor");
-        out.println("13. Injetar todos os cenarios de uma vez");
+        out.println("10. Explicar porque se concluiu um facto, com as regras (porque?)");
+        out.println("11. Explicar porque nao se concluiu um facto (porque nao?)");
+        out.println("12. Mostrar factos");
+        out.println("13. Opcoes do motor");
+        out.println("14. Injetar todos os cenarios de uma vez");
         out.println(" 0. Sair");
     }
 
@@ -115,10 +137,11 @@ public final class ConsolaDrools {
             case "7" -> mostraAcoes();
             case "8" -> registaRecuperacao();
             case "9" -> como();
-            case "10" -> porqueNao();
-            case "11" -> mostraFactos();
-            case "12" -> opcoes();
-            case "13" -> injetaTodos();
+            case "10" -> porque();
+            case "11" -> porqueNao();
+            case "12" -> mostraFactos();
+            case "13" -> opcoes();
+            case "14" -> injetaTodos();
             default -> out.println("Opcao invalida.");
         }
     }
@@ -126,7 +149,7 @@ public final class ConsolaDrools {
     // --- 1, 2: base e motor
 
     private void carregaBase() {
-        String f = le("Ficheiro dos factos iniciais (ex.: 'factos_iniciais.json'; base. = a base do modulo)");
+        String f = le("Ficheiro dos factos iniciais (ex.: factos_iniciais.json; Enter = a base do modulo)");
         if (f == null) {
             throw new FimDaEntrada();
         }
@@ -218,7 +241,7 @@ public final class ConsolaDrools {
             for (JsonNode f : passo.get("factos")) {
                 JsonNode existente = porChave.get(SessaoConsola.chave(f));
                 if (existente != null && !id.equals(existente.get("passo").asText(null))) {
-                    out.printf("O facto %s ja existe (n. %d).%n", TermoTexto.escrito(f), existente.get("numero").asInt());
+                    out.printf("O facto %s ja existe (n. %d).%n", TermoTexto.legivel(f), existente.get("numero").asInt());
                 }
             }
         }
@@ -231,7 +254,7 @@ public final class ConsolaDrools {
         for (JsonNode f : concluidos) {
             if (mostrarConclusoes) {
                 out.printf("Foi concluido o facto n. %d -> %s   (regra %d)%n", f.get("numero").asInt(),
-                        TermoTexto.escrito(f), f.get("regra").asInt());
+                        TermoTexto.legivel(f), f.get("regra").asInt());
                 if (passoAPasso && le(null) == null) {
                     throw new FimDaEntrada();
                 }
@@ -256,8 +279,8 @@ public final class ConsolaDrools {
         for (Cenarios.Cenario c : cenarios.todos()) {
             out.printf("  %-14s%s%s%n", c.id(), c.descricao(), injetados.contains(c.id()) ? "   (ja injetado)" : "");
         }
-        out.println("  (ou o nome de um ficheiro, ex.: 'cenarios/cenario_30.txt', ou um pedido .json)");
-        String linha = le("Cenario (ex.: c2), ou uma lista (ex.: [c1,c2,c3])");
+        out.println("  (ou o nome de um ficheiro, ex.: cenarios/cenario_30.txt, ou um pedido .json)");
+        String linha = le("Cenario (ex.: c2), ou varios (ex.: c1 c2 c3)");
         if (linha == null) {
             throw new FimDaEntrada();
         }
@@ -402,23 +425,29 @@ public final class ConsolaDrools {
     // --- 4, 5, 8: factos, respostas, recuperacao
 
     private void introduzFactos() {
-        out.println("Escreva um facto ou uma lista de factos, ex.: "
-                + "[alerta_ids(ev_1,web_srv_02,sig_apache_path_traversal), tempo(ev_1,900)]");
-        String linha = le("Facto(s)");
-        if (linha == null) {
-            throw new FimDaEntrada();
+        out.println("Escreva um facto por linha, ex.: alerta_ids(ev_1, web_srv_02, sig_apache_path_traversal)");
+        out.println("(uma linha vazia termina)");
+        List<ObjectNode> factos = new ArrayList<>();
+        while (true) {
+            String linha = le("Facto");
+            if (linha == null) {
+                if (factos.isEmpty()) {
+                    throw new FimDaEntrada();
+                }
+                break;
+            }
+            if (linha.isBlank()) {
+                break;
+            }
+            try {
+                factos.addAll(TermoTexto.factos(linha));
+            } catch (TermoTexto.ErroSintaxe e) {
+                out.println(e.getMessage() + " (o facto nao foi aceite)");
+            }
         }
-        if (linha.isBlank()) {
-            return;
+        if (!factos.isEmpty()) {
+            injeta(novoId("manual"), factos);
         }
-        List<ObjectNode> factos;
-        try {
-            factos = TermoTexto.factos(linha);
-        } catch (TermoTexto.ErroSintaxe e) {
-            out.println(e.getMessage());
-            return;
-        }
-        injeta(novoId("manual"), factos);
     }
 
     private void respondePerguntas() {
@@ -457,8 +486,8 @@ public final class ConsolaDrools {
             out.println();
             out.printf("Ativo: %s   Evento: %s%n", ativo, evento);
             out.println(p.get("texto").isNull() ? pergunta + "?" : p.get("texto").asText());
-            opcoes.forEach(o -> out.printf("   %s. %s%n", o[0], o[1]));
-            out.println("   porque. Porque e que me esta a perguntar isto?");
+            opcoes.forEach(o -> out.printf("   %s - %s%n", o[0], o[1]));
+            out.println("   porque - Porque e que me esta a perguntar isto?");
             String r = le("Resposta");
             if (r == null) {
                 throw new FimDaEntrada();
@@ -487,32 +516,23 @@ public final class ConsolaDrools {
         }
     }
 
-    /** Como o porque_pergunta/3 do Prolog: a regra que gerou a pergunta, porque, e as regras que usam a resposta. */
+    /** O porque_pergunta/3 do Prolog: a regra que gerou a pergunta, por inteiro, e as regras que usam a resposta. */
     private void porquePergunta(JsonNode p) {
-        out.println();
-        Map<Integer, JsonNode> todos = porNumero();
-        JsonNode f = todos.get(p.get("facto").asInt());
-        if (f == null || f.get("regra").isNull()) {
-            out.println("Esta pergunta foi introduzida a mao.");
-        } else {
-            out.printf("Pergunto porque a regra %d pediu esta verificacao em %s, pelo seguinte:%n", f.get("regra").asInt(),
-                    p.get("ativo").asText());
-            out.printf("facto %d: %s%n   concluido pela regra %d, porque:%n", f.get("numero").asInt(),
-                    TermoTexto.escrito(f), f.get("regra").asInt());
-            for (JsonNode premissa : f.get("premissas")) {
-                out.println("    " + premissaComo1(premissa, todos));
-            }
-            ObjectNode termo = json.createObjectNode();
-            termo.put("f", "resposta_analista");
-            termo.putArray("args").add(json.createObjectNode().put("var", "_"))
-                    .add(json.createObjectNode().put("var", "_")).add(p.get("pergunta").asText())
-                    .add(json.createObjectNode().put("var", "_"));
-            List<Integer> regras = PorqueNao.regrasComCondicao(termo);
-            if (!regras.isEmpty()) {
-                out.println("A resposta vai ser usada pelas regras " + regras.toString().replace(" ", "") + ".");
-            }
+        JsonNode r = chama(motor.porquePergunta(sessao.pedido(), p.get("ativo").asText(), p.get("evento").asText(),
+                p.get("pergunta").asText()));
+        if (r != null) {
+            explicacoes.porquePergunta(r);
         }
-        out.println();
+    }
+
+    /** Le a resposta do motor; se for um erro escreve-o e devolve null. */
+    private JsonNode chama(String resposta) {
+        JsonNode r = lerJson(resposta);
+        if ("erro".equals(r.path("estado").asText())) {
+            out.println("O motor respondeu com um erro: " + r.path("erro").asText());
+            return null;
+        }
+        return r;
     }
 
     private void registaRecuperacao() {
@@ -556,19 +576,19 @@ public final class ConsolaDrools {
         r.get("tickets").forEach(t -> (t.get("fechado").isNull() ? abertos : fechados).add(t));
         // msort de P-t(Inc, Ativo, ...): pela prioridade, depois pelo incidente
         abertos.sort(Comparator.comparing((JsonNode t) -> t.get("prioridade").asText())
-                .thenComparing(t -> TermoTexto.escrito(t.get("incidente")))
+                .thenComparing(t -> TermoTexto.legivel(t.get("incidente")))
                 .thenComparing(t -> t.get("ativo").asText()));
         out.printf("%nTICKETS ABERTOS (%d), por prioridade:%n", abertos.size());
         for (JsonNode t : abertos) {
             JsonNode inc = t.get("incidente");
             String tipo = inc.get("args").get(0).asText();
             out.printf("  [%s] %s  ativo: %s  evento: %s  gravidade: %s%n", t.get("prioridade").asText(), tipo,
-                    t.get("ativo").asText(), TermoTexto.escrito(inc.get("args").get(1)), t.get("gravidade").asText());
-            out.printf("       acao: %s   ativos impactados: %s%n", TermoTexto.escrito(t.get("acao")),
-                    TermoTexto.escrito(t.get("impactados")));
+                    t.get("ativo").asText(), TermoTexto.legivel(inc.get("args").get(1)), t.get("gravidade").asText());
+            out.printf("       acao: %s   ativos impactados: %s%n", TermoTexto.legivel(t.get("acao")),
+                    TermoTexto.legivel(t.get("impactados")));
             for (JsonNode m : factosDe("motivo")) {
                 if (m.get("args").get(0).equals(inc)) {
-                    out.println("       motivo: " + TermoTexto.escrito(m.get("args").get(1)));
+                    out.println("       motivo: " + TermoTexto.legivel(m.get("args").get(1)));
                 }
             }
             String significado = significado(tipo);
@@ -580,14 +600,14 @@ public final class ConsolaDrools {
         for (JsonNode t : fechados) {
             JsonNode inc = t.get("incidente");
             out.printf("  %s  ativo: %s  evento: %s  -> %s%n", inc.get("args").get(0).asText(), t.get("ativo").asText(),
-                    TermoTexto.escrito(inc.get("args").get(1)), TermoTexto.escrito(t.get("fechado")));
+                    TermoTexto.legivel(inc.get("args").get(1)), TermoTexto.legivel(t.get("fechado")));
         }
         Set<String> comTicket = new HashSet<>();
         r.get("tickets").forEach(t -> comTicket.add(t.get("incidente").toString()));
         List<String> semTicket = new ArrayList<>();
         r.get("incidentes").forEach(i -> {
             if (!comTicket.contains(i.get("id").toString())) {
-                semTicket.add(TermoTexto.escrito(i.get("id")));
+                semTicket.add(TermoTexto.legivel(i.get("id")));
             }
         });
         if (!semTicket.isEmpty()) {
@@ -608,7 +628,7 @@ public final class ConsolaDrools {
             out.printf("%n%s:%n", ativo);
             for (JsonNode a : acoes) {
                 JsonNode acao = a.get("args").get(1);
-                out.printf("   %s   (facto %d)%n", TermoTexto.escrito(acao), a.get("numero").asInt());
+                out.printf("   %s   (facto %d)%n", TermoTexto.legivel(acao), a.get("numero").asInt());
                 String significado = significado(acao.isObject() ? acao.get("f").asText() : acao.asText());
                 if (significado != null) {
                     out.println("      " + significado);
@@ -618,7 +638,8 @@ public final class ConsolaDrools {
     }
 
     private void mostraFactos() {
-        out.println("  todos. | concluidos. | o nome de um facto, ex.: incidente.");
+        out.println("  todos | concluidos | o nome de um predicado:");
+        out.println(predicados(false));
         String q = le("Que factos");
         if (q == null) {
             throw new FimDaEntrada();
@@ -627,10 +648,10 @@ public final class ConsolaDrools {
         for (JsonNode f : sessao.resposta().get("factos")) {
             boolean concluido = !f.get("regra").isNull();
             if (q.equals("concluidos") && concluido) {
-                out.printf("O facto n. %d -> %s   (regra %d)%n", f.get("numero").asInt(), TermoTexto.escrito(f),
+                out.printf("O facto n. %d -> %s   (regra %d)%n", f.get("numero").asInt(), TermoTexto.legivel(f),
                         f.get("regra").asInt());
             } else if (q.equals("todos") || f.get("predicado").asText().equals(q)) {
-                out.printf("O facto n. %d -> %s%n", f.get("numero").asInt(), TermoTexto.escrito(f));
+                out.printf("O facto n. %d -> %s%n", f.get("numero").asInt(), TermoTexto.legivel(f));
             }
         }
     }
@@ -639,7 +660,7 @@ public final class ConsolaDrools {
         out.println("   mostrar_conclusoes = " + (mostrarConclusoes ? "sim" : "nao"));
         out.println("   passo_a_passo = " + (passoAPasso ? "sim" : "nao"));
         out.println("   profundidade_whynot = " + profundidadeWhynot);
-        String nome = le("Opcao a mudar (ou nada.)");
+        String nome = le("Opcao a mudar (Enter para nao mudar nada)");
         if (nome == null) {
             throw new FimDaEntrada();
         }
@@ -651,7 +672,7 @@ public final class ConsolaDrools {
             out.println("Opcao desconhecida.");
             return;
         }
-        String valor = le("Valor (sim. / nao.)");
+        String valor = le("Valor (sim / nao)");
         if (valor == null) {
             throw new FimDaEntrada();
         }
@@ -670,82 +691,112 @@ public final class ConsolaDrools {
         }
     }
 
-    // --- 9, 10: como? e porque nao?
+    // --- 9, 14, 10: como?, porque? e porque nao?
 
-    private void como() {
-        String q = le("Numero do facto ou o proprio facto");
-        if (q == null) {
-            throw new FimDaEntrada();
+    /**
+     * Pede um facto da memoria de trabalho, pelo numero ou escrito; o nome de um predicado lista as conclusoes dele
+     * (com o numero) e volta a pedir. Null se nao ha (ja escreveu porque).
+     */
+    private JsonNode escolheFacto(Map<Integer, JsonNode> todos) {
+        out.println("Conclusoes do motor, por predicado:");
+        out.println(predicados(true));
+        while (true) {
+            String q = le("Numero do facto, o proprio facto, ou o nome de um predicado para o listar (Enter para voltar)");
+            if (q == null) {
+                throw new FimDaEntrada();
+            }
+            q = semPontoFinal(q.strip());
+            if (q.isBlank() || q.equals("0")) {
+                return null;
+            }
+            if (q.matches("[a-z][A-Za-z0-9_]*") && listaConclusoes(q, todos)) {
+                continue;
+            }
+            return facto(q, todos);
         }
-        if (q.isBlank()) {
-            return;
+    }
+
+    /** Lista as conclusoes de um predicado (numero e facto); false se o motor nao concluiu nenhuma. */
+    private boolean listaConclusoes(String predicado, Map<Integer, JsonNode> todos) {
+        List<JsonNode> lista = todos.values().stream()
+                .filter(f -> f.get("predicado").asText().equals(predicado) && !f.get("regra").isNull()
+                        && f.get("args").size() > 0)
+                .sorted(Comparator.comparingInt((JsonNode f) -> f.get("numero").asInt())).toList();
+        if (lista.isEmpty()) {
+            return false;
         }
-        Map<Integer, JsonNode> todos = porNumero();
-        JsonNode f;
+        lista.forEach(f -> out.printf("  %d. %s%n", f.get("numero").asInt(), TermoTexto.legivel(f)));
+        return true;
+    }
+
+    /** Os predicados dos factos (so os concluidos pelo motor, ou todos), um por linha, com quantos ha de cada. */
+    private String predicados(boolean soConcluidos) {
+        Map<String, Integer> contagem = new TreeMap<>();
+        for (JsonNode f : sessao.resposta().get("factos")) {
+            if (!soConcluidos || !f.get("regra").isNull()) {
+                contagem.merge(f.get("predicado").asText(), 1, Integer::sum);
+            }
+        }
+        if (contagem.isEmpty()) {
+            return "  (ainda nao ha)";
+        }
+        List<String> linhas = new ArrayList<>();
+        contagem.forEach((nome, n) -> linhas.add("  " + nome + " (" + n + ")"));
+        return String.join("\n", linhas);
+    }
+
+    /** O facto da memoria de trabalho a que q se refere (numero ou facto escrito); null, com a mensagem, se nao ha. */
+    private JsonNode facto(String q, Map<Integer, JsonNode> todos) {
         Integer n = inteiro(q);
         if (n != null) {
-            f = todos.get(n);
+            JsonNode f = todos.get(n);
             if (f == null) {
                 out.println("Essa conclusao nao foi tirada.");
-                return;
             }
-        } else {
-            List<ObjectNode> lidos;
-            try {
-                lidos = TermoTexto.factos(q);
-            } catch (TermoTexto.ErroSintaxe e) {
-                out.println(e.getMessage());
-                return;
-            }
-            String chave = SessaoConsola.chave(lidos.get(0));
-            f = todos.values().stream().filter(x -> SessaoConsola.chave(x).equals(chave)).findFirst().orElse(null);
-            if (f == null) {
-                String t = TermoTexto.escrito(lidos.get(0));
-                out.println("O facto " + t + " nao esta na memoria de trabalho. Experimente o porque nao? (opcao 10).");
-                return;
-            }
+            return f;
         }
-        explica(f, 0, todos, new HashSet<>());
+        List<ObjectNode> lidos;
+        try {
+            lidos = TermoTexto.factos(q);
+        } catch (TermoTexto.ErroSintaxe e) {
+            out.println(e.getMessage());
+            return null;
+        }
+        String chave = SessaoConsola.chave(lidos.get(0));
+        JsonNode f = todos.values().stream().filter(x -> SessaoConsola.chave(x).equals(chave)).findFirst().orElse(null);
+        if (f == null) {
+            out.println("O facto " + TermoTexto.legivel(lidos.get(0))
+                    + " nao esta na memoria de trabalho. Experimente o porque nao? (opcao 11).");
+        }
+        return f;
     }
 
-    /** Como o explica_facto/2 do Prolog: a arvore, sem repetir um facto ja explicado. */
-    private void explica(JsonNode f, int nivel, Map<Integer, JsonNode> todos, Set<Integer> explicados) {
-        String tab = " ".repeat(nivel * 4);
-        int n = f.get("numero").asInt();
-        if (!explicados.add(n)) {
-            out.printf("%sfacto %d: %s   (ja explicado acima)%n", tab, n, TermoTexto.texto(f));
-            return;
-        }
-        if (f.get("regra").isNull()) {
-            out.printf("%sfacto %d: %s   (dado)%n", tab, n, TermoTexto.texto(f));
-            return;
-        }
-        out.printf("%sfacto %d: %s%n%s   concluido pela regra %d, porque:%n", tab, n, TermoTexto.texto(f), tab,
-                f.get("regra").asInt());
-        for (JsonNode p : f.get("premissas")) {
-            if (p.isInt()) {
-                explica(todos.get(p.asInt()), nivel + 1, todos, explicados);
-            } else if (p.isObject() && "nao".equals(p.path("f").asText()) && p.get("args").size() == 1) {
-                out.println(" ".repeat((nivel + 1) * 4) + "nao se verifica " + TermoTexto.texto(p.get("args").get(0)));
-            } else {
-                out.println(" ".repeat((nivel + 1) * 4) + "a condicao " + TermoTexto.texto(p) + " verifica-se (calculada)");
-            }
+    private static String numeroDoFacto(JsonNode f) {
+        return "{\"numero\":" + f.get("numero").asInt() + "}";
+    }
+
+    private void como() {
+        Map<Integer, JsonNode> todos = porNumero();
+        JsonNode f = escolheFacto(todos);
+        JsonNode r = f == null ? null : chama(motor.como(sessao.pedido(), numeroDoFacto(f)));
+        if (r != null) {
+            explicacoes.como(r.get("arvore"));
         }
     }
 
-    /** Uma premissa no como1/1 do Prolog: o facto com ~w, a negacao e a calculada com o legivel. */
-    private static String premissaComo1(JsonNode p, Map<Integer, JsonNode> todos) {
-        if (p.isInt()) {
-            return "facto " + p.asInt() + ": " + TermoTexto.escrito(todos.get(p.asInt()));
+    private void porque() {
+        Map<Integer, JsonNode> todos = porNumero();
+        JsonNode f = escolheFacto(todos);
+        JsonNode r = f == null ? null : chama(motor.porque(sessao.pedido(), numeroDoFacto(f)));
+        if (r != null) {
+            explicacoes.porque(r.get("arvore"));
         }
-        if (p.isObject() && "nao".equals(p.path("f").asText()) && p.get("args").size() == 1) {
-            return "nao se verifica " + TermoTexto.texto(p.get("args").get(0));
-        }
-        return "a condicao " + TermoTexto.texto(p) + " verifica-se (calculada)";
     }
 
     private void porqueNao() {
-        String q = le("Facto (ex.: compromisso_confirmado(web_srv_04,ev_e1))");
+        out.println("As regras concluem factos destes tipos:");
+        chama(motor.predicadosConcluidos()).get("predicados").forEach(n -> out.println("  " + n.asText()));
+        String q = le("Facto (ex.: compromisso_confirmado(web_srv_04, ev_e1); uma maiuscula, ex.: Ev, e qualquer valor)");
         if (q == null) {
             throw new FimDaEntrada();
         }
@@ -769,34 +820,7 @@ public final class ConsolaDrools {
             out.println("O motor respondeu com um erro: " + r.path("erro").asText());
             return;
         }
-        r.get("explicacao").forEach(l -> out.println(linhaPorqueNao(l)));
-    }
-
-    /** O texto de uma linha do "porque nao?", como o whynot/1 do Prolog a escreve. */
-    static String linhaPorqueNao(JsonNode l) {
-        int nivel = l.get("nivel").asInt();
-        String tab = " ".repeat(Math.max(0, (nivel - 1) * 5));
-        String t = l.has("termo") ? TermoTexto.texto(l.get("termo")) : "";
-        return switch (l.get("tipo").asText()) {
-            case "verdadeiro" -> "O facto " + t + " nao e falso! (facto n. " + l.get("numero").asInt() + ")";
-            case "nao_verdadeiro" -> tab + "Porque: o facto " + t + " e verdadeiro";
-            case "calculada_falsa" -> tab + "Porque: a condicao calculada " + t + " e falsa";
-            case "ja_explicado" -> tab + "(" + t + ": ja explicado acima)";
-            case "dado_de_entrada" -> tab + "Porque: o facto " + t
-                    + " nao esta na base e nenhuma regra o conclui (e um dado de entrada)";
-            case "profundidade" -> tab + "(... para ver mais fundo: opcao 12, profundidade_whynot)";
-            case "falta_correr_motor" -> tab + "As premissas de uma regra que conclui " + t
-                    + " verificam-se: falta correr o motor (opcao 2).";
-            case "regra" -> tab + "Porque pela regra " + l.get("regra").asInt() + ":";
-            case "condicao_nao_falsa" -> tab + "A condicao nao " + t + " e falsa";
-            case "condicao_falsa" -> tab + "A condicao " + t + " e falsa";
-            case "premissa_nao_falsa" -> tab + "A premissa nao " + t + " e falsa";
-            case "facto_verdadeiro" -> tab + "Porque: o facto " + t + " e verdadeiro (facto n. "
-                    + (l.get("numero").isNull() ? "?" : l.get("numero").asInt()) + ")";
-            case "calculada_premissa_falsa" -> tab + "A condicao calculada " + t + " e falsa";
-            case "premissa_falsa" -> tab + "A premissa " + t + " e falsa";
-            default -> tab + l;
-        };
+        explicacoes.porqueNao(lidos.get(0), r.get("explicacao"));
     }
 
     // --- apoio

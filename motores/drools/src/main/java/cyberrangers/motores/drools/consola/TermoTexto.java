@@ -105,31 +105,39 @@ final class TermoTexto {
 
     /** Um termo como o write/1 (o ~w do format): sem plicas. */
     static String escrito(JsonNode t) {
-        return texto(t, false);
+        return texto(t, false, ",");
     }
 
     /** Um termo JSON do contrato em texto Prolog (atomos com plicas quando e preciso, ex.: '2.4.49-ubuntu1'). */
     static String texto(JsonNode t) {
-        return texto(t, true);
+        return texto(t, true, ",");
     }
 
-    private static String texto(JsonNode t, boolean plicas) {
+    /**
+     * Um termo para ler na consola, sem sintaxe Prolog: {@code alerta_ids(ev_1, web_srv_02, sig_x)}, sem plicas e com
+     * um espaco depois de cada virgula. E o que se escreve na opcao 4.
+     */
+    static String legivel(JsonNode t) {
+        return texto(t, false, ", ");
+    }
+
+    private static String texto(JsonNode t, boolean plicas, String sep) {
         if (t == null || t.isNull()) {
             return "null";
         }
         if (t.isArray()) {
             List<String> partes = new ArrayList<>();
-            t.forEach(a -> partes.add(texto(a, plicas)));
-            return "[" + String.join(",", partes) + "]";
+            t.forEach(a -> partes.add(texto(a, plicas, sep)));
+            return "[" + String.join(sep, partes) + "]";
         }
         if (t.isObject() && t.has("var")) {
             return t.get("var").asText();
         }
         if (t.isObject() && t.has("predicado")) {
-            return composto(t.get("predicado").asText(), t.get("args"), plicas);
+            return composto(t.get("predicado").asText(), t.get("args"), plicas, sep);
         }
         if (t.isObject()) {
-            return composto(t.get("f").asText(), t.get("args"), plicas);
+            return composto(t.get("f").asText(), t.get("args"), plicas, sep);
         }
         if (t.isNumber()) {
             return t.asText();
@@ -137,13 +145,13 @@ final class TermoTexto {
         return atomo(t.asText(), plicas);
     }
 
-    private static String composto(String nome, JsonNode args, boolean plicas) {
+    private static String composto(String nome, JsonNode args, boolean plicas, String sep) {
         if (args == null || args.isEmpty()) {
             return atomo(nome, plicas);
         }
         List<String> partes = new ArrayList<>();
-        args.forEach(a -> partes.add(texto(a, plicas)));
-        return atomo(nome, plicas) + "(" + String.join(",", partes) + ")";
+        args.forEach(a -> partes.add(texto(a, plicas, sep)));
+        return atomo(nome, plicas) + "(" + String.join(sep, partes) + ")";
     }
 
     /** As variaveis das premissas ("A", "B") vem como texto e escrevem-se sem plicas, como no numbervars. */
@@ -189,9 +197,6 @@ final class TermoTexto {
             if (c == '\'') {
                 return comArgs(plicas());
             }
-            if (Character.isDigit(c) || (c == '-' && i + 1 < s.length() && Character.isDigit(s.charAt(i + 1)))) {
-                return numero();
-            }
             if (Character.isUpperCase(c) || c == '_') {
                 String v = nome();
                 if (!variaveis) {
@@ -199,10 +204,10 @@ final class TermoTexto {
                 }
                 return JSON.objectNode().put("var", v.startsWith("_") ? "_" : v);
             }
-            if (Character.isLowerCase(c)) {
-                return comArgs(nome());
+            if (c == ',' || c == ')' || c == ']' || c == '(') {
+                throw erro("falta um termo");
             }
-            throw erro("caracter inesperado '" + c + "'");
+            return palavra();
         }
 
         private JsonNode comArgs(String nome) throws ErroSintaxe {
@@ -264,20 +269,32 @@ final class TermoTexto {
             }
         }
 
-        private JsonNode numero() throws ErroSintaxe {
+        /**
+         * Um argumento sem plicas: tudo ate a virgula, ao parentese ou ao espaco. Um nome seguido de "(" e um termo
+         * composto; so digitos e um inteiro; o resto e um atomo (ex.: 2.4.49-ubuntu1).
+         */
+        private JsonNode palavra() throws ErroSintaxe {
             int inicio = i;
-            if (s.charAt(i) == '-') {
+            while (i < s.length() && !Character.isWhitespace(s.charAt(i)) && ",()[]'".indexOf(s.charAt(i)) < 0) {
                 i++;
             }
-            while (i < s.length() && Character.isDigit(s.charAt(i))) {
-                i++;
+            String w = s.substring(inicio, i);
+            if (i < s.length() && s.charAt(i) == '(') {
+                if (!ATOMO_SIMPLES.matcher(w).matches()) {
+                    throw erro("o nome " + w + " nao pode levar argumentos");
+                }
+                return comArgs(w);
             }
-            if (i < s.length() && (s.charAt(i) == '.' && i + 1 < s.length() && Character.isDigit(s.charAt(i + 1)))) {
+            if (w.matches("-?\\d+\\.\\d+")) {
+                i = inicio;
                 throw erro("so se aceitam numeros inteiros");
             }
-            long n = Long.parseLong(s.substring(inicio, i));
-            // int quando cabe, como o Jackson le o JSON: assim um termo escrito aqui e igual ao da resposta
-            return n == (int) n ? JSON.numberNode((int) n) : JSON.numberNode(n);
+            if (w.matches("-?\\d{1,18}")) {
+                long n = Long.parseLong(w);
+                // int quando cabe, como o Jackson le o JSON: assim um termo escrito aqui e igual ao da resposta
+                return n == (int) n ? JSON.numberNode((int) n) : JSON.numberNode(n);
+            }
+            return JSON.textNode(w);
         }
 
         private String nome() {
