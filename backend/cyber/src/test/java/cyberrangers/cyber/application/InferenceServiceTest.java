@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import cyberrangers.cyber.config.PrologProperties;
+import cyberrangers.cyber.domain.Metaconhecimento;
 import cyberrangers.cyber.domain.Resultado;
 import cyberrangers.cyber.domain.SaudeMotor;
 import cyberrangers.cyber.domain.SaudeSistema;
@@ -40,12 +41,18 @@ class InferenceServiceTest {
         private final String nome;
         private final boolean pronto;
         private final String resposta;
+        private final String versaoKB;
         private final List<String> pedidos = new ArrayList<>();
 
         MotorFalso(String nome, boolean pronto, String resposta) {
+            this(nome, pronto, resposta, "6");
+        }
+
+        MotorFalso(String nome, boolean pronto, String resposta, String versaoKB) {
             this.nome = nome;
             this.pronto = pronto;
             this.resposta = resposta;
+            this.versaoKB = versaoKB;
         }
 
         @Override
@@ -61,7 +68,7 @@ class InferenceServiceTest {
 
         @Override
         public SaudeMotor estado() {
-            return new SaudeMotor(nome, pronto, null, List.of());
+            return new SaudeMotor(nome, pronto, versaoKB, pronto, Metaconhecimento.EM_DIA, List.of());
         }
     }
 
@@ -366,5 +373,30 @@ class InferenceServiceTest {
         SaudeSistema s = servico().saude();
         assertFalse(s.pronto());
         assertTrue(s.motores().isEmpty());
+    }
+
+    /**
+     * Verifica que um motor pronto com outra versao da base que a do catalogo passa a nao pronto, com o erro a dizer
+     * as duas versoes, e que o sistema tambem nao fica pronto.
+     */
+    @Test
+    void motorComOutraVersaoNaoEstaPronto() {
+        SaudeSistema s = servico(motor("drools", CONCLUIDO), new MotorFalso("prolog", true, CONCLUIDO, "5")).saude();
+        assertFalse(s.pronto());
+        SaudeMotor prolog = s.motores().get(1);
+        assertFalse(prolog.pronto());
+        assertEquals("5", prolog.versaoKB());
+        assertEquals(List.of("o motor tem a versaoKB 5 e o catalogo de cenarios a 6"), prolog.erros());
+        assertTrue(s.motores().get(0).pronto());
+    }
+
+    /**
+     * Verifica que um motor ja nao pronto com outra versao (ou sem versao) fica como esta, sem um erro a mais: a
+     * versao nao e a causa.
+     */
+    @Test
+    void motorNaoProntoNaoGanhaErroDeVersao() {
+        SaudeSistema s = servico(new MotorFalso("prolog", false, CONCLUIDO, null)).saude();
+        assertTrue(s.motores().getFirst().erros().isEmpty(), s.toString());
     }
 }

@@ -2,11 +2,15 @@ package cyberrangers.cyber.engine.prolog;
 
 import cyberrangers.cyber.application.MotorInferencia;
 import cyberrangers.cyber.config.PrologProperties;
+import cyberrangers.cyber.domain.Metaconhecimento;
 import cyberrangers.cyber.domain.SaudeMotor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
@@ -14,6 +18,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -21,14 +26,27 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @Component
 public class PrologAdapter implements MotorInferencia {
     private static final Logger log = LoggerFactory.getLogger(PrologAdapter.class);
+
+    /**
+     * Pedido com uma versaoKB que nenhuma base tem: o wrapper carrega a base, recusa o pedido e responde com a versao
+     * que tem carregada. Assim a verificacao usa o wrapper tal como os pedidos o usam.
+     */
+    private static final String SONDA = "{\"versaoKB\":\"\",\"passos\":[]}";
+    private static final String GERA_META = "motores/prolog/ferramentas/gera_meta.pl";
+    /** Inicio das linhas do gera_meta.pl --verificar que descrevem uma diferenca. */
+    private static final List<String> DIFERENCAS_META = List.of("Falta:", "Repetido:", "A mais:", "Desatualizado:");
+    private static final int MAX_LINHAS = 10;
+
     private final PrologProperties prologProperties;
     private final JsonMapper json;
     private final Semaphore lugares;
     private final PrologInstaller prologInstaller;
+    private volatile SaudeMotor estado;
 
     public PrologAdapter(PrologProperties prologProperties, JsonMapper json, PrologInstaller prologInstaller) {
         this.prologProperties = prologProperties;
@@ -69,55 +87,178 @@ public class PrologAdapter implements MotorInferencia {
     }
 
     /**
-     * Verifica se o motor Prolog esta instalado e se o swipl responde.
+     * Verifica o motor no arranque, para o estado ficar no log e o primeiro /api/health nao ter de esperar.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void verificaNoArranque() {
+        SaudeMotor e = estado();
+        if (e.pronto()) {
+            log.info("Motor prolog pronto: base {} carregada, metaconhecimento em dia", e.versaoKB());
+        } else {
+            log.warn("Motor prolog nao esta pronto: {}", String.join("; ", e.erros()));
+        }
+    }
+
+    /**
+     * O estado do motor (AC13): se a base carrega sem erros, a versao que o wrapper tem carregada e se o
+     * metaconhecimento esta de acordo com as regras. A verificacao lanca dois processos swipl, por isso corre uma vez
+     * e fica guardada: a base nao muda com a aplicacao a correr (para ver uma alteracao na pasta de cyber.prolog.home,
+     * reinicia-se a aplicacao).
      * @return
      */
     @Override
     public SaudeMotor estado() {
-        if (prologInstaller.home() == null) {
-            return new SaudeMotor(nome(), false, null, List.of(prologInstaller.erro()));
+        SaudeMotor e = estado;
+        if (e != null) {
+            return e;
         }
-        String erroSwipl = verificaSwipl();
-        if (erroSwipl != null) {
-            return new SaudeMotor(nome(), false, null, List.of(erroSwipl));
+        synchronized (this) {
+            if (estado == null) {
+                try {
+                    estado = verifica();
+                } catch (InterruptedException ex) {
+                    // nao fica guardado: a proxima chamada verifica outra vez
+                    Thread.currentThread().interrupt();
+                    return new SaudeMotor(nome(), false, null, false, Metaconhecimento.DESCONHECIDO,
+                            List.of("interrompido"));
+                }
+            }
+            return estado;
         }
-        return new SaudeMotor(nome(), true, null, List.of());
     }
 
     /**
-     * Verifica que o swipl configurado existe e responde, correndo swipl --version.
+     * Corre a sonda no wrapper.pl (base e versao) e o gera_meta.pl --verificar (metaconhecimento).
+     * @return
+     * @throws InterruptedException
+     */
+    private SaudeMotor verifica() throws InterruptedException {
+        String erroPastas = verificaPastas();
+        if (erroPastas != null) {
+            return new SaudeMotor(nome(), false, null, false, Metaconhecimento.DESCONHECIDO, List.of(erroPastas));
+        }
+        List<String> erros = new ArrayList<>();
+        Saida sonda;
+        try {
+            sonda = executa(List.of(prologProperties.swipl(), wrapper().toString(), base().toString()), SONDA);
+        } catch (IOException e) {
+            return new SaudeMotor(nome(), false, null, false, Metaconhecimento.DESCONHECIDO,
+                    List.of("swipl nao encontrado: " + e.getMessage()));
+        } catch (TimeoutException e) {
+            erros.add("a base nao carregou dentro do timeout (" + prologProperties.timeout() + ")");
+            sonda = null;
+        } catch (ExecutionException e) {
+            erros.add("erro do adaptador ao ler a resposta: " + e.getCause());
+            sonda = null;
+        }
+
+        String versao = null;
+        boolean carregada = false;
+        if (sonda != null) {
+            // o consult escreve os erros de sintaxe da base no stderr, como "ERROR: ...", e continua
+            List<String> errosBase = limita(sonda.stderr().stream()
+                    .filter(l -> l.startsWith("ERROR")).map(l -> "base: " + l).toList());
+            JsonNode r = objetoJson(sonda.stdout());
+            String erroWrapper = r == null ? "" : r.path("erro").asString();
+            if (erroWrapper.startsWith("versaoKB desconhecida")) {
+                JsonNode v = r.path("versaoKB");
+                versao = v.isString() ? v.asString() : null;
+                carregada = errosBase.isEmpty();
+            } else {
+                erros.add("a base nao carregou: " + (erroWrapper.isBlank() ? semJson(sonda) : erroWrapper));
+            }
+            erros.addAll(errosBase);
+        }
+
+        Metaconhecimento meta = verificaMetaconhecimento(erros);
+        boolean pronto = carregada && meta == Metaconhecimento.EM_DIA && erros.isEmpty();
+        return new SaudeMotor(nome(), pronto, versao, carregada, meta, erros);
+    }
+
+    /**
+     * Corre o gera_meta.pl --verificar: codigo 0 se o facto_dispara_regras/2 do soc_suporte.txt for o que as regras
+     * dao; senao, as diferencas vao para os erros.
+     * @param erros
+     * @return
+     * @throws InterruptedException
+     */
+    private Metaconhecimento verificaMetaconhecimento(List<String> erros) throws InterruptedException {
+        Path script = raiz().resolve(GERA_META);
+        if (!Files.isRegularFile(script)) {
+            erros.add("nao se pode verificar o metaconhecimento: falta " + script);
+            return Metaconhecimento.DESCONHECIDO;
+        }
+        Saida s;
+        try {
+            s = executa(List.of(prologProperties.swipl(), script.toString(), "--verificar"), "");
+        } catch (IOException e) {
+            erros.add("swipl nao encontrado: " + e.getMessage());
+            return Metaconhecimento.DESCONHECIDO;
+        } catch (TimeoutException e) {
+            erros.add("gera_meta.pl --verificar nao terminou dentro do timeout (" + prologProperties.timeout() + ")");
+            return Metaconhecimento.DESCONHECIDO;
+        } catch (ExecutionException e) {
+            erros.add("erro do adaptador ao ler o gera_meta.pl: " + e.getCause());
+            return Metaconhecimento.DESCONHECIDO;
+        }
+        if (s.codigo() == 0) {
+            return Metaconhecimento.EM_DIA;
+        }
+        List<String> diferencas = s.stderr().stream()
+                .filter(l -> DIFERENCAS_META.stream().anyMatch(l::startsWith))
+                .map(l -> "metaconhecimento: " + l).toList();
+        if (diferencas.isEmpty()) {
+            String ultima = s.stderr().isEmpty() ? "stderr vazio" : s.stderr().getLast();
+            erros.add("gera_meta.pl --verificar falhou (codigo " + s.codigo() + "): " + ultima);
+            return Metaconhecimento.DESCONHECIDO;
+        }
+        erros.addAll(limita(diferencas));
+        erros.add("metaconhecimento desatualizado: corra swipl " + GERA_META + " e cole as linhas em soc_suporte.txt");
+        return Metaconhecimento.DESATUALIZADO;
+    }
+
+    /**
+     * As primeiras MAX_LINHAS linhas e, se houver mais, uma linha a dizer quantas ficaram de fora.
+     * @param linhas
      * @return
      */
-    private String verificaSwipl() {
-        Process process;
-        try {
-            process = new ProcessBuilder(prologProperties.swipl(), "--version")
-                    .redirectErrorStream(true)
-                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .start();
-        } catch (IOException e) {
-            return "swipl nao encontrado: " + e.getMessage();
+    private static List<String> limita(List<String> linhas) {
+        if (linhas.size() <= MAX_LINHAS) {
+            return linhas;
         }
-        try {
-            if (!process.waitFor(3, TimeUnit.SECONDS)) {
-                return "swipl nao respondeu em 3 s";
-            }
-            if (process.exitValue() != 0) {
-                return "swipl --version terminou com codigo " + process.exitValue();
-            }
-            return null;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return "interrompido";
-        } finally {
-            if (process.isAlive()) {
-                mata(process);
-            }
-        }
+        List<String> r = new ArrayList<>(linhas.subList(0, MAX_LINHAS));
+        r.add("(... e mais " + (linhas.size() - MAX_LINHAS) + ")");
+        return r;
     }
 
     private String erro(String mensagem) {
         return json.writeValueAsString(json.createObjectNode().put("estado", "erro").put("motor", nome()).putNull("versaoKB").put("erro", mensagem));
+    }
+
+    private Path raiz() {
+        return prologInstaller.home().toAbsolutePath().normalize();
+    }
+
+    private Path wrapper() {
+        return raiz().resolve("motores/prolog/wrapper.pl");
+    }
+
+    private Path base() {
+        return raiz().resolve("base_conhecimento");
+    }
+
+    /**
+     * Confirma que ha pasta do motor e que tem o wrapper.pl e a base_conhecimento.
+     * @return a razao se faltar alguma coisa; null se estiver tudo
+     */
+    private String verificaPastas() {
+        if (prologInstaller.home() == null) {
+            return prologInstaller.erro();
+        }
+        if (!Files.isRegularFile(wrapper()) || !Files.isDirectory(base())) {
+            return "cyber.prolog.home nao contem wrapper.pl ou base_conhecimento: " + raiz();
+        }
+        return null;
     }
 
     /**
@@ -126,23 +267,54 @@ public class PrologAdapter implements MotorInferencia {
      * @return
      */
     private String corre(String pedidoJson) {
-        if (prologInstaller.home() == null) {
-            return erro(prologInstaller.erro());
+        String erroPastas = verificaPastas();
+        if (erroPastas != null) {
+            return erro(erroPastas);
         }
-        Path raiz = prologInstaller.home().toAbsolutePath().normalize();
-        Path wrapper = raiz.resolve("motores/prolog/wrapper.pl");
-        Path base = raiz.resolve("base_conhecimento");
-        if (!Files.isRegularFile(wrapper) || !Files.isDirectory(base)) {
-            return erro("cyber.prolog.home nao contem wrapper.pl ou base_conhecimento: " + raiz);
-        }
-        ProcessBuilder processBuilder = new ProcessBuilder(prologProperties.swipl(), wrapper.toString(), base.toString());
-        Process process;
+        Saida s;
         try {
-            process = processBuilder.start();
+            s = executa(List.of(prologProperties.swipl(), wrapper().toString(), base().toString()), pedidoJson);
         } catch (IOException e) {
             return erro("swipl nao encontrado ou falhou ao iniciar: " + e.getMessage());
+        } catch (TimeoutException e) {
+            return erro("timeout");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return erro("interrompido");
+        } catch (ExecutionException e) {
+            return erro("erro do adaptador ao ler a resposta: " + e.getCause());
         }
-        try (ExecutorService leitores = Executors.newVirtualThreadPerTaskExecutor()) {
+        if (objetoJson(s.stdout()) != null) {
+            return s.stdout().strip();
+        }
+        return erro(semJson(s));
+    }
+
+    private static String semJson(Saida s) {
+        String ultima = s.stderr().isEmpty() ? "stderr vazio" : s.stderr().getLast();
+        return "o motor prolog terminou sem resposta JSON (codigo " + s.codigo() + "): " + ultima;
+    }
+
+    /** O que um processo deixou: o codigo de saida, o stdout inteiro e as linhas do stderr. */
+    private record Saida(int codigo, String stdout, List<String> stderr) { }
+
+    /**
+     * Lanca o comando com argumentos separados (AC1), escreve a entrada no stdin e le o stdout e o stderr em paralelo
+     * (AC4), tudo em UTF-8 (AC2). Ao fim do cyber.prolog.timeout o processo e terminado (AC5). Em qualquer caso, nao
+     * fica nenhum processo vivo.
+     * @param comando
+     * @param entrada
+     * @return
+     * @throws IOException          o processo nao arrancou (ex.: swipl em falta)
+     * @throws TimeoutException     o processo nao terminou dentro do timeout (ja foi terminado)
+     * @throws InterruptedException
+     * @throws ExecutionException   falhou a leitura do stdout ou do stderr
+     */
+    private Saida executa(List<String> comando, String entrada)
+            throws IOException, TimeoutException, InterruptedException, ExecutionException {
+        Process process = new ProcessBuilder(comando).start();
+        ExecutorService leitores = Executors.newVirtualThreadPerTaskExecutor();
+        try {
             Future<String> saida = leitores.submit(() ->
                     new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
             Future<List<String>> erros = leitores.submit(() ->
@@ -151,48 +323,37 @@ public class PrologAdapter implements MotorInferencia {
                             .toList());
 
             try (Writer stdin = process.outputWriter(StandardCharsets.UTF_8)) {
-                stdin.write(pedidoJson);
+                stdin.write(entrada);
             } catch (IOException e) {
                 log.debug("swipl fechou o stdin antes do fim do pedido", e);
             }
 
             if (!process.waitFor(prologProperties.timeout().toMillis(), TimeUnit.MILLISECONDS)) {
-                mata(process);
-                return erro("timeout");
+                throw new TimeoutException();
             }
-
-            String stdout = saida.get();
-            List<String> stderr = erros.get();
-            if (eObjetoJson(stdout)) {
-                return stdout.strip();
-            }
-            String ultima = stderr.isEmpty() ? "stderr vazio" : stderr.getLast();
-            return erro("o motor prolog terminou sem resposta JSON (codigo " + process.exitValue() + "): " + ultima);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return erro("interrompido");
-        } catch (ExecutionException e) {
-            return erro("erro do adaptador ao ler a resposta: " + e.getCause());
+            return new Saida(process.exitValue(), saida.get(), erros.get());
         } finally {
             if (process.isAlive()) {
                 mata(process);
             }
+            leitores.close();
         }
     }
 
     /**
-     * Verifica se o texto é um objeto JSON válido.
+     * O texto como objeto JSON, ou null se nao for um objeto JSON valido.
      * @param texto
      * @return
      */
-    private boolean eObjetoJson(String texto) {
+    private JsonNode objetoJson(String texto) {
         if (texto.isBlank()) {
-            return false;
+            return null;
         }
         try {
-            return json.readTree(texto).isObject();
+            JsonNode n = json.readTree(texto);
+            return n.isObject() ? n : null;
         } catch (JacksonException e) {
-            return false;
+            return null;
         }
     }
 
