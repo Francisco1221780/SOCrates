@@ -21,7 +21,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
@@ -177,16 +176,18 @@ class PrologAdapterTest {
 
     /**
      * Verifica que se o caminho do home tiver aspas e barras invertidas, a resposta de erro (home sem wrapper.pl)
-     * continua a ser JSON valido e a mensagem traz o caminho intacto.
+     * continua a ser JSON valido e a mensagem traz o caminho intacto. No Windows um nome nao pode ter aspas e a barra
+     * invertida e o separador: a pasta leva plicas e as barras invertidas sao as do proprio caminho.
      * @param tmp
      * @throws Exception
      */
     @Test
     void erroComAspasEBarrasContinuaAserJsonValido(@TempDir Path tmp) throws Exception {
-        Path estranha = Files.createDirectory(tmp.resolve("a \"b\" c\\d"));
+        String nome = OS.WINDOWS.isCurrentOs() ? "a 'b' c" : "a \"b\" c\\d";
+        Path estranha = Files.createDirectory(tmp.resolve(nome));
         JsonNode r = le(adapter("swipl", estranha).infere(PEDIDO));
         assertErro(r);
-        assertTrue(r.path("erro").asString().contains("a \"b\" c\\d"), r.toString());
+        assertTrue(r.path("erro").asString().contains(estranha.toString()), r.toString());
     }
 
     /**
@@ -541,16 +542,16 @@ class PrologAdapterTest {
 
     /**
      * Verifica que se o swipl terminar com erro, o estado nao e pronto e o erro traz o codigo de saida. O swipl falso
-     * e um script sh, por isso nao corre no Windows.
+     * e um script sh, ou um .cmd no Windows.
      * @param tmp
      * @throws Exception
      */
     @Test
-    @DisabledOnOs(OS.WINDOWS)
     void estadoNaoProntoSeOSwiplFalhar(@TempDir Path tmp) throws Exception {
-        Path falso = tmp.resolve("swipl-falso");
-        Files.writeString(falso, "#!/bin/sh\nexit 3\n");
-        assertTrue(falso.toFile().setExecutable(true));
+        boolean windows = OS.WINDOWS.isCurrentOs();
+        Path falso = tmp.resolve(windows ? "swipl-falso.cmd" : "swipl-falso");
+        Files.writeString(falso, windows ? "@exit /b 3\r\n" : "#!/bin/sh\nexit 3\n");
+        assertTrue(windows || falso.toFile().setExecutable(true));
         SaudeMotor e = adapter(falso.toString(), RAIZ).estado();
         assertFalse(e.pronto(), e.toString());
         assertTrue(e.erros().getFirst().contains("codigo 3"), e.toString());

@@ -10,6 +10,13 @@
 % Resposta: {"estado", "motor", "versaoKB", "perguntas", "incidentes", "tickets", "factos", "erro"}
 %           estado: "concluido", "aguarda_resposta" (ha perguntas por responder) ou "erro"
 %
+% "Porque nao?" (issue #7), com o modo whynot depois da pasta:
+%   swipl wrapper.pl <pasta da base> whynot  < pedido.json  > resposta.json
+% Pedido:   o de cima com "facto": {"predicado", "args"} (os args podem ter variaveis {"var": "Ev"}) e,
+%           opcionalmente, "profundidade" (inteiro >= 1; por omissao a opcao profundidade_whynot do motor, 4)
+% Resposta: {"estado": "concluido", "motor", "versaoKB", "facto", "explicacao", "erro"}; explicacao e a lista das
+%           linhas do whynot_linhas/3 do motor, {"nivel", "tipo", ...}, com os mesmos campos do Drools (PorqueNao.java)
+%
 % Termos Prolog em JSON (issue #6): atomo -> string, inteiro -> numero, lista -> array,
 % termo composto -> {"f": nome, "args": [...]}, facto -> {"predicado": nome, "args": [...]}.
 %
@@ -66,20 +73,27 @@ prepara_streams :-
 	set_output(user_error).
 
 responde(Resposta) :-
-	pasta_base_argumento(Pasta),
+	argumentos(Pasta, Modo),
 	carrega_base(Pasta),
 	ultimo_facto(UltimoInicial),
 	json_read_dict(user_input, Pedido, [value_string_as(atom)]),
 	valida_pedido(Pedido, Passos),
+	valida_modo(Modo, Pedido, Explicacao),
 	corre_passos(Passos),
-	monta_resposta(UltimoInicial, Resposta).
+	monta_resposta(Explicacao, UltimoInicial, Resposta).
 
-pasta_base_argumento(Pasta) :-
+% A pasta da base e, depois dela, o modo: nada (a inferencia) ou whynot.
+argumentos(Pasta, Modo) :-
 	current_prolog_flag(argv, Argv0),
 	( Argv0 = ['--'|Argv] -> true ; Argv = Argv0 ),
-	(   Argv = [Pasta|_]
+	(   Argv = [Pasta|Resto]
 	->  true
-	;   throw(erro_wrapper('falta a pasta da base de conhecimento: swipl wrapper.pl <pasta da base>'))
+	;   throw(erro_wrapper('falta a pasta da base de conhecimento: swipl wrapper.pl <pasta da base> [whynot]'))
+	),
+	(   Resto == [] -> Modo = infere
+	;   Resto == [whynot] -> Modo = whynot
+	;   format(atom(M), 'modo desconhecido: ~w (so ha whynot)', [Resto]),
+	    throw(erro_wrapper(M))
 	).
 
 % Carrega o soc_factos.txt da pasta dada (que carrega as regras e o suporte) e corre o motor sobre os dados fixos.
@@ -158,6 +172,49 @@ json_termo(Passo, L, T) :-
 	maplist(json_termo(Passo), L, T).
 json_termo(_, X, X).
 
+% O que o modo pede alem dos passos: nada (infere) ou porque_nao(Facto, FactoJson, Profundidade). Valida-se antes de
+% correr os passos, como o resto do pedido.
+valida_modo(infere, _, infere).
+valida_modo(whynot, Pedido, porque_nao(Facto, FactoJson, Profundidade)) :-
+	(   get_dict(facto, Pedido, FJ), FJ \== null
+	->  json_facto_porque_nao(FJ, Facto, FactoJson)
+	;   throw(erro_pedido('falta o facto do porque nao'))
+	),
+	(   ( \+ get_dict(profundidade, Pedido, _) ; get_dict(profundidade, Pedido, null) )
+	->  opcao(profundidade_whynot, Profundidade)
+	;   get_dict(profundidade, Pedido, Profundidade), integer(Profundidade), Profundidade >= 1
+	->  true
+	;   throw(erro_pedido('a profundidade tem de ser um inteiro >= 1'))
+	).
+
+% JSON -> facto do "porque nao": como o json_facto/3, mas os args podem ter variaveis {"var": nome} (o mesmo nome e a
+% mesma variavel, cada "_" e uma nova, como no Drools). Da tambem o facto em JSON para a resposta, como veio.
+json_facto_porque_nao(J, F, json([predicado = P, args = AsE])) :-
+	(   is_dict(J), get_dict(predicado, J, P), atom(P), P \== null,
+	    get_dict(args, J, AsJ), is_list(AsJ)
+	->  foldl(json_termo_var, AsJ, As, AsE, [], _),
+	    F =.. [P|As]
+	;   throw(erro_pedido('o facto do porque nao tem de ser {"predicado", "args"}'))
+	).
+
+json_termo_var(D, V, json([var = N]), Vs0, Vs) :-
+	is_dict(D), get_dict(var, D, N), atom(N), N \== null, dict_pairs(D, _, [_]), !,
+	(   N == '_' -> Vs = Vs0
+	;   memberchk(N-V, Vs0) -> Vs = Vs0
+	;   Vs = [N-V|Vs0]
+	).
+json_termo_var(D, T, json([f = N, args = AsE]), Vs0, Vs) :-
+	is_dict(D), get_dict(f, D, N), atom(N), get_dict(args, D, AsJ), is_list(AsJ), dict_pairs(D, _, [_, _]), !,
+	foldl(json_termo_var, AsJ, As, AsE, Vs0, Vs),
+	compound_name_arguments(T, N, As).
+json_termo_var(D, _, _, _, _) :-
+	is_dict(D), !,
+	throw(erro_pedido('termo invalido no facto do porque nao: um objeto tem de ser {"f": nome, "args": [...]} ou {"var": nome}')).
+json_termo_var(L, T, E, Vs0, Vs) :-
+	is_list(L), !,
+	foldl(json_termo_var, L, T, E, Vs0, Vs).
+json_termo_var(X, X, X, Vs, Vs).
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % PASSOS
@@ -177,7 +234,17 @@ corre_passos([Id-Factos|Ps]) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % RESPOSTA (as listas vao por ordem do numero do facto, para o mesmo pedido dar sempre a mesma resposta)
 
-monta_resposta(UltimoInicial, json([ estado = Estado,
+monta_resposta(porque_nao(Facto, FactoJson, Profundidade), _,
+	       json([ estado = concluido,
+		      motor = prolog,
+		      versaoKB = Versao,
+		      facto = FactoJson,
+		      explicacao = Linhas,
+		      erro = @(null) ])) :- !,
+	versao_kb(Versao),
+	whynot_linhas(Facto, Profundidade, Linhas0),
+	maplist(linha_whynot_json, Linhas0, Linhas).
+monta_resposta(infere, UltimoInicial, json([ estado = Estado,
 				     motor = prolog,
 				     versaoKB = Versao,
 				     perguntas = Perguntas,
@@ -244,6 +311,29 @@ facto_json(UltimoInicial, N, F, json([ numero = N, predicado = P, args = ArgsJ, 
 	->  Passo = Id
 	;   Passo = @(null)
 	).
+
+% Uma linha do "porque nao?" (linha(Nivel, Tipo, Campos) do motor) -> {"nivel", "tipo", ...campos}. Cada termo tem
+% as suas variaveis chamadas A, B, ... (como no legivel/2 e no Drools); um numero que nao ha ('?') sai null.
+linha_whynot_json(linha(Nivel, Tipo, Campos), json([nivel = Nivel, tipo = Tipo|Pares])) :-
+	maplist(campo_whynot_json, Campos, Pares).
+
+campo_whynot_json(termo-T, termo = J) :- termo_legivel_json(T, J).
+campo_whynot_json(encontrado-T, encontrado = J) :- termo_legivel_json(T, J).
+campo_whynot_json(numero-N, numero = J) :- ( integer(N) -> J = N ; J = @(null) ).
+campo_whynot_json(regra-Id, regra = Id).
+campo_whynot_json(se-Cs, se = Js) :- maplist(condicao_whynot_json, Cs, Js).
+campo_whynot_json(entao-Ts, entao = Js) :- maplist(termo_legivel_json, Ts, Js).
+
+% condicao(Tipo, Termo, sim/nao, Numero) -> {"tipo", "termo", "verificada", "numero"?}
+condicao_whynot_json(condicao(Tipo, T, Ok, N), json([tipo = Tipo, termo = J, verificada = V|Num])) :-
+	termo_legivel_json(T, J),
+	( Ok == sim -> V = @(true) ; V = @(false) ),
+	( integer(N) -> Num = [numero = N] ; Num = [] ).
+
+termo_legivel_json(T, J) :-
+	copy_term(T, C),
+	numbervars(C, 0, _),
+	termo_json(C, J).
 
 % Termo Prolog -> JSON (issue #6). Os atomos saem como strings (tambem true, false e null).
 termo_json('$VAR'(I), S) :-

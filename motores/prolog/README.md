@@ -59,6 +59,43 @@ Os termos seguem a tabela da issue #6: átomo → string, inteiro → número, l
 `{"f": nome, "args": [...]}`. As listas da resposta vão por número de facto, por isso o mesmo pedido dá sempre a
 mesma resposta, e um prefixo dos passos dá os mesmos factos que esse ponto de um pedido mais longo.
 
+### "Porque não?" (modo `whynot`, issue #7)
+
+Com `whynot` depois da pasta, o wrapper corre os passos e explica porque um facto não se concluiu (o `whynot/1` do
+motor, em JSON). É o que o `POST /api/prolog/whynot` precisa:
+
+```bash
+swipl motores/prolog/wrapper.pl base_conhecimento whynot < pedido.json
+```
+
+O pedido é o de cima com mais dois campos: `facto`, `{"predicado", "args"}`, em que os `args` podem ter variáveis
+`{"var": "Ev"}` (o mesmo nome é a mesma variável e cada `"_"` é uma nova), e `profundidade` (opcional: inteiro ≥ 1,
+4 por omissão, a opção `profundidade_whynot` do motor). Um pedido sem `facto`, com um termo mal formado ou com uma
+profundidade inválida dá erro antes de correr os passos.
+
+A resposta é `{estado: "concluido", motor, versaoKB, facto, explicacao, erro}`, o mesmo formato do `MotorDrools.porqueNao`.
+O `facto` volta como veio. `explicacao` são as linhas pela ordem em que o `whynot/1` as escreve, cada uma com `nivel`,
+`tipo` e os campos do tipo:
+
+| `tipo` | Texto do `whynot/1` | Campos |
+| --- | --- | --- |
+| `verdadeiro` | O facto … não é falso! | `termo`, `numero` |
+| `nao_verdadeiro` | Porque: o facto … é verdadeiro (um `nao X` pedido) | `termo` |
+| `calculada_falsa` | Porque: a condição calculada … é falsa | `termo` |
+| `ja_explicado` | (…: já explicado acima) | `termo` |
+| `dado_de_entrada` | … nenhuma regra o conclui (é um dado de entrada) | `termo` |
+| `profundidade` | (… para ver mais fundo …) | — |
+| `falta_correr_motor` | As premissas de uma regra que conclui … verificam-se | `termo` |
+| `regra` | Porque pela regra N: | `regra`, `se` (cada condição: `tipo` `facto`/`nao`/`avalia`, `termo`, `verificada` e, num facto verificado, `numero`), `entao` |
+| `premissa_falsa` | A premissa … é falsa (a seguir vem a explicação dela, um nível abaixo) | `termo` |
+| `premissa_nao_falsa` | A premissa nao … é falsa | `termo` |
+| `facto_verdadeiro` | Porque: o facto … é verdadeiro (facto n. N) | `termo`, `numero` (ou `null`), `encontrado` (o facto que existe) |
+| `condicao_falsa`, `condicao_nao_falsa` | A condição (nao) … é falsa (`avalia/1`) | `termo` |
+| `calculada_premissa_falsa` | A condição calculada … é falsa | `termo` |
+
+Em cada termo, as variáveis por ligar chamam-se `A`, `B`, … (como no `legivel/2`). Os números dos factos são os do
+Prolog e não se comparam com os do Drools.
+
 ## Testes
 
 ```bash
@@ -81,6 +118,11 @@ Código de saída 0 se todos passarem. Correm igual em Windows, Mac e Linux, e n
 | `cenarios_coerentes` | No `cenarios.json`, as dependências e as alternativas existem, e as sequências respeitam-nas |
 | `referencias_em_dia` | `gera_referencias.pl --verificar`: as referências em `referencia_prolog/` são o que o wrapper dá hoje |
 | `ac13_meta_em_dia` | `gera_meta.pl --verificar`: o `facto_dispara_regras/2` do `soc_suporte.txt` é o que as regras dão hoje |
+| `texto_igual_a_referencia` | `gera_porque_nao.pl --verificar`: o `whynot/1` escreve o mesmo que a referência do `PorqueNaoTest` do Drools |
+| `wrapper_igual_ao_motor` | No modo `whynot`, para cada facto do `PorqueNaoTest`, as linhas (nível, tipo e regra) são as do `whynot_linhas/3` do motor |
+| `variaveis_e_regra_completa` | Um facto com `{"var": "Ev"}` volta como veio, e as linhas `regra` trazem o `se` (com `verificada`) e o `entao` |
+| `profundidade` | Sem `profundidade` é 4; com 1, a explicação para mais cedo |
+| `m9_erros_whynot`, `modo_desconhecido` | Sem facto, facto ou termo mal formado, profundidade inválida ou um modo que não existe dão `estado: "erro"` e código diferente de zero |
 
 Estado: o motor (`soc_motor.pl`, ainda com o menu no mesmo ficheiro), os resultados de referência da v6, o wrapper e os
 testes estão aqui.
