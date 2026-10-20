@@ -1,6 +1,7 @@
 package cyberrangers.cyber.engine.drools;
 
 import cyberrangers.cyber.application.MotorInferencia;
+import cyberrangers.cyber.domain.Metaconhecimento;
 import cyberrangers.cyber.domain.SaudeMotor;
 import cyberrangers.motores.drools.EstadoMotor;
 import cyberrangers.motores.drools.MotorDrools;
@@ -24,6 +25,8 @@ public class DroolsAdapter implements MotorInferencia {
     @Override
     public SaudeMotor estado() {
         EstadoMotor estado = motor.estado();
-            return new SaudeMotor(nome(), estado.pronto(), MotorDrools.VERSAO_KB, estado.erros());
+        boolean baseCarregada = estado.regrasCarregadas() && estado.factosIniciais() > 0;
+        return new SaudeMotor(nome(), estado.pronto(), MotorDrools.VERSAO_KB, baseCarregada,
+                Metaconhecimento.NAO_APLICAVEL, estado.erros());
     }
 }

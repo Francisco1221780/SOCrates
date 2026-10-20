@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import cyberrangers.motores.drools.consola.ConsolaDrools;
+import cyberrangers.motores.drools.explicacao.Explicacao;
 import cyberrangers.motores.drools.explicacao.PorqueNao;
 import cyberrangers.motores.drools.json.FactosIniciais;
 import cyberrangers.motores.drools.json.Pedido;
@@ -264,6 +265,64 @@ public class MotorDrools {
         } catch (RuntimeException e) {
             return erro("erro do motor: " + e.getMessage());
         }
+    }
+
+    /**
+     * "Como?" (opcao 9 da consola): corre o pedido e devolve a arvore de factos de uma conclusao. O facto escolhe-se
+     * por {@code {"numero": N}} ou por {@code {"predicado", "args"}} (o primeiro que existir). A resposta e
+     * {@code {estado, motor, versaoKB, facto, arvore, erro}}; a arvore esta descrita em {@link Explicacao#como}.
+     */
+    public String como(String pedidoJson, String factoJson) {
+        return arvore(pedidoJson, factoJson, false);
+    }
+
+    /** "Porque?" (opcao 10): o mesmo que {@link #como}, e cada no concluido traz a regra completa ({@code regraCompleta}). */
+    public String porque(String pedidoJson, String factoJson) {
+        return arvore(pedidoJson, factoJson, true);
+    }
+
+    private String arvore(String pedidoJson, String factoJson, boolean comRegras) {
+        return Explicacao.como(infere(pedidoJson), factoJson, comRegras);
+    }
+
+    /**
+     * O "porque?" de uma pergunta ao analista (a opcao 5, {@code porque}): a regra que a gerou, escrita por inteiro,
+     * com os factos que a levaram ({@code geradaPor}, null se a pergunta foi introduzida a mao), e as regras que
+     * usam a resposta. A pergunta e a da resposta do {@link #infere}, por ativo, evento e pergunta.
+     */
+    public String porquePergunta(String pedidoJson, String ativo, String evento, String pergunta) {
+        return Explicacao.porquePergunta(infere(pedidoJson), ativo, evento, pergunta);
+    }
+
+    /**
+     * Os cenarios da base (id, grupo, descricao, dependencias, alternativas e o passo pronto a enviar) e as sequencias
+     * (base, atualizacoes, normal): o {@code cenarios.json} do modulo, tal como esta.
+     */
+    public String cenarios() {
+        try (InputStream in = MotorDrools.class.getResourceAsStream("/cenarios.json")) {
+            if (in == null) {
+                return erro("nao existe cenarios.json no classpath (gera_json.pl)");
+            }
+            return json.readTree(in).toString();
+        } catch (IOException e) {
+            return erro("cenarios.json: " + e.getMessage());
+        }
+    }
+
+    /** Os nomes dos factos que alguma regra pode concluir: o que faz sentido pedir ao "porque nao?". */
+    public String predicadosConcluidos() {
+        ObjectNode o = envelope();
+        o.set("predicados", json.valueToTree(PorqueNao.predicadosConcluidos()));
+        o.putNull("erro");
+        return o.toString();
+    }
+
+    private ObjectNode envelope() {
+        ObjectNode o = json.createObjectNode();
+        o.put("estado", "concluido");
+        o.put("motor", MOTOR);
+        o.put("versaoKB", VERSAO_KB);
+        return o;
     }
 
     private ObjectNode corre(Pedido pedido) {

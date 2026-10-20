@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import cyberrangers.cyber.application.BaseCarregada;
 import cyberrangers.cyber.application.InferenceService;
+import cyberrangers.cyber.domain.Metaconhecimento;
 import cyberrangers.cyber.domain.SaudeMotor;
 import cyberrangers.cyber.domain.SaudeSistema;
 import java.nio.charset.StandardCharsets;
@@ -72,8 +73,8 @@ class SystemControllerTest {
     @Test
     void healthTemAFormaCombinada() throws Exception {
         when(inferenceService.saude()).thenReturn(new SaudeSistema(true, "6", List.of(
-                new SaudeMotor("drools", true, "6", List.of()),
-                new SaudeMotor("prolog", true, null, List.of()))));
+                new SaudeMotor("drools", true, "6", true, Metaconhecimento.NAO_APLICAVEL, List.of()),
+                new SaudeMotor("prolog", true, "6", true, Metaconhecimento.EM_DIA, List.of()))));
         MvcResult r = le("/api/health");
         assertEquals(200, r.getResponse().getStatus());
         JsonNode n = json.readTree(r.getResponse().getContentAsString(StandardCharsets.UTF_8));
@@ -84,8 +85,10 @@ class SystemControllerTest {
         assertEquals("drools", drools.path("motor").asString());
         assertTrue(drools.path("pronto").asBoolean());
         assertEquals("6", drools.path("versaoKB").asString());
+        assertTrue(drools.path("baseCarregada").asBoolean());
+        assertEquals("nao_aplicavel", drools.path("metaconhecimento").asString());
         assertTrue(drools.path("erros").isArray());
-        assertTrue(n.path("motores").get(1).path("versaoKB").isNull(), n.toString());
+        assertEquals("em_dia", n.path("motores").get(1).path("metaconhecimento").asString(), n.toString());
     }
 
     /**
@@ -95,12 +98,16 @@ class SystemControllerTest {
     @Test
     void healthNaoProntoTambemE200ComOsErros() throws Exception {
         when(inferenceService.saude()).thenReturn(new SaudeSistema(false, "6", List.of(
-                new SaudeMotor("prolog", false, null, List.of("swipl nao encontrado: x")))));
+                new SaudeMotor("prolog", false, null, false, Metaconhecimento.DESCONHECIDO, List.of("swipl nao encontrado: x")))));
         MvcResult r = le("/api/health");
         assertEquals(200, r.getResponse().getStatus());
         JsonNode n = json.readTree(r.getResponse().getContentAsString(StandardCharsets.UTF_8));
         assertFalse(n.path("pronto").asBoolean());
-        assertEquals("swipl nao encontrado: x", n.path("motores").get(0).path("erros").get(0).asString());
+        JsonNode prolog = n.path("motores").get(0);
+        assertEquals("swipl nao encontrado: x", prolog.path("erros").get(0).asString());
+        assertTrue(prolog.path("versaoKB").isNull(), n.toString());
+        assertFalse(prolog.path("baseCarregada").asBoolean());
+        assertEquals("desconhecido", prolog.path("metaconhecimento").asString());
     }
 
     /**

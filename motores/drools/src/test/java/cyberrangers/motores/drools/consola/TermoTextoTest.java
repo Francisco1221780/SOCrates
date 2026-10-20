@@ -39,7 +39,24 @@ class TermoTextoTest {
     }
 
     @Test
+    void argumentosSemPlicasNemPonto() throws Exception {
+        ObjectNode f = TermoTexto.factos("versao(srv_apache, 2.4.49-ubuntu1)").get(0);
+        assertEquals("2.4.49-ubuntu1", f.get("args").get(1).asText());
+        assertEquals("versao(srv_apache, 2.4.49-ubuntu1)", TermoTexto.legivel(f));
+        ObjectNode t = TermoTexto.factos("tempo(ev_1,   900)").get(0);
+        assertEquals(900, t.get("args").get(1).asInt());
+        assertEquals(TermoTexto.factos("tempo(ev_1, 900)"), TermoTexto.factos("tempo(ev_1,900)."));
+        assertEquals("incidente(inc(t, ev_1), t, web_srv_02, [web_srv_02])", TermoTexto.legivel(
+                TermoTexto.factos("incidente(inc(t,ev_1),t,web_srv_02,[web_srv_02])").get(0)));
+        assertEquals("nome", TermoTexto.legivel(TermoTexto.factos("nome").get(0)));
+    }
+
+    @Test
     void errosDeSintaxeTemMensagem() {
+        assertTrue(assertThrows(TermoTexto.ErroSintaxe.class, () -> TermoTexto.factos("tempo(ev_1,)"))
+                .getMessage().contains("falta um termo"));
+        assertTrue(assertThrows(TermoTexto.ErroSintaxe.class, () -> TermoTexto.factos("2.4(x)"))
+                .getMessage().contains("nao pode levar argumentos"));
         assertTrue(assertThrows(TermoTexto.ErroSintaxe.class, () -> TermoTexto.factos("tempo(ev_1,900"))
                 .getMessage().contains("falta ')'"));
         assertTrue(assertThrows(TermoTexto.ErroSintaxe.class, () -> TermoTexto.factos("versao(Inst,v(2,4,49))"))

@@ -7,11 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import cyberrangers.cyber.config.PrologProperties;
+import cyberrangers.cyber.domain.Metaconhecimento;
 import cyberrangers.cyber.domain.Resultado;
 import cyberrangers.cyber.domain.SaudeMotor;
 import cyberrangers.cyber.domain.SaudeSistema;
 import cyberrangers.cyber.domain.TipoResultado;
 import cyberrangers.cyber.engine.drools.DroolsAdapter;
+import cyberrangers.cyber.engine.drools.ExplicadorDrools;
 import cyberrangers.cyber.engine.prolog.PrologAdapter;
 import cyberrangers.cyber.engine.prolog.PrologInstaller;
 import java.nio.file.Path;
@@ -40,12 +42,18 @@ class InferenceServiceTest {
         private final String nome;
         private final boolean pronto;
         private final String resposta;
+        private final String versaoKB;
         private final List<String> pedidos = new ArrayList<>();
 
         MotorFalso(String nome, boolean pronto, String resposta) {
+            this(nome, pronto, resposta, "6");
+        }
+
+        MotorFalso(String nome, boolean pronto, String resposta, String versaoKB) {
             this.nome = nome;
             this.pronto = pronto;
             this.resposta = resposta;
+            this.versaoKB = versaoKB;
         }
 
         @Override
@@ -61,7 +69,7 @@ class InferenceServiceTest {
 
         @Override
         public SaudeMotor estado() {
-            return new SaudeMotor(nome, pronto, null, List.of());
+            return new SaudeMotor(nome, pronto, versaoKB, pronto, Metaconhecimento.EM_DIA, List.of());
         }
     }
 
@@ -76,13 +84,13 @@ class InferenceServiceTest {
     }
 
     /**
-     * Cria o servico com os motores dados, o validador real e uma base carregada com a versao 6.
+     * Cria o servico com os motores dados, o validador real, o Explicador real e uma base carregada com a versao 6.
      * @param motores
      * @return
      */
     private InferenceService servico(MotorInferencia... motores) {
         BaseCarregada base = new BaseCarregada(json, "{\"versaoKB\":\"6\",\"cenarios\":[]}");
-        return new InferenceService(Arrays.asList(motores), new RequestValidator(), base, json);
+        return new InferenceService(Arrays.asList(motores), new RequestValidator(), base, new ExplicadorDrools(), json);
     }
 
     /**
@@ -366,5 +374,221 @@ class InferenceServiceTest {
         SaudeSistema s = servico().saude();
         assertFalse(s.pronto());
         assertTrue(s.motores().isEmpty());
+    }
+
+    /**
+     * Verifica que um motor pronto com outra versao da base que a do catalogo passa a nao pronto, com o erro a dizer
+     * as duas versoes, e que o sistema tambem nao fica pronto.
+     */
+    @Test
+    void motorComOutraVersaoNaoEstaPronto() {
+        SaudeSistema s = servico(motor("drools", CONCLUIDO), new MotorFalso("prolog", true, CONCLUIDO, "5")).saude();
+        assertFalse(s.pronto());
+        SaudeMotor prolog = s.motores().get(1);
+        assertFalse(prolog.pronto());
+        assertEquals("5", prolog.versaoKB());
+        assertEquals(List.of("o motor tem a versaoKB 5 e o catalogo de cenarios a 6"), prolog.erros());
+        assertTrue(s.motores().get(0).pronto());
+    }
+
+    /**
+     * Verifica que um motor ja nao pronto com outra versao (ou sem versao) fica como esta, sem um erro a mais: a
+     * versao nao e a causa.
+     */
+    @Test
+    void motorNaoProntoNaoGanhaErroDeVersao() {
+        SaudeSistema s = servico(new MotorFalso("prolog", false, CONCLUIDO, null)).saude();
+        assertTrue(s.motores().getFirst().erros().isEmpty(), s.toString());
+    }
+
+    // --- explicacoes --------------------------------------------------------------------------------------------
+
+    /**
+     * Uma resposta do infere com um dado de entrada (1) e uma conclusao da regra 7 (2) e uma pergunta pendente.
+     */
+    private static final String COM_FACTOS = """
+            {"estado":"aguarda_resposta","motor":"prolog","versaoKB":"6",
+             "perguntas":[{"ativo":"a1","evento":"e1","pergunta":"shell_servico","facto":1}],
+             "factos":[{"numero":1,"predicado":"x","args":["a"],"regra":null,"premissas":[]},
+                       {"numero":2,"predicado":"y","args":["a"],"regra":7,"premissas":[1]}],
+             "erro":null}
+            """;
+
+    /**
+     * O PEDIDO com os campos da explicacao dados (texto JSON sem chavetas, ex.: "\"facto\":{\"numero\":2}").
+     * @param campos
+     * @return
+     */
+    private static String comCampos(String campos) {
+        String p = PEDIDO.strip();
+        return p.substring(0, p.length() - 1) + (campos.isEmpty() ? "" : "," + campos) + "}";
+    }
+
+    /**
+     * Verifica que cada campo facto invalido do como da PEDIDO_INVALIDO com a mensagem certa, sem chamar o motor.
+     */
+    @Test
+    void factoInvalidoNaoChegaAoMotor() {
+        String[][] casos = {
+                {"", "falta o facto"},
+                {"\"facto\":null", "falta o facto"},
+                {"\"facto\":\"x\"", "o facto tem de ser um objeto JSON"},
+                {"\"facto\":{}", "o facto tem de ter numero ou predicado e args"},
+                {"\"facto\":{\"numero\":2,\"predicado\":\"y\",\"args\":[]}", "o facto tem de ter numero ou predicado e args, nao os dois"},
+                {"\"facto\":{\"numero\":0}", "o numero do facto tem de ser um inteiro maior que 0"},
+                {"\"facto\":{\"numero\":1.5}", "o numero do facto tem de ser um inteiro maior que 0"},
+                {"\"facto\":{\"numero\":\"2\"}", "o numero do facto tem de ser um inteiro maior que 0"},
+                {"\"facto\":{\"predicado\":\"y\"}", "falta a lista args do facto"},
+                {"\"facto\":{\"args\":[]}", "falta o predicado do facto"}};
+        for (String[] caso : casos) {
+            MotorFalso prolog = motor("prolog", COM_FACTOS);
+            Resultado r = servico(prolog).como("prolog", comCampos(caso[0]));
+            assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado(), caso[0]);
+            assertEquals(caso[1], assertErro(r, "prolog"), caso[0]);
+            assertTrue(prolog.pedidos.isEmpty(), "o motor nao devia ter sido chamado: " + caso[0]);
+        }
+    }
+
+    /**
+     * Verifica que os erros dos passos e os da explicacao vem todos juntos no campo erro.
+     */
+    @Test
+    void errosDoPedidoEDaExplicacaoVemJuntos() {
+        Resultado r = servico(motor("prolog", COM_FACTOS)).porque("prolog", PEDIDO.replace("\"6\"", "\"5\""));
+        assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado());
+        assertEquals(List.of("versaoKB desconhecida: 5 (carregada: 6)", "falta o facto"),
+                List.of(assertErro(r, "prolog").split("; ")));
+    }
+
+    /**
+     * Verifica que o porque de uma pergunta sem ativo, evento e pergunta validos da PEDIDO_INVALIDO, sem chamar o motor.
+     */
+    @Test
+    void perguntaInvalidaNaoChegaAoMotor() {
+        MotorFalso prolog = motor("prolog", COM_FACTOS);
+        Resultado r = servico(prolog).porquePergunta("prolog", comCampos("\"ativo\":\" \",\"evento\":1"));
+        assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado());
+        assertEquals(List.of("o campo ativo tem de ser texto nao vazio", "o campo evento tem de ser texto nao vazio",
+                "falta o campo pergunta"), List.of(assertErro(r, "prolog").split("; ")));
+        assertTrue(prolog.pedidos.isEmpty(), "o motor nao devia ter sido chamado");
+    }
+
+    /**
+     * Verifica que o motor recebe o corpo tal como veio (com o facto) e que a explicacao e montada a partir da
+     * resposta dele, com o motor da resposta.
+     */
+    @Test
+    void comoMontaAArvoreDaRespostaDoMotor() {
+        MotorFalso prolog = motor("prolog", COM_FACTOS);
+        String corpo = comCampos("\"facto\":{\"numero\":2}");
+        Resultado r = servico(prolog).como("prolog", corpo);
+        assertEquals(TipoResultado.OK, r.tipoResultado(), r.jsonResultado());
+        assertEquals(List.of(corpo), prolog.pedidos);
+        JsonNode n = json.readTree(r.jsonResultado());
+        assertEquals("prolog", n.path("motor").asString());
+        assertEquals(7, n.path("arvore").path("regra").asInt());
+        assertEquals(1, n.path("arvore").path("premissas").get(0).path("no").path("numero").asInt());
+    }
+
+    /**
+     * Verifica que um erro do motor sai tal como veio, com o seu tipo, sem passar pela explicacao.
+     */
+    @Test
+    void erroDoMotorNaoEExplicado() {
+        String timeout = "{\"estado\":\"erro\",\"motor\":\"prolog\",\"versaoKB\":null,\"erro\":\"timeout\"}";
+        Resultado r = servico(motor("prolog", timeout)).como("prolog", comCampos("\"facto\":{\"numero\":2}"));
+        assertEquals(TipoResultado.TIMEOUT, r.tipoResultado());
+        assertEquals(timeout, r.jsonResultado());
+    }
+
+    /**
+     * Verifica que um facto que nao esta na resposta, ou uma pergunta que nao esta pendente, da NAO_ENCONTRADO.
+     */
+    @Test
+    void factoOuPerguntaQueNaoEstaoNaRespostaDaoNaoEncontrado() {
+        InferenceService s = servico(motor("prolog", COM_FACTOS));
+        assertEquals(TipoResultado.NAO_ENCONTRADO,
+                s.como("prolog", comCampos("\"facto\":{\"numero\":9}")).tipoResultado());
+        assertEquals(TipoResultado.NAO_ENCONTRADO, s.porquePergunta("prolog",
+                comCampos("\"ativo\":\"a1\",\"evento\":\"e1\",\"pergunta\":\"outra\"")).tipoResultado());
+    }
+
+    /**
+     * Verifica que uma resposta de outra versaoKB que a das regras da FALHA_MOTOR: as regras nao seriam as que a
+     * produziram.
+     */
+    @Test
+    void respostaDeOutraVersaoDaFalhaMotor() {
+        Resultado r = servico(motor("prolog", COM_FACTOS.replace("\"versaoKB\":\"6\"", "\"versaoKB\":\"5\"")))
+                .como("prolog", comCampos("\"facto\":{\"numero\":2}"));
+        assertEquals(TipoResultado.FALHA_MOTOR, r.tipoResultado());
+        assertTrue(json.readTree(r.jsonResultado()).path("erro").asString().contains("versaoKB 5"), r.jsonResultado());
+    }
+
+    /**
+     * Cria o servico com os dois motores reais, com o Prolog da raiz do repositorio.
+     * @return
+     */
+    private InferenceService servicoReal() {
+        PrologProperties props = new PrologProperties("swipl", Path.of("../.."), Duration.ofSeconds(10), 4,
+                Duration.ofSeconds(2));
+        return servico(new DroolsAdapter(), new PrologAdapter(props, json, new PrologInstaller(props)));
+    }
+
+    /**
+     * Um pedido com o passo de cada cenario dado, do catalogo de cenarios, e os campos da explicacao.
+     * @param campos
+     * @param ids
+     * @return
+     */
+    private String pedidoDosCenarios(String campos, String... ids) {
+        JsonNode cenarios = json.readTree(new BaseCarregada(json).cenariosJson()).path("cenarios");
+        StringBuilder passos = new StringBuilder();
+        for (String id : ids) {
+            for (JsonNode c : cenarios) {
+                if (c.path("id").asString().equals(id)) {
+                    passos.append(passos.isEmpty() ? "" : ",").append(json.writeValueAsString(c.path("passo")));
+                }
+            }
+        }
+        return "{\"versaoKB\":\"6\",\"passos\":[" + passos + "]," + campos + "}";
+    }
+
+    /**
+     * Verifica, com os dois motores reais, que o porque de um incidente do c6 da a mesma arvore nos dois (so o motor
+     * muda): as explicacoes do Prolog montam-se com as regras do modulo Drools.
+     */
+    @Test
+    void porqueDaAMesmaArvoreNosDoisMotores() {
+        String facto = "\"facto\":{\"predicado\":\"incidente\",\"args\":[{\"f\":\"inc\",\"args\":"
+                + "[\"versao_por_confirmar\",\"ev_f1\"]},\"versao_por_confirmar\",\"web_srv_05\",[\"web_srv_05\"]]}";
+        String corpo = pedidoDosCenarios(facto, "c6");
+        InferenceService s = servicoReal();
+        JsonNode drools = json.readTree(s.porque("drools", corpo).jsonResultado());
+        JsonNode prolog = json.readTree(s.porque("prolog", corpo).jsonResultado());
+        assertEquals("concluido", drools.path("estado").asString(), drools.toString());
+        assertEquals("concluido", prolog.path("estado").asString(), prolog.toString());
+        assertEquals("prolog", prolog.path("motor").asString());
+        assertEquals(7, prolog.path("arvore").path("regraCompleta").path("id").asInt());
+        assertEquals(drools.path("arvore"), prolog.path("arvore"));
+    }
+
+    /**
+     * Verifica, com os dois motores reais, o porque da pergunta shell_servico do c7: gerada pela regra 31, e a
+     * resposta e usada pelas regras 32, 33, 34, 50 e 51.
+     */
+    @Test
+    void porquePerguntaNosDoisMotores() {
+        String corpo = pedidoDosCenarios(
+                "\"ativo\":\"web_srv_04\",\"evento\":\"ev_e1\",\"pergunta\":\"shell_servico\"", "c7");
+        InferenceService s = servicoReal();
+        for (String m : List.of("drools", "prolog")) {
+            Resultado r = s.porquePergunta(m, corpo);
+            assertEquals(TipoResultado.OK, r.tipoResultado(), m + ": " + r.jsonResultado());
+            JsonNode n = json.readTree(r.jsonResultado());
+            assertEquals(m, n.path("motor").asString());
+            assertEquals(31, n.path("geradaPor").path("regraCompleta").path("id").asInt(), m);
+            assertEquals(json.readTree("[32,33,34,50,51]"), n.path("regrasQueUsamAResposta"), m);
+        }
     }
 }
