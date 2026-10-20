@@ -6,13 +6,13 @@ package regras;
 // Estas regras assinalam as falhas no catalogo. Com o catalogo da base v6 completo, nao disparam.
 // Molde e convencoes: ver B_vetor.drl e o README desta pasta.
 
-import cyberrangers.motores.drools.modelo.Facto;
-import cyberrangers.motores.drools.modelo.Premissa;
-import cyberrangers.motores.drools.modelo.Termo;
-import cyberrangers.motores.drools.modelo.Variavel;
+import socrates.motores.drools.modelo.Facto;
+import socrates.motores.drools.modelo.Premissa;
+import socrates.motores.drools.modelo.Termo;
+import socrates.motores.drools.modelo.Variavel;
 import java.util.List;
 
-global cyberrangers.motores.drools.sessao.BaseFactos base;
+global socrates.motores.drools.sessao.BaseFactos base;
 
 // R89: uma vulnerabilidade tem um impacto que nao tem nenhuma evidencia esperada -> falha no catalogo
 //   se [vuln_impacto(Vuln,Impacto) e nao evidencia_impacto(Impacto,_,_)]

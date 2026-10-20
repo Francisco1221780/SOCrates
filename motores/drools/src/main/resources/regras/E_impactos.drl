@@ -4,14 +4,14 @@ package regras;
 // Um impacto pode exigir condicoes de configuracao (requer_condicao); basta UMA em falta para ficar excluido (R18).
 // Molde e convencoes: ver B_vetor.drl e o README desta pasta.
 
-import cyberrangers.motores.drools.modelo.Facto;
-import cyberrangers.motores.drools.modelo.Premissa;
-import cyberrangers.motores.drools.modelo.Termo;
-import cyberrangers.motores.drools.modelo.Variavel;
-import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import socrates.motores.drools.modelo.Facto;
+import socrates.motores.drools.modelo.Premissa;
+import socrates.motores.drools.modelo.Termo;
+import socrates.motores.drools.modelo.Variavel;
+import socrates.motores.drools.sessao.CondicoesCalculadas;
 import java.util.List;
 
-global cyberrangers.motores.drools.sessao.BaseFactos base;
+global socrates.motores.drools.sessao.BaseFactos base;
 
 // R16: instalacao vulneravel ao alcance do ataque, e o impacto nao exige nenhuma condicao -> impacto possivel
 //   se [vetor_aberto(Ev,Alvo,Inst,Vuln) e vulneravel(Inst,Vuln) e vuln_impacto(Vuln,Impacto) e

@@ -68,10 +68,10 @@ swipl motores/drools/ferramentas/gera_porque_nao.pl --verificar
 
 | Caminho | Estado |
 | :--- | :--- |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/explicacao/Arvore.java` | Novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/MotorDrools.java` | Alterado: `como`, `porque`, `porquePergunta`, `cenarios`, `predicadosConcluidos` |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/consola/Explicacoes.java`, `ConsolaDrools.java`, `Cenarios.java` | Alterados: usam a API |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/MotorDroolsExplicacoesTest.java` | Novo |
+| `motores/drools/src/main/java/socrates/motores/drools/explicacao/Arvore.java` | Novo |
+| `motores/drools/src/main/java/socrates/motores/drools/MotorDrools.java` | Alterado: `como`, `porque`, `porquePergunta`, `cenarios`, `predicadosConcluidos` |
+| `motores/drools/src/main/java/socrates/motores/drools/consola/Explicacoes.java`, `ConsolaDrools.java`, `Cenarios.java` | Alterados: usam a API |
+| `motores/drools/src/test/java/socrates/motores/drools/MotorDroolsExplicacoesTest.java` | Novo |
 | `motores/drools/README.md` | Alterado: secção "API do motor" |
 | `docs/changes/features/F0006-drools-api-explicacoes/README.md`, `RESULT.md` | Novos |
 | `docs/changes/features/README.md` | Alterado: linha da F0006 |

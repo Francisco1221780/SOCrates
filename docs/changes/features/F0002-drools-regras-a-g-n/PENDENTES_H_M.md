@@ -6,13 +6,13 @@ pelo nível completo do `ParidadeTest` (F0002), que compara o Drools com as 92 r
 
 **Estado a 18/10:** as regras A–G e N dão exatamente o mesmo que o Prolog (nível A–G+N, 0 diferenças). Com as 92
 juntas, todas as diferenças que restam têm a causa de raiz numa das regras abaixo. Estão listadas em
-`ParidadeTest.CAUSAS_H_M` e `ERROS_H_M` (`motores/drools/src/test/java/cyberrangers/motores/drools/ParidadeTest.java`),
+`ParidadeTest.CAUSAS_H_M` e `ERROS_H_M` (`motores/drools/src/test/java/socrates/motores/drools/ParidadeTest.java`),
 e por isso o build passa. **Quando corrigires uma causa, tira a linha respetiva dessas listas.** O teste não avisa
 quando uma linha da lista já não tem diferença nenhuma; o objetivo é as duas listas ficarem vazias.
 
 Como ver as diferenças de uma causa: tira a linha da lista e corre
 `.\mvnw.cmd -pl motores/drools test -Dtest=ParidadeTest`. O relatório
-(`motores/drools/target/surefire-reports/cyberrangers.motores.drools.ParidadeTest.txt`) lista cada facto diferente,
+(`motores/drools/target/surefire-reports/socrates.motores.drools.ParidadeTest.txt`) lista cada facto diferente,
 com a regra e as premissas dos dois lados.
 
 ---

@@ -1,5 +1,5 @@
 % =====================================================================================
-% MOTOR DE INFERENCIA - Analista virtual de SOC (CyberRangers)
+% MOTOR DE INFERENCIA - Analista virtual de SOC (SOCrates)
 % Parte do sp_exp2.pl da UC (encadeamento direto, metaconhecimento, negacao "nao",
 % explicacoes "como" e "porque nao") e acrescenta o que a base de conhecimento v6 exige:
 %   1. CONDICOES CALCULADAS: uma condicao C com condicao_calculada(C) avalia-se com call(C)

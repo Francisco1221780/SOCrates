@@ -1,4 +1,4 @@
-% CENARIOS - Analista virtual de SOC (CyberRangers), versao 6
+% CENARIOS - Analista virtual de SOC (SOCrates), versao 6
 % Cada ficheiro desta pasta e um cenario: a telemetria que chega ao sistema nesse momento (alertas, eventos dos hosts,
 % logins, trafego), uma atualizacao do inventario ou do catalogo, ou uma resposta do analista.
 % O estado inicial esta em soc_factos.txt; os cenarios acrescentam-lhe factos.

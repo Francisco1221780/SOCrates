@@ -9,15 +9,15 @@ package regras;
 // Marcas (condicao_le/2): depois e tardia leem tempo e janela; sem_ataque_intermedio le tempo; origem_evidencia le
 // evento_processo, evento_instancia, processo_componente, instancia_processo, vetor_aberto e vulneravel.
 
-import cyberrangers.motores.drools.modelo.Facto;
-import cyberrangers.motores.drools.modelo.Premissa;
-import cyberrangers.motores.drools.modelo.Termo;
-import cyberrangers.motores.drools.modelo.Variavel;
-import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
-import cyberrangers.motores.drools.sessao.Marca;
+import socrates.motores.drools.modelo.Facto;
+import socrates.motores.drools.modelo.Premissa;
+import socrates.motores.drools.modelo.Termo;
+import socrates.motores.drools.modelo.Variavel;
+import socrates.motores.drools.sessao.CondicoesCalculadas;
+import socrates.motores.drools.sessao.Marca;
 import java.util.List;
 
-global cyberrangers.motores.drools.sessao.BaseFactos base;
+global socrates.motores.drools.sessao.BaseFactos base;
 
 /** O resultado da origem_evidencia e o termo f(Arg) (ex.: de_outro_processo(programa(sshd))). */
 function boolean origemE(Object origem, String f) {

@@ -5,7 +5,7 @@ Scripts Prolog que geram ficheiros a partir da base de conhecimento. O que sai d
 | Script | Gera |
 | --- | --- |
 | `gera_meta.pl` | Metaconhecimento (`facto_dispara_regras/2`) a partir de `soc_regras.txt` e do `condicao_le/2` do `soc_suporte.txt`. Voltar a correr sempre que as regras mudam. |
-| `gera_json.pl` | `factos_iniciais.json` para `motores/drools/src/main/resources/` e `cenarios.json` para `backend/cyber/src/main/resources/generated/` e, igual, para `motores/drools/src/main/resources/` (o módulo Drools corre os cenários sem o backend); `regras.json` (as regras do `soc_regras.txt` como dados, para o "porque não?" do Drools) para `motores/drools/src/main/resources/`. |
+| `gera_json.pl` | `factos_iniciais.json` para `motores/drools/src/main/resources/` e `cenarios.json` para `backend/socrates/src/main/resources/generated/` e, igual, para `motores/drools/src/main/resources/` (o módulo Drools corre os cenários sem o backend); `regras.json` (as regras do `soc_regras.txt` como dados, para o "porque não?" do Drools) para `motores/drools/src/main/resources/`. |
 | `gera_referencias.pl` | Os resultados de referência do motor em `motores/prolog/referencia_prolog/<variante>.json`, a correr o `wrapper.pl` sobre cada variante. |
 
 ## Regenerar o metaconhecimento (`gera_meta.pl`)
