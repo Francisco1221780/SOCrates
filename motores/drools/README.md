@@ -46,7 +46,7 @@ Mensagens que podem aparecer antes do menu, e o que fazer com elas:
 - **`SLF4J: No SLF4J providers were found`** não deve aparecer. O módulo traz o `slf4j-simple` como dependência `optional` (não passa para o backend), com o nível em `error` no `src/main/resources/simplelogger.properties`. Se aparecer, o IntelliJ está a correr com um classpath antigo: *Reload* do projeto Maven.
 - **`WARNING: sun.misc.Unsafe::objectFieldOffset ...`** é o JDK 25 a avisar que a `xstream`, que o Drools usa por dentro, chama um método interno que vai ser removido. Não afeta o motor. Para não o ver, na *Run Configuration* da `ConsolaDrools`, em *VM options*: `--sun-misc-unsafe-memory-access=allow` (opção da JVM; fica na configuração de cada um, não no projeto).
 
-O menu é o do `soc_motor.pl` (`menu/0`): as mesmas opções, numeradas por ordem de 0 a 14: o "porque?" (10) fica junto do "como?" (9) e do "porque não?" (11), por isso as opções a partir da 10 têm um número a mais do que no Prolog. Depois de cada opção a consola pára até carregares em Enter (para o menu não tapar o que a opção escreveu); cada pedido mostra as escolhas que há (cenários, perguntas, predicados com conclusões, o que as regras podem concluir). Não se escreve sintaxe Prolog: os factos escrevem-se `nome(arg, arg)`, sem plicas, e as respostas não levam ponto final (`1`, `c6`, `sim`). O ponto final e as plicas do Prolog continuam a ser aceites, e as listas e os cenários `.txt` do Prolog também.
+O menu é o do `soc_motor.pl` (`menu/0`): as mesmas opções e a mesma numeração, de 0 a 13. Depois de cada opção a consola pára até carregares em Enter (para o menu não tapar o que a opção escreveu); cada pedido mostra as escolhas que há (cenários, perguntas, predicados com conclusões, o que as regras podem concluir). Não se escreve sintaxe Prolog: os factos escrevem-se `nome(arg, arg)`, sem plicas, e as respostas não levam ponto final (`1`, `c6`, `sim`). O ponto final e as plicas do Prolog continuam a ser aceites, e as listas e os cenários `.txt` do Prolog também.
 
 | Opção | O que faz |
 | --- | --- |
@@ -58,16 +58,15 @@ O menu é o do `soc_motor.pl` (`menu/0`): as mesmas opções, numeradas por orde
 | 6 / 7 | Tickets abertos (por prioridade) e fechados, incidentes sem ticket / ações recomendadas por ativo |
 | 8 | Registar a recuperação de uma máquina comprometida (`recuperado(Ativo, Evento)`) |
 | 9 | "Como?": a árvore de factos de uma conclusão, com o número da regra de cada um (pelo número ou pelo facto) |
-| 10 | "Porque?": a mesma conclusão com cada regra escrita por inteiro (`SE` … `ENTAO`) e os factos que a satisfizeram, até aos dados |
-| 11 | "Porque não?": porque é que um facto não se concluiu. Para cada regra que o podia concluir, a regra inteira com cada condição marcada (`[ok]` ou `[FALTA]`) e, por baixo, o que falta e porquê, até aos dados de entrada. O facto pode ter variáveis, ex.: `compromisso_confirmado(web_srv_05, Ev)` |
-| 12 | Mostrar factos: `todos`, `concluidos` ou os de um predicado (a consola lista os predicados que há) |
-| 13 | Opções do motor: `mostrar_conclusoes` (escreve cada conclusão nova), `passo_a_passo` (espera por Enter depois de cada uma), `profundidade_whynot` (4) |
-| 14 | Injetar todos os cenários de uma vez: volta a carregar a base e injeta as sequências `base` e `normal` (sem respostas), como o `injeta_todos` |
+| 10 | "Porque não?": porque é que um facto não se concluiu. Para cada regra que o podia concluir, a regra inteira com cada condição marcada (`[ok]` ou `[FALTA]`) e, por baixo, o que falta e porquê, até aos dados de entrada. O facto pode ter variáveis, ex.: `compromisso_confirmado(web_srv_05, Ev)` |
+| 11 | Mostrar factos: `todos`, `concluidos` ou os de um predicado (a consola lista os predicados que há) |
+| 12 | Opções do motor: `mostrar_conclusoes` (escreve cada conclusão nova), `passo_a_passo` (espera por Enter depois de cada uma), `profundidade_whynot` (4) |
+| 13 | Injetar todos os cenários de uma vez: volta a carregar a base e injeta as sequências `base` e `normal` (sem respostas), como o `injeta_todos` |
 | 0 | Sair (também com o fim da entrada, Ctrl+D) |
 
-Diferenças para o menu do Prolog: arranca já com a base carregada (no Prolog é preciso a opção 1, e depois a 2); a dica de profundidade do "porque não?" aponta para a opção 13, em vez do `define_opcao/2`; e as perguntas por responder são as da resposta do motor (sem as já respondidas com "nao sei").
+O menu tem as mesmas opções e a mesma numeração (0 a 13) do Prolog. O "porque?" só existe durante as perguntas ao analista (opção 5), onde explica porque se faz a pergunta; não há opção para o pedir sobre um facto qualquer (isso é o "como?"). Diferenças para o menu do Prolog: arranca já com a base carregada (no Prolog é preciso a opção 1, e depois a 2); a dica de profundidade do "porque não?" aponta para a opção 12, em vez do `define_opcao/2`; e as perguntas por responder são as da resposta do motor (sem as já respondidas com "nao sei").
 
-As três explicações (9, 10 e 11) estão na classe `consola/Explicacoes` e mostram os factos como `nome(arg, arg)`. O "porque não?" usa as regras como dados (`src/main/resources/regras.json`, gerado pelo `gera_json.pl`) e está também na API: `MotorDrools.porqueNao(pedido, facto, profundidade)`. O texto do "porque não?" é próprio da consola Drools, mas o `PorqueNaoTest` compara as mesmas linhas, escritas no formato do `whynot/1`, com o do Prolog (referência gerada por `ferramentas/gera_porque_nao.pl`).
+As explicações (o "como?" na 9, o "porque não?" na 10 e o "porque?" de uma pergunta na 5) estão na classe `consola/Explicacoes` e mostram os factos como `nome(arg, arg)`. O "porque não?" usa as regras como dados (`src/main/resources/regras.json`, gerado pelo `gera_json.pl`) e está também na API: `MotorDrools.porqueNao(pedido, facto, profundidade)`. O texto do "porque não?" é próprio da consola Drools, mas o `PorqueNaoTest` compara as mesmas linhas, escritas no formato do `whynot/1`, com o do Prolog (referência gerada por `ferramentas/gera_porque_nao.pl`).
 
 O motor não guarda estado entre pedidos: a consola guarda a lista de passos e envia o pedido inteiro ao `MotorDrools.infere` a cada ação. O que mostra é o que o backend e o comparador recebem.
 

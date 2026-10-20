@@ -51,7 +51,7 @@ final class Explicacoes {
         }
     }
 
-    // --- porque? (opcao 10, e o "porque" de uma pergunta)
+    // --- porque? (so o "porque" de uma pergunta, opcao 5)
 
     /** A conclusao, a regra completa que a produziu e os factos que a satisfizeram (o {@code arvore} do {@code MotorDrools.porque}). */
     void porque(JsonNode no) {
@@ -134,7 +134,7 @@ final class Explicacoes {
         return TermoTexto.legivel(c);
     }
 
-    // --- porque nao? (opcao 11)
+    // --- porque nao? (opcao 10)
 
     /**
      * As linhas do {@link PorqueNao}, no formato novo: para cada regra que podia concluir o facto, a regra inteira com
@@ -174,7 +174,7 @@ final class Explicacoes {
                 case "dado_de_entrada" -> out.println(tab + "E um dado de entrada: nao esta na base e nenhuma regra o"
                         + " conclui, por isso tem de ser fornecido");
                 case "ja_explicado" -> out.println(tab + "(" + t + ": ja explicado acima)");
-                case "profundidade" -> out.println(tab + "(ha mais causas: aumente a profundidade na opcao 13)");
+                case "profundidade" -> out.println(tab + "(ha mais causas: aumente a profundidade na opcao 12)");
                 case "falta_correr_motor" -> out.println(tab + "As condicoes de uma regra que conclui " + t
                         + " verificam-se: falta correr o motor (opcao 2)");
                 case "calculada_falsa" -> out.println(tab + "A condicao calculada " + t + " e falsa");
@@ -220,7 +220,7 @@ final class Explicacoes {
             case "ja_explicado" -> tab + "(" + t + ": ja explicado acima)";
             case "dado_de_entrada" -> tab + "Porque: o facto " + t
                     + " nao esta na base e nenhuma regra o conclui (e um dado de entrada)";
-            case "profundidade" -> tab + "(... para ver mais fundo: opcao 13, profundidade_whynot)";
+            case "profundidade" -> tab + "(... para ver mais fundo: opcao 12, profundidade_whynot)";
             case "falta_correr_motor" -> tab + "As premissas de uma regra que conclui " + t
                     + " verificam-se: falta correr o motor (opcao 2).";
             case "regra" -> tab + "Porque pela regra " + l.get("regra").asInt() + ":";

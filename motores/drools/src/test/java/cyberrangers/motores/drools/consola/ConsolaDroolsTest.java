@@ -35,7 +35,7 @@ class ConsolaDroolsTest {
 
     @Test
     void factosEscritosSemSintaxeProlog() {
-        String s = consola("3", "c6", "4", "tempo(ev_zz, 900)", "versao(srv_x, 2.4.49-ubuntu1)", "", "12", "tempo", "12", "versao", "0");
+        String s = consola("3", "c6", "4", "tempo(ev_zz, 900)", "versao(srv_x, 2.4.49-ubuntu1)", "", "11", "tempo", "11", "versao", "0");
         assertTrue(s.contains("Facto: "), s);
         assertTrue(s.contains("-> tempo(ev_zz, 900)"), s);
         assertTrue(s.contains("-> versao(srv_x, 2.4.49-ubuntu1)"), s);
@@ -45,7 +45,7 @@ class ConsolaDroolsTest {
     @Test
     void osPromptsNaoPedemPontosDoProlog() {
         String s = consola("3", "c7", "5", "1", "porque", "0", "0");
-        s += consola("12", "0", "13", "", "0");
+        s += consola("11", "0", "12", "", "0");
         assertFalse(s.contains("porque."), s);
         assertFalse(s.contains("todos."), s);
         assertFalse(s.contains("nada."), s);
@@ -61,8 +61,8 @@ class ConsolaDroolsTest {
         assertTrue(s.contains("========== ANALISTA VIRTUAL DE SOC =========="), s);
         assertTrue(s.matches("(?s).*\\d+ factos novos \\(n\\. 315 a \\d+\\)\\..*"), s);
         for (String opcao : new String[] {" 1. Carregar a base de conhecimento", " 2. Correr o motor",
-                "11. Explicar porque nao se concluiu um facto (porque nao?)", "13. Opcoes do motor",
-                "14. Injetar todos os cenarios de uma vez", " 0. Sair"}) {
+                "10. Explicar porque nao se concluiu um facto (porque nao?)", "12. Opcoes do motor",
+                "13. Injetar todos os cenarios de uma vez", " 0. Sair"}) {
             assertTrue(s.contains(opcao), opcao);
         }
         assertTrue(s.contains("Opcao: "), s);
@@ -113,7 +113,7 @@ class ConsolaDroolsTest {
 
     @Test
     void factoAMaoRepetidoEOpcaoMostrarConclusoes() {
-        String s = consola("13", "mostrar_conclusoes.", "sim.", "3", "c6", "4", "tempo(ev_f1,2200).", "", "0");
+        String s = consola("12", "mostrar_conclusoes.", "sim.", "3", "c6", "4", "tempo(ev_f1,2200).", "", "0");
         assertTrue(s.contains("   mostrar_conclusoes = nao"), s);
         assertTrue(s.contains("Foi concluido o facto n. "), s);
         assertTrue(s.contains("vetor_aberto(ev_f1, web_srv_05, web_srv_05_apache, cve_2021_41773)   (regra 4)"), s);
@@ -138,7 +138,7 @@ class ConsolaDroolsTest {
 
     @Test
     void porqueNaoMostraARegraInteiraComCadaCondicaoMarcada() {
-        String s = consola("3", "c6", "11", "exploracao_possivel(ev_f1, web_srv_05, V)", "0");
+        String s = consola("3", "c6", "10", "exploracao_possivel(ev_f1, web_srv_05, V)", "0");
         assertTrue(s.contains("Porque nao existe exploracao_possivel(ev_f1, web_srv_05, V)?"), s);
         assertTrue(s.contains("A regra 6 podia conclui-lo, mas nao se verifica:"), s);
         assertTrue(s.contains("  SE    [ok]    vetor_aberto(ev_f1, web_srv_05, web_srv_05_apache, cve_2021_41773)   (facto n. "), s);
@@ -152,46 +152,31 @@ class ConsolaDroolsTest {
 
     @Test
     void porqueNaoDeUmFactoQueExisteEDeUmaCondicaoNegada() {
-        String s = consola("3", "c6", "11", "tempo(ev_f1, 2200)", "0");
+        String s = consola("3", "c6", "10", "tempo(ev_f1, 2200)", "0");
         assertTrue(s.contains("Mas esse facto existe (facto n. "), s);
-        s = consola("3", "c6", "11", "versao_por_confirmar_x", "0");
+        s = consola("3", "c6", "10", "versao_por_confirmar_x", "0");
         assertTrue(s.contains("Porque nao existe versao_por_confirmar_x?"), s);
     }
 
     @Test
     void porqueNaoDizQuemImpedeUmaCondicaoNegada() {
-        String s = consola("3", "c1", "11", "exploracao_incerta(Ev, Alvo, Vuln)", "0");
+        String s = consola("3", "c1", "10", "exploracao_incerta(Ev, Alvo, Vuln)", "0");
         assertTrue(s.matches("(?s).*- Impede: o facto versao\\(web_srv_02_apache, v\\(2, 4, 52\\)\\) existe \\(facto n\\. \\d+\\), "
                 + "e a regra exige que nao exista.*"), s);
     }
 
     @Test
-    void porqueMostraARegraCompletaEOsFactos() {
-        String s = consola("3", "c6", "10",
-                "incidente(inc(versao_por_confirmar, ev_f1), versao_por_confirmar, web_srv_05, [web_srv_05])", "0");
-        assertTrue(s.contains("Concluido pela regra 7:"), s);
-        assertTrue(s.contains("  SE    vetor_aberto(Ev, Alvo, Inst, Vuln)"), s);
-        assertTrue(s.contains("  E     nao versao(Inst, _)"), s);
-        assertTrue(s.contains("  ENTAO exploracao_incerta(Ev, Alvo, Vuln)"), s);
-        assertTrue(s.contains("Com os factos:"), s);
-        assertTrue(s.contains("Concluido pela regra 4:"), s);
-        assertTrue(s.contains("(dado de entrada)"), s);
-        assertTrue(s.contains("nao se verifica versao(web_srv_05_apache, A)"), s);
-        assertTrue(s.contains("a condicao porto_compativel(ev_f1, 80, tcp) verifica-se (calculada)"), s);
-    }
-
-    @Test
-    void porquePeloNumeroDeUmDadoEDeUmFactoQueNaoExiste() {
-        String s = consola("3", "c6", "10", "1", "10", "999999", "10", "tempo(ev_nao_existe, 1)", "0");
-        assertTrue(s.contains("(dado de entrada)"), s);
+    void comoPeloNumeroDeUmDadoEDeUmFactoQueNaoExiste() {
+        String s = consola("3", "c6", "9", "1", "9", "999999", "9", "tempo(ev_nao_existe, 1)", "0");
+        assertTrue(s.contains("(dado)"), s);
         assertTrue(s.contains("Essa conclusao nao foi tirada."), s);
-        assertTrue(s.contains("nao esta na memoria de trabalho. Experimente o porque nao? (opcao 11)."), s);
+        assertTrue(s.contains("nao esta na memoria de trabalho. Experimente o porque nao? (opcao 10)."), s);
     }
 
     @Test
     void osPedidosMostramAsEscolhasPossiveis() {
-        String s = consola("3", "c6", "10", "incidente", "0", "11", "", "12", "0");
-        // 14: os predicados concluidos, e o nome de um predicado lista as conclusoes dele com o numero
+        String s = consola("3", "c6", "9", "incidente", "0", "10", "", "11", "0");
+        // 9: os predicados concluidos, e o nome de um predicado lista as conclusoes dele com o numero
         assertTrue(s.contains("Conclusoes do motor, por predicado:"), s);
         assertTrue(s.contains("incidente (1)"), s);
         assertTrue(s.matches("(?s).*  \\d+\\. incidente\\(inc\\(versao_por_confirmar, ev_f1\\).*"), s);
@@ -218,18 +203,20 @@ class ConsolaDroolsTest {
     }
 
     @Test
-    void menuTemAsTresExplicacoesSeguidasEPorOrdem() {
+    void menuTemOComoEOPorqueNaoSeguidosESemPorqueDeFactos() {
         String s = consola("0");
         int como = s.indexOf(" 9. Explicar como se concluiu");
-        int porque = s.indexOf("10. Explicar porque se concluiu um facto, com as regras (porque?)");
-        int porqueNao = s.indexOf("11. Explicar porque nao se concluiu");
-        assertTrue(como > 0 && como < porque && porque < porqueNao, s);
+        int porqueNao = s.indexOf("10. Explicar porque nao se concluiu");
+        assertTrue(como > 0 && como < porqueNao, s);
+        // o "porque?" so existe durante as perguntas (opcao 5), como no Prolog
+        assertFalse(s.contains("(porque?)"), s);
+        assertFalse(s.contains("14."), s);
     }
 
-    /** A opcao 14 da a mesma resposta que o pedido com as sequencias base e normal enviado direto ao motor. */
+    /** A opcao 13 da a mesma resposta que o pedido com as sequencias base e normal enviado direto ao motor. */
     @Test
     void injetarTodosEOMesmoQueOPedidoDireto() throws Exception {
-        String s = consola("14", "0");
+        String s = consola("13", "0");
         assertTrue(s.contains("=== Cenario c39: maquina recuperada"), s);
         assertTrue(s.contains("=== Cenario c34: "), s);
         JsonNode c = json.readTree(ConsolaDroolsTest.class.getResourceAsStream("/cenarios.json"));
@@ -249,7 +236,7 @@ class ConsolaDroolsTest {
     @Test
     void recuperacaoDeUmaMaquina() {
         // web_srv_01/ev_a1 ja vem recuperado no cenario 39; app_srv_01/ev_k1 (c11b) nao
-        String s = consola("14", "8", "app_srv_01.", "ev_k1.", "0");
+        String s = consola("13", "8", "app_srv_01.", "ev_k1.", "0");
         assertTrue(s.contains("   app_srv_01 (evento ev_k1)"), s);
         Matcher m = Pattern.compile("Evento do compromisso: (\\d+) factos novos").matcher(s);
         assertTrue(m.find(), s);

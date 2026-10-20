@@ -19,7 +19,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * "Porque nao?" igual ao whynot/1 do Prolog: para cada facto de porque_nao/factos.txt, depois das sequencias base e
- * normal (a opcao 13 do menu do Prolog e a 14 do Drools), o texto do Drools e o de porque_nao/prolog.txt (gerado por
+ * normal (a opcao 13 do menu, nos dois), o texto do Drools e o de porque_nao/prolog.txt (gerado por
  * motores/drools/ferramentas/gera_porque_nao.pl). Os numeros dos factos mudam entre motores, por isso nao se comparam;
  * a dica da profundidade aponta para a opcao do menu de cada um.
  */
@@ -59,7 +59,7 @@ class PorqueNaoTest {
         String r = MOTOR.porqueNao(pedidoBaseENormal(), TermoTexto.factos(facto, true).get(0).toString(), 4);
         StringBuilder drools = new StringBuilder();
         JSON.readTree(r).get("explicacao").forEach(l -> drools.append(Explicacoes.linhaPorqueNaoProlog(l)).append('\n'));
-        assertEquals(normaliza(esperado.replace("define_opcao(profundidade_whynot, N)", "opcao 13, profundidade_whynot")),
+        assertEquals(normaliza(esperado.replace("define_opcao(profundidade_whynot, N)", "opcao 12, profundidade_whynot")),
                 normaliza(drools.toString()), facto);
     }
 

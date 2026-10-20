@@ -276,7 +276,7 @@ public class MotorDrools {
         return arvore(pedidoJson, factoJson, false);
     }
 
-    /** "Porque?" (opcao 10): o mesmo que {@link #como}, e cada no concluido traz a regra completa ({@code regraCompleta}). */
+    /** "Porque?" (de uma pergunta, opcao 5, e a API): o mesmo que {@link #como}, e cada no concluido traz a regra completa ({@code regraCompleta}). */
     public String porque(String pedidoJson, String factoJson) {
         return arvore(pedidoJson, factoJson, true);
     }

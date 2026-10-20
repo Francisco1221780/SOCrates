@@ -23,9 +23,9 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * Consola interativa do motor Drools, com o menu/0 do soc_motor.pl: as mesmas opcoes e os mesmos textos, mas numeradas
- * por ordem (0 a 14), porque o "porque?" (10) entra junto do "como?" (9) e do "porque nao?" (11), que no Prolog e a 10.
- * As tres explicacoes estao na {@link Explicacoes}. A diferenca para o Prolog e que arranca ja com a base do modulo
+ * Consola interativa do motor Drools, com o menu/0 do soc_motor.pl: as mesmas opcoes, os mesmos textos e a mesma
+ * numeracao (0 a 13). O "porque?" so existe durante as perguntas ao analista (opcao 5), como no Prolog: explica porque
+ * se faz uma pergunta, e nao ha opcao para o pedir sobre um facto qualquer. As explicacoes estao na {@link Explicacoes}. A diferenca para o Prolog e que arranca ja com a base do modulo
  * carregada (as regras, o factos_iniciais.json e o cenarios.json vem no classpath); a opcao 1 volta a carrega-la, ou
  * carrega outro ficheiro de factos iniciais.
  *
@@ -118,11 +118,10 @@ public final class ConsolaDrools {
         out.println(" 7. Acoes recomendadas");
         out.println(" 8. Registar a recuperacao de uma maquina");
         out.println(" 9. Explicar como se concluiu um facto (como?)");
-        out.println("10. Explicar porque se concluiu um facto, com as regras (porque?)");
-        out.println("11. Explicar porque nao se concluiu um facto (porque nao?)");
-        out.println("12. Mostrar factos");
-        out.println("13. Opcoes do motor");
-        out.println("14. Injetar todos os cenarios de uma vez");
+        out.println("10. Explicar porque nao se concluiu um facto (porque nao?)");
+        out.println("11. Mostrar factos");
+        out.println("12. Opcoes do motor");
+        out.println("13. Injetar todos os cenarios de uma vez");
         out.println(" 0. Sair");
     }
 
@@ -137,11 +136,10 @@ public final class ConsolaDrools {
             case "7" -> mostraAcoes();
             case "8" -> registaRecuperacao();
             case "9" -> como();
-            case "10" -> porque();
-            case "11" -> porqueNao();
-            case "12" -> mostraFactos();
-            case "13" -> opcoes();
-            case "14" -> injetaTodos();
+            case "10" -> porqueNao();
+            case "11" -> mostraFactos();
+            case "12" -> opcoes();
+            case "13" -> injetaTodos();
             default -> out.println("Opcao invalida.");
         }
     }
@@ -691,7 +689,7 @@ public final class ConsolaDrools {
         }
     }
 
-    // --- 9, 14, 10: como?, porque? e porque nao?
+    // --- 9, 10: como? e porque nao?
 
     /**
      * Pede um facto da memoria de trabalho, pelo numero ou escrito; o nome de um predicado lista as conclusoes dele
@@ -766,7 +764,7 @@ public final class ConsolaDrools {
         JsonNode f = todos.values().stream().filter(x -> SessaoConsola.chave(x).equals(chave)).findFirst().orElse(null);
         if (f == null) {
             out.println("O facto " + TermoTexto.legivel(lidos.get(0))
-                    + " nao esta na memoria de trabalho. Experimente o porque nao? (opcao 11).");
+                    + " nao esta na memoria de trabalho. Experimente o porque nao? (opcao 10).");
         }
         return f;
     }
@@ -781,15 +779,6 @@ public final class ConsolaDrools {
         JsonNode r = f == null ? null : chama(motor.como(sessao.pedido(), numeroDoFacto(f)));
         if (r != null) {
             explicacoes.como(r.get("arvore"));
-        }
-    }
-
-    private void porque() {
-        Map<Integer, JsonNode> todos = porNumero();
-        JsonNode f = escolheFacto(todos);
-        JsonNode r = f == null ? null : chama(motor.porque(sessao.pedido(), numeroDoFacto(f)));
-        if (r != null) {
-            explicacoes.porque(r.get("arvore"));
         }
     }
 
