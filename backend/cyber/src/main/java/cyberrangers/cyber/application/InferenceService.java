@@ -6,15 +6,19 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
  * Escolhe o motor de inferencia pelo nome, valida o pedido antes de lho passar e diz o que aconteceu, para a API
- * escolher o codigo HTTP. Junta tambem o estado de todos os motores (para o /api/health).
+ * escolher o codigo HTTP. As explicacoes ("como?", "porque?", "porque?" de uma pergunta) correm o mesmo pedido e
+ * montam-se a partir da resposta, com o Explicador. Junta tambem o estado de todos os motores (para o /api/health).
  */
 @Service
 public class InferenceService {
@@ -23,16 +27,20 @@ public class InferenceService {
             "pedido JSON invalido", "o pedido tem de", "versaoKB desconhecida", "o passo ",
             "facto invalido no passo", "termo invalido no passo");
 
+    private static final List<String> ERROS_SEM_ALVO = List.of("esse facto nao esta", "essa pergunta nao esta");
+
     private final Map<String, MotorInferencia> motores;
     private final RequestValidator requestValidator;
     private final BaseCarregada base;
+    private final Explicador explicador;
     private final JsonMapper jsonMapper;
 
     public InferenceService(List<MotorInferencia> motores, RequestValidator requestValidator,
-                            BaseCarregada base, JsonMapper jsonMapper) {
+                            BaseCarregada base, Explicador explicador, JsonMapper jsonMapper) {
         this.motores = motores.stream().collect(Collectors.toUnmodifiableMap(MotorInferencia::nome, m -> m));
         this.requestValidator = requestValidator;
         this.base = base;
+        this.explicador = explicador;
         this.jsonMapper = jsonMapper;
     }
 
@@ -63,25 +71,93 @@ public class InferenceService {
      * @return
      */
     public Resultado infere(String nomeMotor, String corpo) {
+        return corre(nomeMotor, corpo, pedido -> List.of(), null);
+    }
+
+    /**
+     * "Como?": corre o pedido e devolve a arvore de factos do facto pedido (campo facto, por numero ou por predicado e
+     * args). NAO_ENCONTRADO se o facto nao esta na resposta.
+     * @param nomeMotor
+     * @param corpo
+     * @return
+     */
+    public Resultado como(String nomeMotor, String corpo) {
+        return arvore(nomeMotor, corpo, false);
+    }
+
+    /**
+     * "Porque?": o mesmo que o como, e cada no concluido traz a regra completa (regraCompleta).
+     * @param nomeMotor
+     * @param corpo
+     * @return
+     */
+    public Resultado porque(String nomeMotor, String corpo) {
+        return arvore(nomeMotor, corpo, true);
+    }
+
+    /**
+     * "Porque?" de uma pergunta: corre o pedido e devolve a regra que gerou a pergunta pendente (campos ativo, evento
+     * e pergunta) e as regras que usam a resposta. NAO_ENCONTRADO se a pergunta nao esta por responder.
+     * @param nomeMotor
+     * @param corpo
+     * @return
+     */
+    public Resultado porquePergunta(String nomeMotor, String corpo) {
+        return corre(nomeMotor, corpo, requestValidator::validaPergunta,
+                (pedido, resposta) -> explicador.porquePergunta(resposta, pedido.get("ativo").asString(),
+                        pedido.get("evento").asString(), pedido.get("pergunta").asString()));
+    }
+
+    /**
+     * O como e o porque: a arvore do facto pedido, com ou sem as regras completas.
+     * @param nomeMotor
+     * @param corpo
+     * @param comRegras
+     * @return
+     */
+    private Resultado arvore(String nomeMotor, String corpo, boolean comRegras) {
+        return corre(nomeMotor, corpo, requestValidator::validaFacto,
+                (pedido, resposta) -> explicador.como(resposta, jsonMapper.writeValueAsString(pedido.get("facto")),
+                        comRegras));
+    }
+
+    /**
+     * Verifica que o motor existe e que o pedido e valido (os passos e os campos da explicacao), e so depois corre o
+     * pedido no motor, com o corpo original. Sem explicacao, o resultado e o do motor; com explicacao, e o que ela
+     * monta a partir da resposta, se o motor respondeu sem erro.
+     * @param nomeMotor
+     * @param corpo
+     * @param validaCampos
+     * @param explica
+     * @return
+     */
+    private Resultado corre(String nomeMotor, String corpo, Function<JsonNode, List<String>> validaCampos,
+                            BiFunction<JsonNode, String, String> explica) {
         MotorInferencia motor = motores.get(nomeMotor);
         if (motor == null) {
             String nomes = String.join(", ", motores.keySet().stream().sorted().toList());
             return new Resultado(TipoResultado.MOTOR_INEXISTENTE,
                     erro(nomeMotor, "motor desconhecido: " + nomeMotor + " (disponiveis: " + nomes + ")"));
         }
+        JsonNode arvore;
         Pedido pedido;
         try {
-            pedido = lePedido(corpo);
+            arvore = leCorpo(corpo);
+            pedido = lePedido(arvore);
         } catch (PedidoIlegivel e) {
             return new Resultado(TipoResultado.PEDIDO_INVALIDO, erro(nomeMotor, e.getMessage()));
         }
 
-        List<String> erros = requestValidator.validaPedido(pedido, base.versaoKB());
+        List<String> erros = new ArrayList<>(requestValidator.validaPedido(pedido, base.versaoKB()));
+        erros.addAll(validaCampos.apply(arvore));
         if (!erros.isEmpty()) {
             return new Resultado(TipoResultado.PEDIDO_INVALIDO, erro(nomeMotor, String.join("; ", erros)));
         }
-        String resposta = motor.infere(corpo);
-        return classifica(nomeMotor, resposta);
+        Resultado resultado = classifica(nomeMotor, motor.infere(corpo));
+        if (explica == null || resultado.tipoResultado() != TipoResultado.OK) {
+            return resultado;
+        }
+        return classifica(nomeMotor, explica.apply(arvore, resultado.jsonResultado()));
     }
 
     /**
@@ -112,6 +188,9 @@ public class InferenceService {
         if (erro.startsWith("ocupado")) {
             return new Resultado(TipoResultado.OCUPADO, resposta);
         }
+        if (ERROS_SEM_ALVO.stream().anyMatch(erro::startsWith)) {
+            return new Resultado(TipoResultado.NAO_ENCONTRADO, resposta);
+        }
         if (ERROS_DO_PEDIDO.stream().anyMatch(erro::startsWith)) {
             return new Resultado(TipoResultado.PEDIDO_INVALIDO, resposta);
         }
@@ -119,12 +198,12 @@ public class InferenceService {
     }
 
     /**
-     * Le o corpo como Pedido. Os erros dizem o que esta mal sem detalhes internos do Jackson (nomes de classes Java,
-     * "Source: REDACTED"): sintaxe com a linha e a coluna, um JSON que nao e um objeto, ou o campo com o tipo errado.
+     * Le o corpo como um objeto JSON. Os erros dizem o que esta mal sem detalhes internos do Jackson (nomes de classes
+     * Java, "Source: REDACTED"): sintaxe com a linha e a coluna, ou um JSON que nao e um objeto.
      * @param corpo
      * @return
      */
-    private Pedido lePedido(String corpo) {
+    private JsonNode leCorpo(String corpo) {
         JsonNode arvore;
         try {
             arvore = jsonMapper.readTree(corpo);
@@ -138,6 +217,15 @@ public class InferenceService {
         if (!arvore.isObject()) {
             throw new PedidoIlegivel("o pedido tem de ser um objeto JSON");
         }
+        return arvore;
+    }
+
+    /**
+     * Converte o corpo ja lido em Pedido; um campo com o tipo errado da o caminho dele, sem detalhes do Jackson.
+     * @param arvore
+     * @return
+     */
+    private Pedido lePedido(JsonNode arvore) {
         try {
             return jsonMapper.treeToValue(arvore, Pedido.class);
         } catch (JacksonException e) {

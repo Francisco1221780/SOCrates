@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import cyberrangers.motores.drools.consola.ConsolaDrools;
-import cyberrangers.motores.drools.explicacao.Arvore;
+import cyberrangers.motores.drools.explicacao.Explicacao;
 import cyberrangers.motores.drools.explicacao.PorqueNao;
 import cyberrangers.motores.drools.json.FactosIniciais;
 import cyberrangers.motores.drools.json.Pedido;
@@ -270,7 +270,7 @@ public class MotorDrools {
     /**
      * "Como?" (opcao 9 da consola): corre o pedido e devolve a arvore de factos de uma conclusao. O facto escolhe-se
      * por {@code {"numero": N}} ou por {@code {"predicado", "args"}} (o primeiro que existir). A resposta e
-     * {@code {estado, motor, versaoKB, facto, arvore, erro}}; a arvore esta descrita em {@link Arvore}.
+     * {@code {estado, motor, versaoKB, facto, arvore, erro}}; a arvore esta descrita em {@link Explicacao#como}.
      */
     public String como(String pedidoJson, String factoJson) {
         return arvore(pedidoJson, factoJson, false);
@@ -282,25 +282,7 @@ public class MotorDrools {
     }
 
     private String arvore(String pedidoJson, String factoJson, boolean comRegras) {
-        try {
-            JsonNode resposta = respostaDoPedido(pedidoJson);
-            if (resposta.path("estado").asText().equals("erro")) {
-                return resposta.toString();
-            }
-            JsonNode facto = procuraFacto(resposta.get("factos"), json.readTree(factoJson));
-            if (facto == null) {
-                return erro("esse facto nao esta na memoria de trabalho (experimente o porque nao)");
-            }
-            ObjectNode o = envelope();
-            o.set("facto", facto);
-            o.set("arvore", Arvore.de(resposta.get("factos"), facto.get("numero").asInt(), comRegras));
-            o.putNull("erro");
-            return o.toString();
-        } catch (JsonProcessingException e) {
-            return erro("JSON invalido: " + e.getOriginalMessage());
-        } catch (RuntimeException e) {
-            return erro("erro do motor: " + e.getMessage());
-        }
+        return Explicacao.como(infere(pedidoJson), factoJson, comRegras);
     }
 
     /**
@@ -309,41 +291,7 @@ public class MotorDrools {
      * usam a resposta. A pergunta e a da resposta do {@link #infere}, por ativo, evento e pergunta.
      */
     public String porquePergunta(String pedidoJson, String ativo, String evento, String pergunta) {
-        try {
-            JsonNode resposta = respostaDoPedido(pedidoJson);
-            if (resposta.path("estado").asText().equals("erro")) {
-                return resposta.toString();
-            }
-            JsonNode p = null;
-            for (JsonNode x : resposta.get("perguntas")) {
-                if (x.get("ativo").asText().equals(ativo) && x.get("evento").asText().equals(evento)
-                        && x.get("pergunta").asText().equals(pergunta)) {
-                    p = x;
-                }
-            }
-            if (p == null) {
-                return erro("essa pergunta nao esta por responder");
-            }
-            ObjectNode o = envelope();
-            o.set("pergunta", p);
-            ObjectNode gerada = Arvore.de(resposta.get("factos"), p.get("facto").asInt(), true);
-            if (gerada == null || gerada.get("regra").isNull()) {
-                o.putNull("geradaPor");
-            } else {
-                o.set("geradaPor", gerada);
-            }
-            ObjectNode termo = json.createObjectNode().put("f", "resposta_analista");
-            termo.putArray("args").add(json.createObjectNode().put("var", "_"))
-                    .add(json.createObjectNode().put("var", "_")).add(pergunta)
-                    .add(json.createObjectNode().put("var", "_"));
-            o.set("regrasQueUsamAResposta", json.valueToTree(PorqueNao.regrasComCondicao(termo)));
-            o.putNull("erro");
-            return o.toString();
-        } catch (JsonProcessingException e) {
-            return erro("JSON invalido: " + e.getOriginalMessage());
-        } catch (RuntimeException e) {
-            return erro("erro do motor: " + e.getMessage());
-        }
+        return Explicacao.porquePergunta(infere(pedidoJson), ativo, evento, pergunta);
     }
 
     /**
@@ -369,27 +317,12 @@ public class MotorDrools {
         return o.toString();
     }
 
-    private JsonNode respostaDoPedido(String pedidoJson) throws JsonProcessingException {
-        return json.readTree(infere(pedidoJson));
-    }
-
     private ObjectNode envelope() {
         ObjectNode o = json.createObjectNode();
         o.put("estado", "concluido");
         o.put("motor", MOTOR);
         o.put("versaoKB", VERSAO_KB);
         return o;
-    }
-
-    /** O facto da resposta que o JSON escolhe, por {@code numero} ou por {@code predicado} e {@code args}; null se nao ha. */
-    private static JsonNode procuraFacto(JsonNode factos, JsonNode escolha) {
-        for (JsonNode f : factos) {
-            if (escolha.has("numero") ? f.get("numero").asInt() == escolha.get("numero").asInt()
-                    : f.get("predicado").equals(escolha.path("predicado")) && f.get("args").equals(escolha.path("args"))) {
-                return f;
-            }
-        }
-        return null;
     }
 
     private ObjectNode corre(Pedido pedido) {
