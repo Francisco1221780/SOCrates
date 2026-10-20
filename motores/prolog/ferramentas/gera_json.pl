@@ -1,6 +1,6 @@
 % Gera os JSON que os outros componentes usam a partir da base de conhecimento (a unica fonte dos factos e dos cenarios):
 %   motores/drools/src/main/resources/factos_iniciais.json        os factos fixos do soc_factos.txt (para o Drools)
-%   backend/cyber/src/main/resources/generated/cenarios.json      os cenarios, um passo por ficheiro, com a ordem e as
+%   backend/socrates/src/main/resources/generated/cenarios.json      os cenarios, um passo por ficheiro, com a ordem e as
 %                                                                 dependencias do cenarios/indice.txt (para a UI)
 %   motores/drools/src/main/resources/cenarios.json               o mesmo ficheiro, para o modulo Drools se bastar a si
 %                                                                 proprio (a consola interativa corre os cenarios)
@@ -63,7 +63,7 @@ raiz(Raiz) :-
 % Os ficheiros: caminho relativo a raiz do repositorio - conteudo. O cenarios.json vai igual para o backend e para o
 % modulo Drools (o --verificar compara os dois).
 gera(Raiz, ['motores/drools/src/main/resources/factos_iniciais.json'-Factos,
-	    'backend/cyber/src/main/resources/generated/cenarios.json'-Cenarios,
+	    'backend/socrates/src/main/resources/generated/cenarios.json'-Cenarios,
 	    'motores/drools/src/main/resources/cenarios.json'-Cenarios,
 	    'motores/drools/src/main/resources/regras.json'-Regras]) :-
 	directory_file_path(Raiz, base_conhecimento, Base),

@@ -8,14 +8,14 @@ package regras;
 // R51: analista nao confirma -> incidente fica resolvido (descartado)
 // R52: propagacao: compromisso confirmado do destino que veio de login de maquina comprometida
 
-import cyberrangers.motores.drools.modelo.Facto;
-import cyberrangers.motores.drools.modelo.Premissa;
-import cyberrangers.motores.drools.modelo.Termo;
-import cyberrangers.motores.drools.modelo.Variavel;
-import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
+import socrates.motores.drools.modelo.Facto;
+import socrates.motores.drools.modelo.Premissa;
+import socrates.motores.drools.modelo.Termo;
+import socrates.motores.drools.modelo.Variavel;
+import socrates.motores.drools.sessao.CondicoesCalculadas;
 import java.util.List;
 
-global cyberrangers.motores.drools.sessao.BaseFactos base;
+global socrates.motores.drools.sessao.BaseFactos base;
 
 // R48: incidente(inc(Tipo,Ev),Tipo,Alvo,_) e pergunta_confirmacao(Tipo,Pergunta)
 //      e nao resposta_analista(Alvo,Ev,Pergunta,_) e em_aberto(inc(Tipo,Ev))

@@ -1,5 +1,5 @@
 % =====================================================================================
-% WRAPPER JSON - Analista virtual de SOC (CyberRangers)
+% WRAPPER JSON - Analista virtual de SOC (SOCrates)
 % Ponte entre o Java (PrologAdapter) e o motor: le um pedido JSON do stdin, corre os passos no motor e escreve
 % uma resposta JSON no stdout. O motor (soc_motor.pl) e a base nao sabem nada de JSON.
 %

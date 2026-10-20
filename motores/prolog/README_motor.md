@@ -41,7 +41,7 @@ O motor fica em `motores/prolog/` e a base de conhecimento em `base_conhecimento
 Abre o SWI-Prolog na pasta `motores/prolog/` (por exemplo, `cd motores/prolog && swipl`). No Mac, se abrires a aplicação ou fizeres duplo clique num ficheiro, a pasta de trabalho não é essa: muda primeiro de pasta.
 
 ```prolog
-?- working_directory(_, '/caminho/para/CyberRangers/motores/prolog/').
+?- working_directory(_, '/caminho/para/SOCrates/motores/prolog/').
 ?- consult('soc_motor.pl').
 ?- carrega_bc('../../base_conhecimento/soc_factos.txt').
 Base carregada: 314 factos e 92 regras.

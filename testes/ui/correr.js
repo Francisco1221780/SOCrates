@@ -41,7 +41,7 @@ const RAIZ = path.resolve(__dirname, '..', '..');
       return out;
     }));
   } else {
-    const cat = JSON.parse(fs.readFileSync(path.join(RAIZ, 'backend/cyber/src/main/resources/generated/cenarios.json')));
+    const cat = JSON.parse(fs.readFileSync(path.join(RAIZ, 'backend/socrates/src/main/resources/generated/cenarios.json')));
     const by = Object.fromEntries(cat.cenarios.map(c => [c.id, c]));
     const pasta = path.join(RAIZ, 'motores/prolog/referencia_prolog');
     for (const f of fs.readdirSync(pasta).filter(x => x.endsWith('.json')).sort()) {

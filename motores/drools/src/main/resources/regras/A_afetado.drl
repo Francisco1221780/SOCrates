@@ -4,13 +4,13 @@ package regras;
 // Cruza o software instalado em cada ativo (SBOM) com o catalogo de vulnerabilidades, por instalacao.
 // Molde e convencoes: ver B_vetor.drl (R7) e o README desta pasta.
 
-import cyberrangers.motores.drools.modelo.Facto;
-import cyberrangers.motores.drools.modelo.Premissa;
-import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
-import cyberrangers.motores.drools.sessao.Marca;
+import socrates.motores.drools.modelo.Facto;
+import socrates.motores.drools.modelo.Premissa;
+import socrates.motores.drools.sessao.CondicoesCalculadas;
+import socrates.motores.drools.sessao.Marca;
 import java.util.List;
 
-global cyberrangers.motores.drools.sessao.BaseFactos base;
+global socrates.motores.drools.sessao.BaseFactos base;
 
 // R1: a instalacao tem uma versao dentro de um intervalo afetado e sem correcao aplicada -> instalacao vulneravel
 //   se [componente(Inst,_,Nome) e vuln_afeta(Vuln,Nome) e versao(Inst,V) e intervalo_afetado(Vuln,Min,Max) e

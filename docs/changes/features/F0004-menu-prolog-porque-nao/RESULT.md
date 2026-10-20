@@ -82,22 +82,22 @@ swipl motores/drools/ferramentas/gera_porque_nao.pl --verificar  # referencia do
 
 | Caminho | |
 | :--- | :--- |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/explicacao/Var.java`, `Unificacao.java`, `Regras.java`, `Suporte.java`, `PorqueNao.java` | novos |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/MotorDrools.java` | alterado (`porqueNao`, `comFactosIniciais`, `numeroRegras`) |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/json/FactosIniciais.java` | alterado (`carrega(Path, ...)`) |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/consola/ConsolaDrools.java` | reescrito (menu 0–13) |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/consola/TermoTexto.java` | alterado (variáveis, escrita sem plicas, ficheiros de cenário) |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/consola/SessaoConsola.java` | alterado (`pedido()`) |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/consola/Cenarios.java` | alterado (`ficheiro`) |
+| `motores/drools/src/main/java/socrates/motores/drools/explicacao/Var.java`, `Unificacao.java`, `Regras.java`, `Suporte.java`, `PorqueNao.java` | novos |
+| `motores/drools/src/main/java/socrates/motores/drools/MotorDrools.java` | alterado (`porqueNao`, `comFactosIniciais`, `numeroRegras`) |
+| `motores/drools/src/main/java/socrates/motores/drools/json/FactosIniciais.java` | alterado (`carrega(Path, ...)`) |
+| `motores/drools/src/main/java/socrates/motores/drools/consola/ConsolaDrools.java` | reescrito (menu 0–13) |
+| `motores/drools/src/main/java/socrates/motores/drools/consola/TermoTexto.java` | alterado (variáveis, escrita sem plicas, ficheiros de cenário) |
+| `motores/drools/src/main/java/socrates/motores/drools/consola/SessaoConsola.java` | alterado (`pedido()`) |
+| `motores/drools/src/main/java/socrates/motores/drools/consola/Cenarios.java` | alterado (`ficheiro`) |
 | `motores/drools/src/main/resources/regras.json` | novo (gerado) |
 | `motores/prolog/ferramentas/gera_json.pl`, `motores/prolog/ferramentas/README.md` | alterados (`regras.json`) |
 | `motores/drools/ferramentas/gera_porque_nao.pl` | novo |
 | `motores/drools/ferramentas/README.md` | alterado |
 | `motores/drools/src/test/resources/porque_nao/factos.txt` | novo |
 | `motores/drools/src/test/resources/porque_nao/prolog.txt` | novo (gerado) |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/consola/PorqueNaoTest.java` | novo |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/explicacao/UnificacaoTest.java` | novo |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/consola/ConsolaDroolsTest.java` | reescrito |
+| `motores/drools/src/test/java/socrates/motores/drools/consola/PorqueNaoTest.java` | novo |
+| `motores/drools/src/test/java/socrates/motores/drools/explicacao/UnificacaoTest.java` | novo |
+| `motores/drools/src/test/java/socrates/motores/drools/consola/ConsolaDroolsTest.java` | reescrito |
 | `motores/drools/README.md`, `README.md` | alterados |
 | `docs/changes/features/F0004-menu-prolog-porque-nao/README.md`, `RESULT.md` | novos |
 | `docs/changes/features/README.md` | alterado (índice) |

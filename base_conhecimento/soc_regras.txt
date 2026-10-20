@@ -1,4 +1,4 @@
-% REGRAS - Analista virtual de SOC (CyberRangers), versao 6
+% REGRAS - Analista virtual de SOC (SOCrates), versao 6
 % Cada regra le-se "SE todas as condicoes forem verdadeiras ENTAO conclui-se ...".
 % Os nomes com maiuscula (Alvo, Ev, Vuln...) sao variaveis: a regra vale para qualquer ativo, evento ou vulnerabilidade.
 % "nao X" quer dizer que X nao esta registado.

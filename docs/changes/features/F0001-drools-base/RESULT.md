@@ -3,11 +3,11 @@
 | Campo | Valor |
 | :--- | :--- |
 | Tipo | Feature |
-| Issue | [#4](https://github.com/Francisco1221780/CyberRangers/issues/4) |
+| Issue | [#4](https://github.com/Francisco1221780/SOCrates/issues/4) |
 | Branch | `feature/drools-base` (base `develop` @ `92489aa`, que já traz o `factos_iniciais.json` da #10) |
 | Estado | Implementado, sem commits. O motor carrega os 314 factos iniciais reais e fica pronto |
 | Build | `.\mvnw.cmd verify` (JDK 25) → `BUILD SUCCESS`. Baseline: `BUILD SUCCESS`, 4 testes |
-| Testes | 22 (eram 4): 20 no módulo Drools, todos novos ou reescritos (`MotorDroolsTest` 13, `TermosJsonTest` 5, `BaseFactosTest` 1, `RespostaTest` 1), a correr contra o `factos_iniciais.json` real; 2 no backend (`DroolsAdapterTest` reescrito, `CyberApplicationTests` sem alterações) |
+| Testes | 22 (eram 4): 20 no módulo Drools, todos novos ou reescritos (`MotorDroolsTest` 13, `TermosJsonTest` 5, `BaseFactosTest` 1, `RespostaTest` 1), a correr contra o `factos_iniciais.json` real; 2 no backend (`DroolsAdapterTest` reescrito, `SocratesApplicationTests` sem alterações) |
 | Avisos | Nenhum novo. Os de antes continuam: `Unable to find pom.properties`, Mockito self-attaching, SpringDoc, e os avisos da JVM e do Maven sobre `Unsafe`/agentes |
 | Commits | Nenhum: os commits ficam para o `commit-push`, pela ordem de §6 do README |
 
@@ -50,7 +50,7 @@ a primeira premissa é verificada pelo conteúdo do facto a que aponta.
 | `Facto` leva `@ClassReactive` | O Drools avisava que `arg(0) == $inst` causa "class reactivity". Os factos nunca se modificam depois de inseridos, por isso a reatividade por classe não muda nada e o aviso desaparece |
 | Classes organizadas em subpacotes: `modelo/` (dados imutáveis que as regras usam), `sessao/` (`BaseFactos`, `Registo`, `Origem`: a ponte com a `KieSession`) e `json/` (fronteira JSON), com `MotorDrools` e `EstadoMotor` na raiz. O número, a origem, o passo e a justificação saíram do `Facto` para um `Registo` guardado pela `BaseFactos`, e o `Facto` ficou imutável. A normalização dos termos saiu do `TermosJson` para `modelo/Termos` | Pedido do utilizador depois da implementação (os ficheiros estavam todos no mesmo pacote). As dependências vão num só sentido: `json` → `sessao` → `modelo`. Os DRL importam de `...drools.modelo` e o global é `...drools.sessao.BaseFactos`. O teste das premissas passou para `json/RespostaTest` |
 | `factos_iniciais.json` é `{"versaoKB", "factos": [...]}` e não um array solto, e o leitor recusa um ficheiro de outra `versaoKB` | Foi o formato que o `gera_json.pl` (#10) produziu, já em `develop`; o plano tinha assumido um array. Verificar a versão segue a regra de não inferir com outra versão da base |
-| Testes passaram a usar o `factos_iniciais.json` real; saíram as fixtures genéricas (`motores/drools/src/test/resources/factos_iniciais.json` e a cópia no backend) | Com o ficheiro real no jar do módulo, a fixture deixou de ser precisa, e a paridade com o wrapper passa a correr sobre os mesmos 314 factos. Ficam só `factos_iniciais_r7.json` e `factos_iniciais_v5.json`, para casos que o ficheiro real não cobre. A pasta vazia `backend/cyber/src/test/resources/` não se conseguiu apagar (bloqueada por outro processo); o Git ignora-a |
+| Testes passaram a usar o `factos_iniciais.json` real; saíram as fixtures genéricas (`motores/drools/src/test/resources/factos_iniciais.json` e a cópia no backend) | Com o ficheiro real no jar do módulo, a fixture deixou de ser precisa, e a paridade com o wrapper passa a correr sobre os mesmos 314 factos. Ficam só `factos_iniciais_r7.json` e `factos_iniciais_v5.json`, para casos que o ficheiro real não cobre. A pasta vazia `backend/socrates/src/test/resources/` não se conseguiu apagar (bloqueada por outro processo); o Git ignora-a |
 | `MotorDrools.main` e o `exec-maven-plugin` no `pom.xml` do módulo, para correr só o Drools pela linha de comandos (`Get-Content pedido.json \| .\mvnw.cmd -q -pl motores/drools compile exec:java`) | Pedido do utilizador: testar o motor sem o backend, que ainda não tem endpoints (#12). Mesmo uso do `wrapper.pl`: pedido no `stdin`, só o JSON no `stdout`, código 1 em erro. O `slf4j-simple` entra só como dependência do plugin, com nível `error`, porque dentro do `exec:java` o Maven junta o `stderr` ao `stdout`; o módulo continua sem logger próprio |
 | Classe extra `PedidoInvalido` | Exceção com a mensagem que vai para o campo `erro`; separa os erros do pedido dos erros do motor |
 | "Primeira justificação mantida" testada no `MotorDroolsTest` (`mesmoIncidentePorDuasViasFicaComAPrimeiraJustificacao`) e não no `BaseFactosTest` | O `cria` precisa de um `RuleContext`, que só existe dentro de uma regra; o teste pelo motor exercita o caminho real |
@@ -97,34 +97,34 @@ Get-Content pedido.json | .\mvnw.cmd -q -pl motores/drools compile exec:java   #
 
 | Caminho | |
 | :--- | :--- |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/MotorDrools.java` | alterado |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/EstadoMotor.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/modelo/Facto.java` | movido da raiz do pacote e alterado |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/modelo/Termo.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/modelo/Termos.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/modelo/Variavel.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/sessao/Origem.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/modelo/Premissa.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/sessao/BaseFactos.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/sessao/Registo.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/json/TermosJson.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/json/Pedido.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/json/PedidoInvalido.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/json/Resposta.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/json/FactosIniciais.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/MotorDrools.java` | alterado |
+| `motores/drools/src/main/java/socrates/motores/drools/EstadoMotor.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/modelo/Facto.java` | movido da raiz do pacote e alterado |
+| `motores/drools/src/main/java/socrates/motores/drools/modelo/Termo.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/modelo/Termos.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/modelo/Variavel.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/sessao/Origem.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/modelo/Premissa.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/sessao/BaseFactos.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/sessao/Registo.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/json/TermosJson.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/json/Pedido.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/json/PedidoInvalido.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/json/Resposta.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/json/FactosIniciais.java` | novo |
 | `motores/drools/src/main/resources/regras/B_vetor.drl` | novo |
 | `motores/drools/src/main/resources/regras/00_exemplo.drl` | apagado |
 | `motores/drools/src/main/resources/regras/README.md` | alterado |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/MotorDroolsTest.java` | alterado (reescrito) |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/json/TermosJsonTest.java` | novo |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/sessao/BaseFactosTest.java` | novo |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/json/RespostaTest.java` | novo |
+| `motores/drools/src/test/java/socrates/motores/drools/MotorDroolsTest.java` | alterado (reescrito) |
+| `motores/drools/src/test/java/socrates/motores/drools/json/TermosJsonTest.java` | novo |
+| `motores/drools/src/test/java/socrates/motores/drools/sessao/BaseFactosTest.java` | novo |
+| `motores/drools/src/test/java/socrates/motores/drools/json/RespostaTest.java` | novo |
 | `motores/drools/src/{main,test}/java/.gitkeep`, `src/main/resources/.gitkeep`, `src/main/resources/regras/.gitkeep` | apagados (as pastas já têm conteúdo) |
 | `motores/drools/src/test/resources/factos_iniciais_r7.json` | novo (fixture: R7 sobre os dados fixos) |
 | `motores/drools/src/test/resources/factos_iniciais_v5.json` | novo (fixture: versão errada) |
 | `motores/drools/README.md` | alterado |
 | `motores/drools/pom.xml` | alterado (`exec-maven-plugin`) |
-| `backend/cyber/src/test/java/cyberrangers/cyber/engine/drools/DroolsAdapterTest.java` | alterado |
+| `backend/socrates/src/test/java/socrates/backend/engine/drools/DroolsAdapterTest.java` | alterado |
 | `README.md` | alterado (estado do projeto, módulos, testing) |
 | `docs/changes/features/README.md` | novo (índice) |
 | `docs/changes/features/F0001-drools-base/README.md`, `RESULT.md` | novos |
