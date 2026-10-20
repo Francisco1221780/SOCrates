@@ -60,8 +60,10 @@ final class Regras {
 
     private final List<Regra> regras = new ArrayList<>();
     private final Set<String> calculadas = new HashSet<>();
+    private final String versaoKB;
 
     private Regras(JsonNode json) {
+        versaoKB = json.path("versaoKB").asText();
         json.get("regras").forEach(r -> regras.add(new Regra(r.get("id").asInt(), r.get("se"), r.get("entao"))));
         json.get("calculadas").forEach(c -> calculadas.add(c.asText()));
     }
@@ -75,6 +77,14 @@ final class Regras {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    /**
+     * A versaoKB do regras.json (a da base de onde o gera_json.pl tirou as regras).
+     * @return
+     */
+    String versaoKB() {
+        return versaoKB;
     }
 
     /** Pela ordem do soc_regras.txt (a ordem em que o Prolog as encontra). */

@@ -112,6 +112,8 @@ Tudo o que o menu da consola faz está também no `MotorDrools`, com respostas J
 
 Um facto escolhe-se por `{"numero": N}` (o `numero` da resposta do `infere`) ou por `{"predicado", "args"}`; o `porqueNao` aceita variáveis (`{"var": "Ev"}`). Um facto que não existe, um pedido inválido ou um motor não pronto dão `estado: "erro"` com a mensagem. Um nó de `como`/`porque` que já apareceu antes na mesma árvore tem `jaExplicado: true` e não repete as premissas.
 
+O `como`, o `porque` e o `porquePergunta` correm o pedido e passam a resposta à `explicacao.Explicacao`, que monta a explicação só a partir da resposta (texto JSON à entrada e à saída). O backend usa a `Explicacao` diretamente para explicar as respostas dos dois motores (a do `wrapper.pl` tem o mesmo formato, ver `ParidadeTest`). A explicação leva o `motor` e a `versaoKB` da resposta, e uma resposta de outra `versaoKB` que a do `regras.json` dá erro.
+
 ## Modelo de factos
 
 - `Facto(predicado, args)` genérico (decisão da #6). Dois factos são iguais se tiverem o mesmo predicado e os mesmos argumentos.

@@ -40,7 +40,7 @@ public final class PorqueNao {
         this.profundidade = profundidade;
     }
 
-    private static synchronized Regras regras() {
+    static synchronized Regras regras() {
         if (regrasCarregadas == null) {
             regrasCarregadas = Regras.carrega();
         }

@@ -4,6 +4,7 @@ import cyberrangers.cyber.domain.Facto;
 import cyberrangers.cyber.domain.Passo;
 import cyberrangers.cyber.domain.Pedido;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.List;
 /**
  * Valida a forma de um pedido antes de chegar a um motor (AC17): versaoKB igual a carregada, passos nao vazios e
  * factos com predicado e args. Os termos dentro de args sao validados pelos motores, com as mesmas mensagens nos dois.
+ * Valida tambem os campos que as explicacoes juntam ao pedido (o facto, ou a pergunta).
  */
 @Component
 public class RequestValidator {
@@ -39,6 +41,61 @@ public class RequestValidator {
         }
         for (int i = 0; i < passos.size(); i++) {
             validaPasso(passos.get(i), "passo " + (i + 1), erros);
+        }
+        return erros;
+    }
+
+    /**
+     * Devolve os erros do campo facto do "como?" e do "porque?"; vazia se for valido. O facto escolhe-se por numero
+     * ou por predicado e args, nunca pelos dois: um pedido assim e quase sempre um erro de quem o fez.
+     * @param corpo
+     * @return
+     */
+    public List<String> validaFacto(JsonNode corpo) {
+        JsonNode facto = corpo.get("facto");
+        if (facto == null || facto.isNull()) {
+            return List.of("falta o facto");
+        }
+        if (!facto.isObject()) {
+            return List.of("o facto tem de ser um objeto JSON");
+        }
+        boolean porNumero = facto.has("numero");
+        boolean porTermo = facto.has("predicado") || facto.has("args");
+        if (porNumero == porTermo) {
+            return List.of(porNumero ? "o facto tem de ter numero ou predicado e args, nao os dois"
+                    : "o facto tem de ter numero ou predicado e args");
+        }
+        if (porNumero) {
+            JsonNode numero = facto.get("numero");
+            boolean valido = numero.isIntegralNumber() && numero.canConvertToInt() && numero.asInt() > 0;
+            return valido ? List.of() : List.of("o numero do facto tem de ser um inteiro maior que 0");
+        }
+        List<String> erros = new ArrayList<>();
+        JsonNode predicado = facto.get("predicado");
+        if (predicado == null || !predicado.isString() || predicado.asString().isBlank()) {
+            erros.add("falta o predicado do facto");
+        }
+        JsonNode args = facto.get("args");
+        if (args == null || !args.isArray()) {
+            erros.add("falta a lista args do facto");
+        }
+        return erros;
+    }
+
+    /**
+     * Devolve os erros dos campos ativo, evento e pergunta do "porque?" de uma pergunta; vazia se forem validos.
+     * @param corpo
+     * @return
+     */
+    public List<String> validaPergunta(JsonNode corpo) {
+        List<String> erros = new ArrayList<>();
+        for (String campo : List.of("ativo", "evento", "pergunta")) {
+            JsonNode valor = corpo.get(campo);
+            if (valor == null || valor.isNull()) {
+                erros.add("falta o campo " + campo);
+            } else if (!valor.isString() || valor.asString().isBlank()) {
+                erros.add("o campo " + campo + " tem de ser texto nao vazio");
+            }
         }
         return erros;
     }
