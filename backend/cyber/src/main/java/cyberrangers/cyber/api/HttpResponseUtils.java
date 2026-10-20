@@ -13,6 +13,7 @@ final class HttpResponseUtils {
             case MOTOR_INEXISTENTE -> HttpStatus.NOT_FOUND;
             case PEDIDO_INVALIDO -> HttpStatus.BAD_REQUEST;
             case NAO_ENCONTRADO -> HttpStatus.UNPROCESSABLE_CONTENT;
+            case NAO_SUPORTADO -> HttpStatus.NOT_IMPLEMENTED;
             case OCUPADO -> HttpStatus.SERVICE_UNAVAILABLE;
             case TIMEOUT -> HttpStatus.GATEWAY_TIMEOUT;
             case FALHA_MOTOR -> HttpStatus.INTERNAL_SERVER_ERROR;

@@ -44,6 +44,7 @@ class InferenceServiceTest {
         private final String resposta;
         private final String versaoKB;
         private final List<String> pedidos = new ArrayList<>();
+        private final List<String> porqueNao = new ArrayList<>();
 
         MotorFalso(String nome, boolean pronto, String resposta) {
             this(nome, pronto, resposta, "6");
@@ -70,6 +71,20 @@ class InferenceServiceTest {
         @Override
         public SaudeMotor estado() {
             return new SaudeMotor(nome, pronto, versaoKB, pronto, Metaconhecimento.EM_DIA, List.of());
+        }
+
+        /**
+         * Guarda o facto e a profundidade ("facto | profundidade") e devolve a resposta dada.
+         * @param pedidoJson
+         * @param factoJson
+         * @param profundidade
+         * @return
+         */
+        @Override
+        public String porqueNao(String pedidoJson, String factoJson, int profundidade) {
+            pedidos.add(pedidoJson);
+            porqueNao.add(factoJson + " | " + profundidade);
+            return resposta;
         }
     }
 
@@ -590,5 +605,73 @@ class InferenceServiceTest {
             assertEquals(31, n.path("geradaPor").path("regraCompleta").path("id").asInt(), m);
             assertEquals(json.readTree("[32,33,34,50,51]"), n.path("regrasQueUsamAResposta"), m);
         }
+    }
+
+    // --- porque nao ---------------------------------------------------------------------------------------------
+
+    /**
+     * Verifica que cada campo invalido do porque nao da PEDIDO_INVALIDO com a mensagem certa, sem chamar o motor.
+     */
+    @Test
+    void porqueNaoInvalidoNaoChegaAoMotor() {
+        String facto = "\"facto\":{\"predicado\":\"y\",\"args\":[\"a\"]}";
+        String[][] casos = {
+                {"", "falta o facto"},
+                {"\"facto\":[1]", "o facto tem de ser um objeto JSON"},
+                {"\"facto\":{\"numero\":2}", "o facto do porque nao escolhe-se por predicado e args (um facto que nao existe nao tem numero)"},
+                {"\"facto\":{\"args\":[]}", "falta o predicado do facto"},
+                {"\"facto\":{\"predicado\":\"y\"}", "falta a lista args do facto"},
+                {"\"facto\":{\"predicado\":\"y\",\"args\":[{\"f\":\"x\"}]}", "termo invalido no facto: {\"f\":\"x\"}"},
+                {"\"facto\":{\"predicado\":\"y\",\"args\":[{\"var\":\"\"}]}", "termo invalido no facto: {\"var\":\"\"}"},
+                {"\"facto\":{\"predicado\":\"y\",\"args\":[true]}", "termo invalido no facto: true"},
+                {facto + ",\"profundidade\":0", "a profundidade tem de ser um inteiro de 1 a 8"},
+                {facto + ",\"profundidade\":9", "a profundidade tem de ser um inteiro de 1 a 8"},
+                {facto + ",\"profundidade\":\"4\"", "a profundidade tem de ser um inteiro de 1 a 8"}};
+        for (String[] caso : casos) {
+            MotorFalso drools = motor("drools", CONCLUIDO);
+            Resultado r = servico(drools).porqueNao("drools", comCampos(caso[0]));
+            assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado(), caso[0]);
+            assertEquals(caso[1], assertErro(r, "drools"), caso[0]);
+            assertTrue(drools.pedidos.isEmpty(), "o motor nao devia ter sido chamado: " + caso[0]);
+        }
+    }
+
+    /**
+     * Verifica que o motor recebe o corpo tal como veio, o facto (com variaveis) e a profundidade: 4 sem profundidade
+     * no pedido, e a do pedido quando vem.
+     */
+    @Test
+    void porqueNaoPassaOFactoEAProfundidadeAoMotor() {
+        String facto = "{\"predicado\":\"y\",\"args\":[\"a\",{\"var\":\"V\"},{\"f\":\"g\",\"args\":[1,[\"b\"]]}]}";
+        MotorFalso drools = motor("drools", CONCLUIDO);
+        InferenceService s = servico(drools);
+        String semProfundidade = comCampos("\"facto\":" + facto);
+        assertEquals(TipoResultado.OK, s.porqueNao("drools", semProfundidade).tipoResultado());
+        assertEquals(TipoResultado.OK, s.porqueNao("drools", comCampos("\"facto\":" + facto + ",\"profundidade\":8"))
+                .tipoResultado());
+        assertEquals(semProfundidade, drools.pedidos.getFirst());
+        assertEquals(List.of(facto + " | 4", facto + " | 8"), drools.porqueNao);
+    }
+
+    /**
+     * Verifica, com os dois motores reais, que o porque nao do Drools explica pela regra 6 porque nao ha
+     * exploracao_possivel(ev_f1, web_srv_05, V) no c6, e que o Prolog responde NAO_SUPORTADO por agora.
+     */
+    @Test
+    void porqueNaoNosDoisMotores() {
+        String corpo = pedidoDosCenarios("\"facto\":{\"predicado\":\"exploracao_possivel\",\"args\":"
+                + "[\"ev_f1\",\"web_srv_05\",{\"var\":\"V\"}]}", "c6");
+        InferenceService s = servicoReal();
+        Resultado drools = s.porqueNao("drools", corpo);
+        assertEquals(TipoResultado.OK, drools.tipoResultado(), drools.jsonResultado());
+        JsonNode n = json.readTree(drools.jsonResultado());
+        assertEquals("drools", n.path("motor").asString());
+        boolean regra6 = false;
+        for (JsonNode linha : n.path("explicacao")) {
+            regra6 |= linha.path("tipo").asString().equals("regra") && linha.path("regra").asInt() == 6;
+        }
+        assertTrue(regra6, drools.jsonResultado());
+        Resultado prolog = s.porqueNao("prolog", corpo);
+        assertEquals(TipoResultado.NAO_SUPORTADO, prolog.tipoResultado(), prolog.jsonResultado());
     }
 }

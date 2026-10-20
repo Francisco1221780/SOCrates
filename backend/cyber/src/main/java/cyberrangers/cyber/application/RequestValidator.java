@@ -17,6 +17,9 @@ import java.util.List;
 @Component
 public class RequestValidator {
 
+    /** A profundidade maxima do "porque nao?": a explicacao e recursiva e cresce depressa com os niveis. */
+    public static final int PROFUNDIDADE_MAXIMA = 8;
+
     /**
      * Devolve todos os erros do pedido de uma vez, com a posicao (a contar de 1) do passo e do facto; vazia se o
      * pedido for valido.
@@ -80,6 +83,78 @@ public class RequestValidator {
             erros.add("falta a lista args do facto");
         }
         return erros;
+    }
+
+    /**
+     * Devolve os erros dos campos do "porque nao?"; vazia se forem validos. O facto e {predicado, args}, sem numero
+     * (um facto que nao se concluiu nao tem numero), e os args podem ter variaveis ({"var": "Ev"}). A profundidade,
+     * se vier, e um inteiro de 1 a PROFUNDIDADE_MAXIMA.
+     * @param corpo
+     * @return
+     */
+    public List<String> validaPorqueNao(JsonNode corpo) {
+        List<String> erros = new ArrayList<>();
+        JsonNode facto = corpo.get("facto");
+        if (facto == null || facto.isNull()) {
+            erros.add("falta o facto");
+        } else if (!facto.isObject()) {
+            erros.add("o facto tem de ser um objeto JSON");
+        } else if (facto.has("numero")) {
+            erros.add("o facto do porque nao escolhe-se por predicado e args (um facto que nao existe nao tem numero)");
+        } else {
+            JsonNode predicado = facto.get("predicado");
+            if (predicado == null || !predicado.isString() || predicado.asString().isBlank()) {
+                erros.add("falta o predicado do facto");
+            }
+            JsonNode args = facto.get("args");
+            if (args == null || !args.isArray()) {
+                erros.add("falta a lista args do facto");
+            } else {
+                for (JsonNode a : args) {
+                    if (!termoValido(a)) {
+                        erros.add("termo invalido no facto: " + a);
+                        break;
+                    }
+                }
+            }
+        }
+        JsonNode profundidade = corpo.get("profundidade");
+        if (profundidade != null && !profundidade.isNull() && !(profundidade.isIntegralNumber()
+                && profundidade.canConvertToInt() && profundidade.asInt() >= 1
+                && profundidade.asInt() <= PROFUNDIDADE_MAXIMA)) {
+            erros.add("a profundidade tem de ser um inteiro de 1 a " + PROFUNDIDADE_MAXIMA);
+        }
+        return erros;
+    }
+
+    /**
+     * Se o termo e um atomo, um numero, uma lista de termos, uma variavel {"var": nome} ou um termo composto
+     * {"f": nome, "args": [termos]}.
+     * @param t
+     * @return
+     */
+    private static boolean termoValido(JsonNode t) {
+        if (t.isString() || t.isNumber()) {
+            return true;
+        }
+        if (t.isArray()) {
+            for (JsonNode x : t) {
+                if (!termoValido(x)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (!t.isObject()) {
+            return false;
+        }
+        if (t.size() == 1 && t.has("var")) {
+            return t.get("var").isString() && !t.get("var").asString().isBlank();
+        }
+        JsonNode f = t.get("f");
+        JsonNode args = t.get("args");
+        return t.size() == 2 && f != null && f.isString() && !f.asString().isBlank() && args != null
+                && args.isArray() && termoValido(args);
     }
 
     /**

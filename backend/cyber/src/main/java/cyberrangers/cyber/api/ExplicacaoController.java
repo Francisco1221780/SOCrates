@@ -23,16 +23,17 @@ import org.springframework.web.bind.annotation.RestController;
 import static cyberrangers.cyber.api.HttpResponseUtils.codigoHttp;
 
 /**
- * POST /api/{motor}/como, /porque e /porque-pergunta: as explicacoes de uma resposta. Cada pedido traz os passos (como
- * o /infer) e o que se quer explicar; o servidor corre os passos no motor e monta a explicacao a partir da resposta.
+ * POST /api/{motor}/como, /porque, /porque-pergunta e /whynot: as explicacoes de uma resposta. Cada pedido traz os
+ * passos (como o /infer) e o que se quer explicar; o servidor corre os passos no motor. O como e os porques montam-se a
+ * partir da resposta; o whynot e o motor que o faz, sobre os factos da sessao.
  */
 @RestController
 @RequestMapping("/api")
-@Tag(name = "Explicacoes", description = "Como?, porque? e porque? de uma pergunta, nos dois motores")
+@Tag(name = "Explicacoes", description = "Como?, porque?, porque? de uma pergunta e porque nao?")
 public class ExplicacaoController {
 
     /**
-     * Os codigos HTTP que as tres explicacoes partilham com o /infer, e o 422.
+     * Os codigos HTTP que as explicacoes partilham com o /infer.
      */
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
@@ -40,11 +41,20 @@ public class ExplicacaoController {
             + "campos da explicacao")
     @ApiResponse(responseCode = "404", description = "Motor desconhecido")
     @ApiResponse(responseCode = "415", description = "O Content-Type nao e application/json")
-    @ApiResponse(responseCode = "422", description = "O facto ou a pergunta pedidos nao estao na resposta do motor")
-    @ApiResponse(responseCode = "500", description = "O motor falhou, ou a resposta e de outra versaoKB que as regras")
+    @ApiResponse(responseCode = "500", description = "O motor falhou (no como e nos porques, tambem uma resposta de "
+            + "outra versaoKB que as regras)")
     @ApiResponse(responseCode = "503", description = "Todos os processos do motor estao ocupados; tentar mais tarde")
     @ApiResponse(responseCode = "504", description = "O motor nao respondeu dentro do timeout")
     @interface RespostasDeErro {
+    }
+
+    /**
+     * O 422 das explicacoes que se montam a partir da resposta (o como e os porques): o que se pediu nao esta la.
+     */
+    @Target(ElementType.METHOD)
+    @Retention(RetentionPolicy.RUNTIME)
+    @ApiResponse(responseCode = "422", description = "O facto ou a pergunta pedidos nao estao na resposta do motor")
+    @interface SemAlvoNaResposta {
     }
 
     private final InferenceService inferenceService;
@@ -66,6 +76,7 @@ public class ExplicacaoController {
                     + "premissa {tipo: facto, no}, {tipo: nao, termo} ou {tipo: calculada, termo}.")
     @ApiResponse(responseCode = "200", description = "A arvore do facto")
     @RespostasDeErro
+    @SemAlvoNaResposta
     @PostMapping(path = "/{motor}/como",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
@@ -88,6 +99,7 @@ public class ExplicacaoController {
                     + "regraCompleta: {id, se, entao}, com os nomes das variaveis do soc_regras.txt.")
     @ApiResponse(responseCode = "200", description = "A arvore do facto, com as regras")
     @RespostasDeErro
+    @SemAlvoNaResposta
     @PostMapping(path = "/{motor}/porque",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
@@ -112,6 +124,7 @@ public class ExplicacaoController {
                     + "introduzida a mao; regrasQueUsamAResposta sao os numeros das regras que usam a resposta.")
     @ApiResponse(responseCode = "200", description = "A explicacao da pergunta")
     @RespostasDeErro
+    @SemAlvoNaResposta
     @PostMapping(path = "/{motor}/porque-pergunta",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
@@ -122,6 +135,34 @@ public class ExplicacaoController {
                     + "pergunta")
             @RequestBody(required = false) String corpo) {
         return responde(inferenceService::porquePergunta, motor, corpo);
+    }
+
+    /**
+     * Corre o pedido no motor dado e explica porque o facto pedido nao se concluiu.
+     * @param motor
+     * @param corpo
+     * @return
+     */
+    @Operation(summary = "Porque nao? (porque um facto nao se concluiu)",
+            description = "O corpo e o do /infer com o campo facto, {\"predicado\", \"args\"} (sem numero: o facto "
+                    + "nao existe), em que os args podem ter variaveis ({\"var\": \"Ev\"}), e opcionalmente a "
+                    + "profundidade (1 a 8, 4 por omissao). A resposta e {estado, motor, versaoKB, facto, explicacao, "
+                    + "erro}: explicacao e uma lista de linhas {nivel, tipo, termo?, regra?, numero?}; as linhas regra "
+                    + "trazem o se (cada condicao com verificada) e o entao. Por agora so no Drools: o Prolog responde "
+                    + "501.")
+    @ApiResponse(responseCode = "200", description = "As linhas da explicacao")
+    @ApiResponse(responseCode = "501", description = "O motor ainda nao tem o porque nao (o Prolog, por agora)")
+    @RespostasDeErro
+    @PostMapping(path = "/{motor}/whynot",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> porqueNao(
+            @Parameter(description = "Motor de inferencia", schema = @Schema(allowableValues = {"drools", "prolog"}))
+            @PathVariable String motor,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "versaoKB, passos, facto e "
+                    + "profundidade")
+            @RequestBody(required = false) String corpo) {
+        return responde(inferenceService::porqueNao, motor, corpo);
     }
 
     /**

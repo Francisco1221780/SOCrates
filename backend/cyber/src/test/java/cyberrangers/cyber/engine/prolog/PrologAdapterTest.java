@@ -577,4 +577,16 @@ class PrologAdapterTest {
         assertFalse(e.pronto(), e.toString());
         assertEquals(List.of("copia falhou"), e.erros());
     }
+
+    /**
+     * Verifica que o porque nao responde "nao suportado" no formato do contrato, sem lancar o swipl (com um
+     * executavel que nao existe, lancar daria outro erro).
+     */
+    @Test
+    void porqueNaoAindaNaoESuportado() {
+        JsonNode r = le(adapter("swipl_que_nao_existe", RAIZ).porqueNao(PEDIDO, "{\"predicado\":\"x\",\"args\":[]}", 4));
+        assertEquals("erro", r.path("estado").asString());
+        assertEquals("prolog", r.path("motor").asString());
+        assertTrue(r.path("erro").asString().startsWith("nao suportado"), r.toString());
+    }
 }

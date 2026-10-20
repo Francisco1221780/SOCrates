@@ -87,6 +87,19 @@ public class PrologAdapter implements MotorInferencia {
     }
 
     /**
+     * Ainda nao suportado: o whynot/1 do soc_motor.pl so escreve texto, e o wrapper.pl nao tem o modo "porque nao".
+     * Responde sem lancar o swipl.
+     * @param pedidoJson
+     * @param factoJson
+     * @param profundidade
+     * @return
+     */
+    @Override
+    public String porqueNao(String pedidoJson, String factoJson, int profundidade) {
+        return erro("nao suportado: o motor prolog ainda nao tem o porque nao estruturado");
+    }
+
+    /**
      * Verifica o motor no arranque, para o estado ficar no log e o primeiro /api/health nao ter de esperar.
      */
     @EventListener(ApplicationReadyEvent.class)

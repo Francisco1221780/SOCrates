@@ -10,4 +10,6 @@ public interface MotorInferencia {
     String infere(String pedidoJson);
 
     SaudeMotor estado();
+
+    String porqueNao(String pedidoJson, String factoJson, int profundidade);
 }
