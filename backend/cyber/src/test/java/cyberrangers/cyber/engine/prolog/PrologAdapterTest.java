@@ -3,14 +3,17 @@ package cyberrangers.cyber.engine.prolog;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import cyberrangers.cyber.config.PrologProperties;
+import cyberrangers.cyber.domain.Metaconhecimento;
 import cyberrangers.cyber.domain.SaudeMotor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -394,16 +397,135 @@ class PrologAdapterTest {
     }
 
     /**
-     * Verifica que com a pasta do motor e o swipl a responder, o estado e pronto, sem erros e sem versao da base
-     * (o Prolog so a conhece depois de carregar a base).
+     * Verifica que com a base do repositorio o estado e pronto: a base carregou, o wrapper tem a versao 6 e o
+     * metaconhecimento esta em dia (AC13).
      */
     @Test
-    void estadoProntoComSwiplEPasta() {
+    void estadoProntoComABaseDoRepositorio() {
         SaudeMotor e = adapter("swipl", RAIZ).estado();
         assertEquals("prolog", e.motor());
         assertTrue(e.pronto(), e.toString());
+        assertEquals("6", e.versaoKB());
+        assertTrue(e.baseCarregada(), e.toString());
+        assertEquals(Metaconhecimento.EM_DIA, e.metaconhecimento());
         assertTrue(e.erros().isEmpty(), e.toString());
+    }
+
+    /**
+     * Verifica que a copia do classpath (o que vai no jar) tambem traz o gera_meta.pl: sem cyber.prolog.home o
+     * metaconhecimento verifica-se na mesma (AC6, AC13).
+     */
+    @Test
+    void estadoProntoComACopiaDoClasspath() {
+        SaudeMotor e = adapter("swipl", null).estado();
+        assertTrue(e.pronto(), e.toString());
+        assertEquals(Metaconhecimento.EM_DIA, e.metaconhecimento());
+    }
+
+    /**
+     * Verifica que o estado e verificado uma vez e fica guardado: a segunda chamada nao lanca processos.
+     */
+    @Test
+    void estadoFicaGuardado() {
+        PrologAdapter a = adapter("swipl", RAIZ);
+        assertSame(a.estado(), a.estado());
+    }
+
+    /**
+     * Copia para a pasta dada o que o motor precisa (wrapper.pl, soc_motor.pl, gera_meta.pl e a base), para os
+     * testes estragarem a copia e nao o repositorio.
+     * @param tmp
+     * @param comGeraMeta
+     * @return
+     * @throws IOException
+     */
+    private static Path copiaDoMotor(Path tmp, boolean comGeraMeta) throws IOException {
+        List<String> ficheiros = new ArrayList<>(List.of("motores/prolog/wrapper.pl", "motores/prolog/soc_motor.pl",
+                "base_conhecimento/soc_factos.txt", "base_conhecimento/soc_regras.txt",
+                "base_conhecimento/soc_suporte.txt"));
+        if (comGeraMeta) {
+            ficheiros.add("motores/prolog/ferramentas/gera_meta.pl");
+        }
+        for (String f : ficheiros) {
+            Path alvo = tmp.resolve(f);
+            Files.createDirectories(alvo.getParent());
+            Files.copy(RAIZ.resolve(f), alvo);
+        }
+        return tmp;
+    }
+
+    /**
+     * Verifica que uma base com um erro de sintaxe nao conta como carregada, mesmo que o wrapper responda, e que o
+     * erro do consult vem nos erros.
+     * @param tmp
+     * @throws Exception
+     */
+    @Test
+    void baseComErroDeSintaxeNaoEstaCarregada(@TempDir Path tmp) throws Exception {
+        Path home = copiaDoMotor(tmp, true);
+        Files.writeString(home.resolve("base_conhecimento/soc_factos.txt"), "\nisto nao e prolog (\n",
+                StandardOpenOption.APPEND);
+        SaudeMotor e = adapter("swipl", home).estado();
+        assertFalse(e.pronto(), e.toString());
+        assertFalse(e.baseCarregada(), e.toString());
+        assertTrue(e.erros().stream().anyMatch(l -> l.startsWith("base: ERROR") && l.contains("soc_factos.txt")),
+                e.toString());
+    }
+
+    /**
+     * Verifica que com uma linha do facto_dispara_regras/2 diferente do que as regras dao, o metaconhecimento fica
+     * desatualizado, o motor nao fica pronto e o erro diz que linha e como se corrige (AC13).
+     * @param tmp
+     * @throws Exception
+     */
+    @Test
+    void metaconhecimentoDesatualizadoNaoEstaPronto(@TempDir Path tmp) throws Exception {
+        Path home = copiaDoMotor(tmp, true);
+        Path suporte = home.resolve("base_conhecimento/soc_suporte.txt");
+        String original = Files.readString(suporte);
+        String linha = "facto_dispara_regras(acesso_suspeito(_, _), [46]).";
+        assertTrue(original.contains(linha), "o soc_suporte.txt mudou: escolher outra linha para o teste");
+        Files.writeString(suporte, original.replace(linha, "facto_dispara_regras(acesso_suspeito(_, _), [999])."));
+
+        SaudeMotor e = adapter("swipl", home).estado();
+        assertFalse(e.pronto(), e.toString());
+        assertTrue(e.baseCarregada(), e.toString());
+        assertEquals("6", e.versaoKB());
+        assertEquals(Metaconhecimento.DESATUALIZADO, e.metaconhecimento());
+        assertTrue(e.erros().stream().anyMatch(l -> l.contains("Desatualizado: acesso_suspeito")), e.toString());
+        assertTrue(e.erros().getLast().contains("gera_meta.pl"), e.toString());
+    }
+
+    /**
+     * Verifica que sem o gera_meta.pl o metaconhecimento fica desconhecido e o motor nao fica pronto, mas a base e a
+     * versao continuam verificadas.
+     * @param tmp
+     * @throws Exception
+     */
+    @Test
+    void semGeraMetaOMetaconhecimentoEDesconhecido(@TempDir Path tmp) throws Exception {
+        SaudeMotor e = adapter("swipl", copiaDoMotor(tmp, false)).estado();
+        assertFalse(e.pronto(), e.toString());
+        assertTrue(e.baseCarregada(), e.toString());
+        assertEquals("6", e.versaoKB());
+        assertEquals(Metaconhecimento.DESCONHECIDO, e.metaconhecimento());
+        assertTrue(e.erros().getFirst().contains("gera_meta.pl"), e.toString());
+    }
+
+    /**
+     * Verifica que um wrapper que nao responde dentro do timeout deixa o motor nao pronto, sem processos vivos.
+     * @param tmp
+     * @throws Exception
+     */
+    @Test
+    void wrapperQueNaoRespondeNaoEstaPronto(@TempDir Path tmp) throws Exception {
+        PrologAdapter a = adapter(homeFalsa(tmp, "main :- sleep(30)."), Duration.ofMillis(500), 1, Duration.ZERO);
+        SaudeMotor e = a.estado();
+        assertFalse(e.pronto(), e.toString());
+        assertFalse(e.baseCarregada(), e.toString());
         assertNull(e.versaoKB());
+        assertTrue(e.erros().getFirst().contains("timeout"), e.toString());
+        // o @AfterEach confirma que o processo morreu
     }
 
     /**

@@ -207,8 +207,21 @@ public class InferenceService {
      * @return
      */
     public SaudeSistema saude() {
-        List<SaudeMotor> estados = estados();
+        List<SaudeMotor> estados = estados().stream().map(this::comparaVersao).toList();
         boolean pronto = !estados.isEmpty() && estados.stream().allMatch(SaudeMotor::pronto);
         return new SaudeSistema(pronto, base.versaoKB(), estados);
+    }
+
+    /**
+     * O estado do motor, mas nao pronto se estiver pronto com uma versao da base diferente da do catalogo.
+     * @param estado
+     * @return
+     */
+    private SaudeMotor comparaVersao(SaudeMotor estado) {
+        if (!estado.pronto() || base.versaoKB().equals(estado.versaoKB())) {
+            return estado;
+        }
+        return estado.naoPronto("o motor tem a versaoKB " + estado.versaoKB() + " e o catalogo de cenarios a "
+                + base.versaoKB());
     }
 }
