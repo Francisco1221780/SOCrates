@@ -19,7 +19,7 @@ que se usa para demonstrar a base.
 
 **Evidência**
 
-- `motores/drools/src/main/java/cyberrangers/motores/drools/MotorDrools.java`: o `main` faz
+- `motores/drools/src/main/java/socrates/motores/drools/MotorDrools.java`: o `main` faz
   `System.in.readAllBytes()`, escreve a resposta e faz `System.exit`.
 - `motores/drools/pom.xml`: o `exec-maven-plugin` tem `<mainClass>` fixo no `MotorDrools` e o logger só com `error`.
   É este o caminho documentado em "Correr só o Drools".
@@ -36,7 +36,7 @@ que se usa para demonstrar a base.
 - O motor Drools não guarda estado entre pedidos (regra do projeto, README da raiz). O Prolog acumula os factos na
   sessão.
 - `cenarios.json` (passos prontos de cada um dos 67 cenários, as sequências `base`, `atualizacoes` e `normal`, as
-  dependências e as alternativas) só existe em `backend/cyber/src/main/resources/generated/`. É escrito pelo
+  dependências e as alternativas) só existe em `backend/socrates/src/main/resources/generated/`. É escrito pelo
   `motores/prolog/ferramentas/gera_json.pl`, que já escreve o `factos_iniciais.json` do Drools. Esse caminho é usado
   pelos testes Prolog, pelos dois geradores de referências, pelo `ParidadeTest` e pelos PRs #29 e #30.
 - A resposta do motor já traz tudo o que o menu mostra: `perguntas` (com `texto` e `opcoes`), `incidentes`,

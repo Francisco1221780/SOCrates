@@ -108,7 +108,7 @@ troca(De, Para, L0, L) :-
 % GERACAO
 
 cenarios(Raiz, Cenarios, Seqs) :-
-	directory_file_path(Raiz, 'backend/cyber/src/main/resources/generated/cenarios.json', F),
+	directory_file_path(Raiz, 'backend/socrates/src/main/resources/generated/cenarios.json', F),
 	setup_call_cleanup(open(F, read, S, [encoding(utf8)]), json_read_dict(S, C, [value_string_as(atom)]), close(S)),
 	Cenarios = C,
 	Seqs = C.sequencias.

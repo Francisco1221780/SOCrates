@@ -4,14 +4,14 @@ package regras;
 // Quando o inventario do ativo esta incompleto, a falta de um servico ou de um programa nao prova nada.
 // Molde e convencoes: ver B_vetor.drl e o README desta pasta.
 
-import cyberrangers.motores.drools.modelo.Facto;
-import cyberrangers.motores.drools.modelo.Premissa;
-import cyberrangers.motores.drools.modelo.Termo;
-import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
-import cyberrangers.motores.drools.sessao.Marca;
+import socrates.motores.drools.modelo.Facto;
+import socrates.motores.drools.modelo.Premissa;
+import socrates.motores.drools.modelo.Termo;
+import socrates.motores.drools.sessao.CondicoesCalculadas;
+import socrates.motores.drools.sessao.Marca;
 import java.util.List;
 
-global cyberrangers.motores.drools.sessao.BaseFactos base;
+global socrates.motores.drools.sessao.BaseFactos base;
 
 // R14: nenhum servico do programa registado como acessivel, mas o inventario de rede do ativo nao esta completo
 //      -> exploracao incerta e incidente "inventario de rede incompleto"

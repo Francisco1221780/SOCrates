@@ -1,4 +1,4 @@
-% FACTOS - Analista virtual de SOC (CyberRangers), versao 6
+% FACTOS - Analista virtual de SOC (SOCrates), versao 6
 % ESTADO INICIAL: os dados fixos da organizacao (ativos, software, servicos, configuracao, vulnerabilidades, rede,
 % politicas, janelas de tempo, tipos de incidente e prioridades). E o que o sistema sabe antes de chegar qualquer evento.
 % A telemetria (alertas, eventos dos hosts, logins, respostas do analista) nao esta aqui: cada cenario tem o seu

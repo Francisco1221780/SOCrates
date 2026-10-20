@@ -8,15 +8,15 @@ package regras;
 // R40: violacao de politica da DMZ para a rede interna -> movimento_lateral
 // R41: movimento lateral a partir de ativo com compromisso confirmado antes do login -> compromisso_provavel do destino
 
-import cyberrangers.motores.drools.modelo.Facto;
-import cyberrangers.motores.drools.modelo.Premissa;
-import cyberrangers.motores.drools.modelo.Termo;
-import cyberrangers.motores.drools.modelo.Variavel;
-import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
-import cyberrangers.motores.drools.sessao.Marca;
+import socrates.motores.drools.modelo.Facto;
+import socrates.motores.drools.modelo.Premissa;
+import socrates.motores.drools.modelo.Termo;
+import socrates.motores.drools.modelo.Variavel;
+import socrates.motores.drools.sessao.CondicoesCalculadas;
+import socrates.motores.drools.sessao.Marca;
 import java.util.List;
 
-global cyberrangers.motores.drools.sessao.BaseFactos base;
+global socrates.motores.drools.sessao.BaseFactos base;
 
 // R38: login_ok(Ev,Destino,Origem,Servico) e nao permitido(Destino,Servico,Origem)
 //      e cobertura_politica(Destino,Servico,completa) -> violacao_politica(Ev,Destino,Origem)

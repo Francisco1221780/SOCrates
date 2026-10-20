@@ -53,7 +53,7 @@ end
   - `Premissa.nao(...)` para uma negação, com `Variavel.nova()` no lugar de cada `_`;
   - `Premissa.calculada(...)` para uma condição calculada, com os argumentos já ligados (ex.: o resultado da `origem_evidencia`).
 - O nome da regra é `"R<n>"` e leva por cima, em comentário, o texto da regra de `soc_regras.txt`.
-- Cada ficheiro importa as classes de `cyberrangers.motores.drools.modelo` (e de `...sessao` se usar condições calculadas) e declara `global cyberrangers.motores.drools.sessao.BaseFactos base;`.
+- Cada ficheiro importa as classes de `socrates.motores.drools.modelo` (e de `...sessao` se usar condições calculadas) e declara `global socrates.motores.drools.sessao.BaseFactos base;`.
 
 ## Factos que passam de uma metade para a outra
 

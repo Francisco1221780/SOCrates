@@ -89,19 +89,19 @@ swipl motores/prolog/ferramentas/gera_json.pl --verificar                  # as 
 
 | Caminho | |
 | :--- | :--- |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/consola/ConsolaDrools.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/consola/SessaoConsola.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/consola/TermoTexto.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/consola/Cenarios.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/MotorDrools.java` | alterado (`--interativo`) |
+| `motores/drools/src/main/java/socrates/motores/drools/consola/ConsolaDrools.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/consola/SessaoConsola.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/consola/TermoTexto.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/consola/Cenarios.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/MotorDrools.java` | alterado (`--interativo`) |
 | `motores/drools/pom.xml` | alterado (`slf4j-simple` `optional`, nível dos testes no Surefire, `exec-maven-plugin` sem o logger próprio) |
 | `motores/drools/src/main/resources/simplelogger.properties` | novo (nível `error`) |
 | `motores/drools/src/main/resources/cenarios.json` | novo (gerado) |
 | `motores/prolog/ferramentas/gera_json.pl` | alterado (terceira saída) |
 | `motores/prolog/ferramentas/README.md` | alterado |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/consola/ConsolaDroolsTest.java` | novo |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/consola/TermoTextoTest.java` | novo |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/ParidadeTest.java` | alterado (lê o `cenarios.json` do classpath) |
+| `motores/drools/src/test/java/socrates/motores/drools/consola/ConsolaDroolsTest.java` | novo |
+| `motores/drools/src/test/java/socrates/motores/drools/consola/TermoTextoTest.java` | novo |
+| `motores/drools/src/test/java/socrates/motores/drools/ParidadeTest.java` | alterado (lê o `cenarios.json` do classpath) |
 | `motores/drools/README.md` | alterado |
 | `README.md` | alterado |
 | `docs/changes/features/F0003-consola-drools/README.md`, `RESULT.md` | novos |

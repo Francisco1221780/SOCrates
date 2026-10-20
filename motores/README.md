@@ -1,6 +1,6 @@
 # motores
 
-Um projeto por motor de inferência. O backend (`backend/cyber`) só tem os adaptadores que os chamam.
+Um projeto por motor de inferência. O backend (`backend/socrates`) só tem os adaptadores que os chamam.
 
 | Pasta | Conteúdo | Como corre |
 | --- | --- | --- |

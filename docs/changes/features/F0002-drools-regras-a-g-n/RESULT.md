@@ -3,7 +3,7 @@
 | Campo | Valor |
 | :--- | :--- |
 | Tipo | Feature |
-| Issue | [#13](https://github.com/Francisco1221780/CyberRangers/issues/13) |
+| Issue | [#13](https://github.com/Francisco1221780/SOCrates/issues/13) |
 | Branch | `feature/drools-regras-a-g-n`. Implementado sobre `845bcb9` (PR #31); depois do merge do #31 (18/10), a branch passou para `develop` @ `52cf9c7` e o gate voltou a correr verde |
 | Estado | Implementado, sem commits. As 37 regras A–G e N estão portadas e dão os mesmos factos, regras, premissas e passos que o Prolog nas 10 variantes de cenários |
 | Build | `.\mvnw.cmd verify` (JDK 25) → `BUILD SUCCESS`. Baseline em `845bcb9`: `BUILD SUCCESS`, 20 + 2 testes |
@@ -109,16 +109,16 @@ swipl motores/drools/ferramentas/gera_referencia_agn.pl --verificar  # a referê
 | `motores/drools/src/main/resources/regras/G_pergunta.drl` | novo |
 | `motores/drools/src/main/resources/regras/N_catalogo.drl` | novo |
 | `motores/drools/src/main/resources/regras/README.md` | alterado |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/sessao/Marca.java` | novo |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/sessao/BaseFactos.java` | alterado (marcas, `comoNoProlog`) |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/sessao/CondicoesCalculadas.java` | alterado (`origemEvidencia`, `evidenciasNegadas`) |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/modelo/Facto.java` | alterado (`representadoPor`) |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/MotorDrools.java` | alterado (filtro de regras, package-private) |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/ParidadeTest.java` | novo |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/ComparaRespostas.java` | novo |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/sessao/CondicoesCalculadasTest.java` | novo |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/sessao/BaseFactosTest.java` | alterado |
-| `motores/drools/src/test/java/cyberrangers/motores/drools/MotorDroolsTest.java` | alterado (grupo N; 2 testes ajustados) |
+| `motores/drools/src/main/java/socrates/motores/drools/sessao/Marca.java` | novo |
+| `motores/drools/src/main/java/socrates/motores/drools/sessao/BaseFactos.java` | alterado (marcas, `comoNoProlog`) |
+| `motores/drools/src/main/java/socrates/motores/drools/sessao/CondicoesCalculadas.java` | alterado (`origemEvidencia`, `evidenciasNegadas`) |
+| `motores/drools/src/main/java/socrates/motores/drools/modelo/Facto.java` | alterado (`representadoPor`) |
+| `motores/drools/src/main/java/socrates/motores/drools/MotorDrools.java` | alterado (filtro de regras, package-private) |
+| `motores/drools/src/test/java/socrates/motores/drools/ParidadeTest.java` | novo |
+| `motores/drools/src/test/java/socrates/motores/drools/ComparaRespostas.java` | novo |
+| `motores/drools/src/test/java/socrates/motores/drools/sessao/CondicoesCalculadasTest.java` | novo |
+| `motores/drools/src/test/java/socrates/motores/drools/sessao/BaseFactosTest.java` | alterado |
+| `motores/drools/src/test/java/socrates/motores/drools/MotorDroolsTest.java` | alterado (grupo N; 2 testes ajustados) |
 | `motores/drools/src/test/resources/factos_iniciais_catalogo.json` | novo (fixture do grupo N) |
 | `motores/drools/src/test/resources/referencia_agn/*.json` | novos (10, gerados) |
 | `motores/drools/ferramentas/gera_referencia_agn.pl` | novo |

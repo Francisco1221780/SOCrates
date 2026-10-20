@@ -41,7 +41,7 @@ O motor fica em `motores/prolog/` e a base de conhecimento em `base_conhecimento
 Abre o SWI-Prolog na pasta `motores/prolog/` (por exemplo, `cd motores/prolog && swipl`). No Mac, se abrires a aplicação ou fizeres duplo clique num ficheiro, a pasta de trabalho não é essa: muda primeiro de pasta.
 
 ```prolog
-?- working_directory(_, '/caminho/para/CyberRangers/motores/prolog/').
+?- working_directory(_, '/caminho/para/SOCrates/motores/prolog/').
 ?- consult('soc_motor.pl').
 ?- carrega_bc('../../base_conhecimento/soc_factos.txt').
 Base carregada: 314 factos e 92 regras.
@@ -135,6 +135,8 @@ Porque pela regra 13:
 ```
 
 Percorre todas as regras que podiam concluir o facto e, em cada uma, as premissas que falham, descendo pelas que outras regras poderiam concluir. Para numa premissa que é um dado de entrada (nenhuma regra a conclui), numa condição calculada falsa, ou ao chegar à profundidade máxima. Para ver mais fundo: `define_opcao(profundidade_whynot, 6).`
+
+A explicação monta-se primeiro como uma lista de linhas, `whynot_linhas(Facto, Profundidade, Linhas)`, e o `whynot/1` escreve-as. Cada linha é `linha(Nivel, Tipo, Campos)`, com os mesmos tipos do `PorqueNao` do Drools; é o que o wrapper dá em JSON no modo `whynot` (ver `README.md`).
 
 ## Perguntas ao analista
 
