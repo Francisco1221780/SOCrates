@@ -3,7 +3,7 @@
 | Campo | Valor |
 | :--- | :--- |
 | Tipo | Feature |
-| Issue | [#13](https://github.com/Francisco1221780/CyberRangers/issues/13) |
+| Issue | [#13](https://github.com/Francisco1221780/SOCrates/issues/13) |
 | Branch | `feature/drools-regras-a-g-n`, a partir de `feature/drools-issues-14-15` @ `845bcb9` (PR #31, ainda aberto). Faz-se rebase para `develop` quando o #31 entrar |
 | Estado | Plano aprovado em 2026-10-18, com a paridade também para as 92 regras (pedido do utilizador) |
 | Âmbito | As 37 regras que faltam dos grupos A a G e N (R1–R34 sem a R7, que já existe, e R89–R92) em DRL, com justificação igual à do Prolog. Inclui a `origem_evidencia` e a reavaliação das condições calculadas quando chega um facto que elas leem (`condicao_le/2`), e uma referência Prolog só com estes grupos para provar a paridade |
@@ -142,7 +142,7 @@ Por fases; cada uma compila e passa os testes sozinha.
 **Fase 3 — Filtro de regras e teste de paridade (R)**
 - `MotorDrools`: construtor package-private com o filtro de regras.
 - `ParidadeTest` (novo): `@ParameterizedTest` por nível (A–G+N, todas) e por variante, 20 casos. Lê os passos do
-  `backend/cyber/src/main/resources/generated/cenarios.json` (o mesmo que os geradores usam). A comparação e a
+  `backend/socrates/src/main/resources/generated/cenarios.json` (o mesmo que os geradores usam). A comparação e a
   lista de diferenças conhecidas ficam numa classe de apoio (`ComparaRespostas`), para a #16 a poder reaproveitar.
   Nesta fase os casos ficam vermelhos até às fases 4–6, por isso a fase 3 entra no mesmo commit que a fase 4.
 

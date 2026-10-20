@@ -62,7 +62,7 @@ base(Pasta) :- caminho(base_conhecimento, Pasta).
 
 % Pedido com os passos dos cenarios Ids, tirados do cenarios.json.
 pedido(Ids, Texto) :-
-	caminho('backend/cyber/src/main/resources/generated/cenarios.json', F),
+	caminho('backend/socrates/src/main/resources/generated/cenarios.json', F),
 	setup_call_cleanup(open(F, read, S, [encoding(utf8)]), json_read_dict(S, C), close(S)),
 	maplist(passo(C), Ids, Passos),
 	with_output_to(string(Texto), json_write_dict(current_output, _{versaoKB: C.versaoKB, passos: Passos})).
@@ -199,7 +199,7 @@ test(ac18_json_em_dia) :-
 % cenarios.json: as dependencias e as alternativas citam cenarios que existem, e as sequencias respeitam-nas
 % (nenhum cenario aparece antes das suas dependencias nem junto com uma alternativa).
 test(cenarios_coerentes) :-
-	caminho('backend/cyber/src/main/resources/generated/cenarios.json', F),
+	caminho('backend/socrates/src/main/resources/generated/cenarios.json', F),
 	setup_call_cleanup(open(F, read, S, [encoding(utf8)]), json_read_dict(S, C, [value_string_as(atom)]), close(S)),
 	findall(Id, ( member(X, C.cenarios), Id = X.id ), Ids),
 	forall(( member(X, C.cenarios), ( member(D, X.depende) ; member(D, X.alternativas) ) ), memberchk(D, Ids)),

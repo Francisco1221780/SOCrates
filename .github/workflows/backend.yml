@@ -1,6 +1,6 @@
 # Testes do backend (issues #11 e #12): PrologProperties, PrologAdapter (com o swipl real e wrappers falsos),
 # PrologInstaller, DroolsAdapter e o arranque do Spring. Precisa do JDK 25 e do SWI-Prolog.
-# Localmente: ./mvnw -pl backend/cyber -am verify
+# Localmente: ./mvnw -pl backend/socrates -am verify
 name: Backend
 
 on:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   backend:
-    name: Modulo backend/cyber
+    name: Modulo backend/socrates
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,11 +30,11 @@ jobs:
           swipl --version
 
       - name: Testes do backend
-        run: ./mvnw -B -pl backend/cyber -am verify
+        run: ./mvnw -B -pl backend/socrates -am verify
 
       - name: Relatorios dos testes (em caso de falha)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: surefire-backend
-          path: backend/cyber/target/surefire-reports/
+          path: backend/socrates/target/surefire-reports/

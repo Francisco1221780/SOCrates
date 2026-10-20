@@ -33,7 +33,7 @@ Há duas formas, como no Prolog (o `menu/0` do `soc_motor.pl` e o `wrapper.pl`).
 
 ### Consola interativa
 
-No IntelliJ: *Run* no `main` de `cyberrangers.motores.drools.consola.ConsolaDrools`. Pela linha de comandos, a partir da raiz:
+No IntelliJ: *Run* no `main` de `socrates.motores.drools.consola.ConsolaDrools`. Pela linha de comandos, a partir da raiz:
 
 ```powershell
 $env:JAVA_HOME = 'C:\Program Files\Java\jdk-25.0.4.1'
@@ -93,7 +93,7 @@ Get-Content pedido.json | .\mvnw.cmd -q -pl motores/drools compile exec:java > r
 Get-Content pedido.json | swipl motores/prolog/wrapper.pl base_conhecimento > resposta_prolog.json
 ```
 
-Os passos prontos a enviar de cada cenário estão no `backend/cyber/src/main/resources/generated/cenarios.json`.
+Os passos prontos a enviar de cada cenário estão no `backend/socrates/src/main/resources/generated/cenarios.json`.
 
 ## API do motor (o que o menu faz, em código)
 

@@ -4,14 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>CyberRangers</groupId>
-    <artifactId>cyberrangers</artifactId>
+    <groupId>socrates</groupId>
+    <artifactId>socrates</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <description>CyberRangers: agregador do backend e dos motores</description>
+    <description>SOCrates: agregador do backend e dos motores</description>
 
     <modules>
         <module>motores/drools</module>
-        <module>backend/cyber</module>
+        <module>backend/socrates</module>
     </modules>
 </project>

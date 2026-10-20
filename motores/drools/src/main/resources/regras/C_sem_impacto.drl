@@ -4,15 +4,15 @@ package regras;
 // Nao e falso positivo: o ataque foi real, so nao podia resultar. Fica registada e a origem passa a ser vigiada.
 // Molde e convencoes: ver B_vetor.drl e o README desta pasta.
 
-import cyberrangers.motores.drools.modelo.Facto;
-import cyberrangers.motores.drools.modelo.Premissa;
-import cyberrangers.motores.drools.modelo.Termo;
-import cyberrangers.motores.drools.modelo.Variavel;
-import cyberrangers.motores.drools.sessao.CondicoesCalculadas;
-import cyberrangers.motores.drools.sessao.Marca;
+import socrates.motores.drools.modelo.Facto;
+import socrates.motores.drools.modelo.Premissa;
+import socrates.motores.drools.modelo.Termo;
+import socrates.motores.drools.modelo.Variavel;
+import socrates.motores.drools.sessao.CondicoesCalculadas;
+import socrates.motores.drools.sessao.Marca;
 import java.util.List;
 
-global cyberrangers.motores.drools.sessao.BaseFactos base;
+global socrates.motores.drools.sessao.BaseFactos base;
 
 // R10: vetor aberto ate uma instalacao nao afetada, e TODAS as instalacoes do programa ao alcance do ataque estao nao
 //      afetadas -> tentativa sem impacto (versao corrigida)

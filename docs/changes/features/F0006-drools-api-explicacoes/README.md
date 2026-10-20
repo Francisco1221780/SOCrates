@@ -6,7 +6,7 @@
 | Issue | — (pedido do utilizador, 19/10: "o que faz o menu tem de ser possível chamar pela API"; "implementa o que falta do meu lado do Drools") |
 | Branch | `feature/drools-menu-why` (a mesma da F0005, ainda sem commits) |
 | Estado | Plano à espera de aprovação |
-| Âmbito | Só o módulo `motores/drools`. O `MotorDrools` ganha métodos públicos, com resposta JSON, para tudo o que o menu da consola faz e a API ainda não consegue: "como?", "porque?", o "porque?" de uma pergunta e a lista de cenários (o "porque não?" já existe). A consola passa a usar esses métodos, para a consola e a API mostrarem o mesmo. **Não se mexe no backend** (`backend/cyber`), nem na interface `MotorInferencia`, nem no Prolog; no fim há um resumo dos endpoints que o backend devia ter |
+| Âmbito | Só o módulo `motores/drools`. O `MotorDrools` ganha métodos públicos, com resposta JSON, para tudo o que o menu da consola faz e a API ainda não consegue: "como?", "porque?", o "porque?" de uma pergunta e a lista de cenários (o "porque não?" já existe). A consola passa a usar esses métodos, para a consola e a API mostrarem o mesmo. **Não se mexe no backend** (`backend/socrates`), nem na interface `MotorInferencia`, nem no Prolog; no fim há um resumo dos endpoints que o backend devia ter |
 | Verificação | `.\mvnw.cmd -pl motores/drools verify`; testes novos do contrato JSON de cada método; os testes da consola (F0005) continuam a passar sem mudar o texto |
 
 ---
@@ -15,7 +15,7 @@
 
 **Evidência**
 
-- `MotorDrools` público: `infere(pedido)`, `porqueNao(pedido, facto, profundidade)`, `estado()`, `numeroRegras()` (`MotorDrools.java`). O backend só usa `DroolsAdapter.infere` (`backend/cyber/.../engine/drools/DroolsAdapter.java`); `backend/cyber/.../api/` só tem um README, sem endpoints.
+- `MotorDrools` público: `infere(pedido)`, `porqueNao(pedido, facto, profundidade)`, `estado()`, `numeroRegras()` (`MotorDrools.java`). O backend só usa `DroolsAdapter.infere` (`backend/socrates/.../engine/drools/DroolsAdapter.java`); `backend/socrates/.../api/` só tem um README, sem endpoints.
 - O "como?" e o "porque?" só existem na consola (`consola/Explicacoes.java`), construídos a partir dos factos da resposta do `infere` (`regra`, `premissas`). Quem chamar o motor por código tem de refazer a árvore.
 - O texto de uma regra (`PorqueNao.regra(id)`) é público no pacote `explicacao` mas o `MotorDrools` não o expõe.
 - O "porque?" de uma pergunta (opção 5 da consola) junta a regra que a gerou com as regras que usam a resposta (`PorqueNao.regrasComCondicao`); está em `ConsolaDrools.porquePergunta`.

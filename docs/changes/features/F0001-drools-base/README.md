@@ -3,7 +3,7 @@
 | Campo | Valor |
 | :--- | :--- |
 | Tipo | Feature |
-| Issue | [#4](https://github.com/Francisco1221780/CyberRangers/issues/4) |
+| Issue | [#4](https://github.com/Francisco1221780/SOCrates/issues/4) |
 | Branch | `feature/drools-base` (a partir de `develop`, atualizada para `635785e`) |
 | Estado | Plano revisto para seguir o `wrapper.pl`, aprovado em 2026-10-14; a #6 (contrato) está fechada |
 | Âmbito | Infraestrutura do motor Drools sobre a qual se portam as 92 regras: termos, factos numerados, factos iniciais, justificação, resposta **no formato exato do `motores/prolog/wrapper.pl`**, estado "pronto" e a R7 como regra molde |
@@ -23,9 +23,9 @@ igual à do Prolog.
 
 **Evidência**
 
-- `motores/drools/src/main/java/cyberrangers/motores/drools/Facto.java`: `Facto(predicado, List<Object> args)`,
+- `motores/drools/src/main/java/socrates/motores/drools/Facto.java`: `Facto(predicado, List<Object> args)`,
   sem `equals`/`hashCode`, sem número e sem justificação.
-- `motores/drools/src/main/java/cyberrangers/motores/drools/MotorDrools.java`: os `args` passam por
+- `motores/drools/src/main/java/socrates/motores/drools/MotorDrools.java`: os `args` passam por
   `json.treeToValue(a, Object.class)`, por isso um termo composto `{"f":"v","args":[2,4,49]}` fica um
   `LinkedHashMap`. A resposta só tem `estado`, `motor`, `versaoKB`, `factos` e `erro`, e o `estado` é sempre
   `concluido`. As regras não correm sobre os dados fixos antes dos passos.
@@ -221,8 +221,8 @@ Por fases; cada uma compila e passa os testes sozinha.
   no build).
 
 **Fase 6 — Backend e documentação (H)**
-- `backend/cyber/src/test/.../DroolsAdapterTest.java`: deixa de procurar `exemplo_conclusao` e passa a verificar
-  um facto da R7. Junta `backend/cyber/src/test/resources/factos_iniciais.json` (cópia da fixture), porque o
+- `backend/socrates/src/test/.../DroolsAdapterTest.java`: deixa de procurar `exemplo_conclusao` e passa a verificar
+  um facto da R7. Junta `backend/socrates/src/test/resources/factos_iniciais.json` (cópia da fixture), porque o
   backend não vê os recursos de teste do módulo.
 - `motores/drools/README.md`, `motores/drools/src/main/resources/regras/README.md` e as secções "Estado do
   projeto" e "Testing" do `README.md` da raiz: o molde de uma regra (como se escrevem as premissas) e a nota de
@@ -239,7 +239,7 @@ $env:JAVA_HOME = 'C:\Program Files\Java\jdk-25.0.4.1'   # o pom do backend pede 
 
 - **Baseline (14/10, `develop` @ 681b21d, JDK 25):** `BUILD SUCCESS` com 4 testes:
   - 2 em `MotorDroolsTest`;
-  - 1 em `CyberApplicationTests`;
+  - 1 em `SocratesApplicationTests`;
   - 1 em `DroolsAdapterTest`.
 
   Avisos que já existiam: `Unable to find pom.properties` (Drools a correr a partir de `target/classes`) e o
@@ -266,7 +266,7 @@ $env:JAVA_HOME = 'C:\Program Files\Java\jdk-25.0.4.1'   # o pom do backend pede 
 | **Negação no DRL ≠ `nao` do Prolog** quando o facto negado chega depois: o Drools cancela a ativação ainda por disparar; o Prolog não volta atrás numa conclusão já feita | Teste da R7 com `versao` num passo anterior e no mesmo passo. Dentro de um passo, o Drools só cancela se o facto chegar antes de a regra disparar; o caso fica documentado para a #13 |
 | **Formato do `factos_iniciais.json` diferente** do que a #10 vai gerar | O formato fica escrito no README do módulo e combinado com o P2; o leitor falha com uma mensagem clara (motor "não pronto"), não em silêncio |
 | **Custo de inserir os 314 factos e correr as regras sobre eles em cada pedido** | Medir com a fixture; reavaliar com o ficheiro real (fora do âmbito) |
-| **`DroolsAdapterTest` / `CyberApplicationTests` partem** por o motor ficar "não pronto" sem `factos_iniciais.json` no classpath do backend | Fixture em `backend/cyber/src/test/resources/`; `.\mvnw.cmd verify` completo |
+| **`DroolsAdapterTest` / `SocratesApplicationTests` partem** por o motor ficar "não pronto" sem `factos_iniciais.json` no classpath do backend | Fixture em `backend/socrates/src/test/resources/`; `.\mvnw.cmd verify` completo |
 
 ---
 

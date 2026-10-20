@@ -1,0 +1,3 @@
+package socrates.backend.domain;
+
+public enum TipoResultado { OK, MOTOR_INEXISTENTE, PEDIDO_INVALIDO, NAO_ENCONTRADO, OCUPADO, TIMEOUT, FALHA_MOTOR }

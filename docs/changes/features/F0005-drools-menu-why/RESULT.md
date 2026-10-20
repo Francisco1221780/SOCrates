@@ -80,10 +80,10 @@ swipl motores/prolog/ferramentas/gera_json.pl --verificar
 
 | Caminho | Estado |
 | :--- | :--- |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/consola/Explicacoes.java` | Novo: "como?", "porque?" e "porque não?" (formato novo e formato Prolog) |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/consola/ConsolaDrools.java` | Alterado: opção 14, `escolheFacto`, entrada de factos, prompts sem ponto, chama `Explicacoes` (saíram o `explica`, `premissaComo1`, `linhaPorqueNao`) |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/consola/TermoTexto.java` | Alterado: `legivel`, leitura de argumentos sem plicas |
-| `motores/drools/src/main/java/cyberrangers/motores/drools/explicacao/PorqueNao.java` | Alterado: `regra(id)`, `se`/`entao` completos nas linhas `regra`, `encontrado` |
+| `motores/drools/src/main/java/socrates/motores/drools/consola/Explicacoes.java` | Novo: "como?", "porque?" e "porque não?" (formato novo e formato Prolog) |
+| `motores/drools/src/main/java/socrates/motores/drools/consola/ConsolaDrools.java` | Alterado: opção 14, `escolheFacto`, entrada de factos, prompts sem ponto, chama `Explicacoes` (saíram o `explica`, `premissaComo1`, `linhaPorqueNao`) |
+| `motores/drools/src/main/java/socrates/motores/drools/consola/TermoTexto.java` | Alterado: `legivel`, leitura de argumentos sem plicas |
+| `motores/drools/src/main/java/socrates/motores/drools/explicacao/PorqueNao.java` | Alterado: `regra(id)`, `se`/`entao` completos nas linhas `regra`, `encontrado` |
 | `motores/drools/src/test/java/.../consola/ConsolaDroolsTest.java` | Alterado: testes novos e textos ajustados (espaços depois das vírgulas, prompts, linha vazia a terminar a opção 4) |
 | `motores/drools/src/test/java/.../consola/TermoTextoTest.java` | Alterado: leitura sem plicas, erros novos |
 | `motores/drools/src/test/java/.../consola/PorqueNaoTest.java` | Alterado: usa `Explicacoes.linhaPorqueNaoProlog` |

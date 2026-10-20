@@ -13,7 +13,7 @@ Fonte única da base de conhecimento do analista virtual de SOC (versão 6). É 
 Regras:
 
 - Os ficheiros desta pasta têm de ficar juntos: o `soc_factos.txt` carrega os outros a partir da sua própria pasta.
-- Isto é a única fonte para factos e cenários. Os JSON usados pelos motores e pelo backend (`motores/drools/src/main/resources/` e `backend/cyber/src/main/resources/generated/`) geram-se daqui e não se editam à mão.
+- Isto é a única fonte para factos e cenários. Os JSON usados pelos motores e pelo backend (`motores/drools/src/main/resources/` e `backend/socrates/src/main/resources/generated/`) geram-se daqui e não se editam à mão.
 - Mudar regras implica regenerar o metaconhecimento (`motores/prolog/ferramentas/gera_meta.pl`) e atualizar o DRL.
 - O `soc_cenarios.pl` foi escrito a partir do `cenarios/indice.txt`; se o índice mudar, atualiza-se também.
 - O número da versão (6) está no cabeçalho do `soc_factos.txt` e em `MotorDrools.VERSAO_KB`; mudam juntos.

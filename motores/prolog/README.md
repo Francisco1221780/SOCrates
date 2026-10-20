@@ -34,7 +34,7 @@ dados fixos e depois cada passo do pedido, por ordem: injeta os factos com `novo
 haver conclusões novas. O que o motor escreve ("Base carregada…") vai para o `stderr`.
 
 O `pedido.json` tem o formato abaixo (a `versaoKB` tem de ser a da base carregada, hoje `"6"`). Os factos de cada
-cenário já estão neste formato no `passo` de cada cenário do `cenarios.json` (`backend/cyber/src/main/resources/generated/`):
+cenário já estão neste formato no `passo` de cada cenário do `cenarios.json` (`backend/socrates/src/main/resources/generated/`):
 
 ```json
 {"versaoKB": "6", "passos": [

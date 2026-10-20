@@ -4,10 +4,10 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>CyberRangers</groupId>
+    <groupId>socrates</groupId>
     <artifactId>motores-drools</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <description>Motor Drools do CyberRangers (sem Spring)</description>
+    <description>Motor Drools do SOCrates (sem Spring)</description>
 
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
@@ -74,7 +74,7 @@
                 <configuration>
                     <!-- o logger fica so com os erros (simplelogger.properties): dentro do exec:java o Maven junta o
                          stderr ao stdout, e o stdout tem de ficar so com o JSON da resposta -->
-                    <mainClass>cyberrangers.motores.drools.MotorDrools</mainClass>
+                    <mainClass>socrates.motores.drools.MotorDrools</mainClass>
                 </configuration>
             </plugin>
         </plugins>
