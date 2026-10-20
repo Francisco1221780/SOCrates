@@ -122,8 +122,15 @@ class MotorDroolsTest {
     @Test
     void r7NaoDisparaSeHouverVersao() throws Exception {
         String versao = "{\"predicado\":\"versao\",\"args\":[\"web_srv_05_apache\",{\"f\":\"v\",\"args\":[2,4,49]}]}";
-        assertTrue(factos(infere(pedido(passo("p1", versao), passo("p2", VETOR_F1))), "incidente").isEmpty());
-        assertTrue(factos(infere(pedido(passo("p1", versao, VETOR_F1))), "incidente").isEmpty());
+        // Com a versao, a R1/R6/R30 abrem "exploracao_possivel"; o que nao pode aparecer e o incidente da R7.
+        assertTrue(regras(infere(pedido(passo("p1", versao), passo("p2", VETOR_F1))), "incidente").stream().noneMatch(n -> n == 7));
+        assertTrue(regras(infere(pedido(passo("p1", versao, VETOR_F1))), "incidente").stream().noneMatch(n -> n == 7));
+    }
+
+    private static List<Integer> regras(JsonNode resposta, String predicado) {
+        List<Integer> r = new ArrayList<>();
+        factos(resposta, predicado).forEach(f -> r.add(f.get("regra").asInt()));
+        return r;
     }
 
     @Test
@@ -152,6 +159,34 @@ class MotorDroolsTest {
         assertEquals(2, factos(r, "motivo").size());
         JsonNode premissaVetor = porNumero(r, incidentes.get(0).get("premissas").get(0).asInt());
         assertEquals("vetor_aberto", premissaVetor.get("predicado").asText());
+    }
+
+    // --- grupo N: validacao do catalogo (nenhum cenario o dispara, porque o catalogo da v6 esta completo)
+
+    /**
+     * R89-R92 sobre uma fixture com uma falha de cada tipo e um impacto completo. Esperado: a saida do wrapper.pl sobre
+     * os mesmos 9 factos (uma base com o soc_regras.txt e o soc_suporte.txt da v6 e so estes factos, corrida a 18/10),
+     * sem o campo "numero". Os factos iniciais tem os mesmos numeros nos dois motores, por isso as premissas tambem.
+     */
+    @Test
+    void catalogoComFalhasDaAsMesmasConclusoesQueOProlog() throws Exception {
+        String prolog = "["
+                + "{\"predicado\":\"falha_catalogo\",\"args\":[\"vuln_x\",{\"f\":\"impacto_sem_evidencia\",\"args\":[\"impacto_sem_evidencia\"]}],\"origem\":\"regra\",\"passo\":null,\"regra\":89,\"premissas\":[1,{\"f\":\"nao\",\"args\":[{\"f\":\"evidencia_impacto\",\"args\":[\"impacto_sem_evidencia\",\"A\",\"B\"]}]}]},"
+                + "{\"predicado\":\"falha_catalogo\",\"args\":[\"vuln_x\",{\"f\":\"impacto_sem_classe\",\"args\":[\"impacto_sem_evidencia\"]}],\"origem\":\"regra\",\"passo\":null,\"regra\":91,\"premissas\":[1,{\"f\":\"nao\",\"args\":[{\"f\":\"classe_impacto\",\"args\":[\"impacto_sem_evidencia\",\"A\"]}]}]},"
+                + "{\"predicado\":\"falha_catalogo\",\"args\":[\"vuln_x\",{\"f\":\"evidencia_sem_pergunta\",\"args\":[\"evidencia_sem_pergunta\"]}],\"origem\":\"regra\",\"passo\":null,\"regra\":90,\"premissas\":[2,3,{\"f\":\"nao\",\"args\":[{\"f\":\"pergunta_evidencia\",\"args\":[\"evidencia_sem_pergunta\",\"A\"]}]}]},"
+                + "{\"predicado\":\"falha_catalogo\",\"args\":[\"vuln_x\",{\"f\":\"classe_sem_tipo_provavel\",\"args\":[\"classe_sem_tipo\"]}],\"origem\":\"regra\",\"passo\":null,\"regra\":92,\"premissas\":[2,4,{\"f\":\"nao\",\"args\":[{\"f\":\"tipo_provavel\",\"args\":[\"classe_sem_tipo\",\"A\"]}]}]}"
+                + "]";
+        JsonNode r = infere(new MotorDrools("factos_iniciais_catalogo.json"), pedido(passo("p1")));
+        List<JsonNode> esperado = new ArrayList<>();
+        json.readTree(prolog).forEach(esperado::add);
+        List<JsonNode> drools = new ArrayList<>();
+        for (JsonNode f : factos(r, "falha_catalogo")) {
+            ObjectNode semNumero = f.deepCopy();
+            semNumero.remove("numero");
+            drools.add(semNumero);
+        }
+        assertEquals(esperado.size(), drools.size(), drools.toString());
+        assertTrue(drools.containsAll(esperado), drools.toString());
     }
 
     // --- resposta: perguntas, tickets, factos iniciais
@@ -202,7 +237,7 @@ class MotorDroolsTest {
         assertTrue(primeiro.get("regra").isNull());
         assertEquals(0, primeiro.get("premissas").size());
         assertEquals("zona", primeiro.get("predicado").asText());
-        JsonNode entrada = porNumero(r, 331);
+        JsonNode entrada = factos(r, "vetor_aberto").get(0);
         assertEquals("entrada", entrada.get("origem").asText());
         assertEquals("p1", entrada.get("passo").asText());
         assertEquals("[\"estado\",\"motor\",\"versaoKB\",\"perguntas\",\"incidentes\",\"tickets\",\"factos\",\"erro\"]",

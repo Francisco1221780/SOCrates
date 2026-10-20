@@ -2,8 +2,13 @@
 %   motores/drools/src/main/resources/factos_iniciais.json        os factos fixos do soc_factos.txt (para o Drools)
 %   backend/cyber/src/main/resources/generated/cenarios.json      os cenarios, um passo por ficheiro, com a ordem e as
 %                                                                 dependencias do cenarios/indice.txt (para a UI)
+%   motores/drools/src/main/resources/cenarios.json               o mesmo ficheiro, para o modulo Drools se bastar a si
+%                                                                 proprio (a consola interativa corre os cenarios)
+%   motores/drools/src/main/resources/regras.json                 as regras do soc_regras.txt como dados, com as
+%                                                                 variaveis, e as condicoes calculadas (para o
+%                                                                 "porque nao?" do Drools)
 % Uso, a partir de qualquer pasta (os caminhos sao relativos a este ficheiro):
-%   swipl motores/prolog/ferramentas/gera_json.pl                 escreve os dois ficheiros
+%   swipl motores/prolog/ferramentas/gera_json.pl                 escreve os ficheiros
 %   swipl motores/prolog/ferramentas/gera_json.pl --verificar     nao escreve nada; sai com codigo 1 se algum estiver
 %                                                                 desatualizado em relacao aos .txt (AC18)
 % Le os ficheiros da base como termos (sem os carregar), por isso nao depende do motor.
@@ -55,15 +60,20 @@ raiz(Raiz) :-
 	directory_file_path(D, '../../..', R0),
 	absolute_file_name(R0, Raiz, [file_type(directory)]).
 
-% Os dois ficheiros: caminho relativo a raiz do repositorio - conteudo.
+% Os ficheiros: caminho relativo a raiz do repositorio - conteudo. O cenarios.json vai igual para o backend e para o
+% modulo Drools (o --verificar compara os dois).
 gera(Raiz, ['motores/drools/src/main/resources/factos_iniciais.json'-Factos,
-	    'backend/cyber/src/main/resources/generated/cenarios.json'-Cenarios]) :-
+	    'backend/cyber/src/main/resources/generated/cenarios.json'-Cenarios,
+	    'motores/drools/src/main/resources/cenarios.json'-Cenarios,
+	    'motores/drools/src/main/resources/regras.json'-Regras]) :-
 	directory_file_path(Raiz, base_conhecimento, Base),
 	versao_kb(Base, Versao),
 	factos_iniciais(Base, LF),
 	json_texto(json([versaoKB=Versao, factos=LF]), Factos),
 	cenarios(Base, LC, Seqs),
-	json_texto(json([versaoKB=Versao, cenarios=LC, sequencias=Seqs]), Cenarios).
+	json_texto(json([versaoKB=Versao, cenarios=LC, sequencias=Seqs]), Cenarios),
+	regras(Base, LR, LCalc),
+	json_texto(json([versaoKB=Versao, regras=LR, calculadas=LCalc]), Regras).
 
 json_texto(Json, Texto) :-
 	with_output_to(string(T0), json_write(current_output, Json, [width(120), tab(1000)])),
@@ -149,6 +159,63 @@ facto_json(F, json([predicado=P, args=J])) :-
 termo_json(L, J) :- is_list(L), !, maplist(termo_json, L, J).
 termo_json(T, json([f=N, args=J])) :- compound(T), !, compound_name_arguments(T, N, As), maplist(termo_json, As, J).
 termo_json(X, X).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% REGRAS (para o "porque nao?" do Drools)
+% Cada regra: {"id", "se": [condicao...], "entao": [termo...]}. Uma condicao e um termo, {"nao": termo} ou
+% {"avalia": termo}. Uma variavel e {"var": "Nome"}; cada "_" e {"var": "_"} (uma variavel nova de cada vez).
+% Os operadores das regras (os do soc_motor.pl) ficam num modulo a parte e so se usam ao ler o soc_regras.txt, para
+% os atomos nao e e dos factos se lerem como antes.
+
+:- op(220, xfx, ops_regras:entao).
+:- op(35, xfy, ops_regras:se).
+:- op(240, fx, ops_regras:regra).
+:- op(500, fy, ops_regras:nao).
+:- op(600, xfy, ops_regras:e).
+
+regras(Base, Regras, Calculadas) :-
+	directory_file_path(Base, 'soc_regras.txt', F),
+	setup_call_cleanup(open(F, read, S, [encoding(utf8)]), le_regras(S, Regras), close(S)),
+	(   Regras == [] -> throw(erro_base('o soc_regras.txt nao tem regras')) ; true ),
+	directory_file_path(Base, 'soc_suporte.txt', FS),
+	le_termos(FS, TS),
+	findall(NA, ( member(condicao_calculada(C), TS), functor(C, Nome, Ar), format(atom(NA), '~w/~w', [Nome, Ar]) ),
+		Calculadas).
+
+le_regras(S, Regras) :-
+	read_term(S, T, [module(ops_regras), variable_names(Vs)]),
+	(   T == end_of_file
+	->  Regras = []
+	;   T = regra(entao(se(Id, [LHS]), RHS))
+	->  maplist(nome_variavel, Vs),
+	    conjuncao(LHS, Cs),
+	    maplist(condicao_json, Cs, JCs),
+	    maplist(conclusao_json, RHS, JRs),
+	    Regras = [json([id=Id, se=JCs, entao=JRs])|R],
+	    le_regras(S, R)
+	;   le_regras(S, Regras)
+	).
+
+% Liga cada variavel com nome a '$var'(Nome); as que ficam por ligar sao os "_".
+nome_variavel(Nome=V) :- V = '$var'(Nome).
+
+conjuncao(e(A, B), [A|Cs]) :- !, conjuncao(B, Cs).
+conjuncao(C, [C]).
+
+condicao_json(nao(X), json([nao=J])) :- !, termo_var_json(X, J).
+condicao_json(avalia(X), json([avalia=J])) :- !, termo_var_json(X, J).
+condicao_json(X, J) :- termo_var_json(X, J).
+
+conclusao_json(cria_facto(F), J) :- !, termo_var_json(F, J).
+conclusao_json(A, _) :-
+	format(atom(M), 'acao desconhecida no entao de uma regra: ~w', [A]), throw(erro_base(M)).
+
+termo_var_json(V, json([var='_'])) :- var(V), !.
+termo_var_json('$var'(Nome), json([var=Nome])) :- !.
+termo_var_json(L, J) :- is_list(L), !, maplist(termo_var_json, L, J).
+termo_var_json(T, json([f=N, args=J])) :- compound(T), !, compound_name_arguments(T, N, As), maplist(termo_var_json, As, J).
+termo_var_json(X, X).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

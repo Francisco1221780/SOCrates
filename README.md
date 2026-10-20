@@ -47,7 +47,7 @@ ninguém assumir uma peça que ainda não corre.
 | Peça | Estado |
 | :--- | :--- |
 | Build Maven multi-módulo (`pom.xml` na raiz) | Feito; `.\mvnw.cmd verify` passa |
-| Módulo `motores/drools` com `MotorDrools` | Infraestrutura feita (issue #4): factos numerados, justificação, resposta no formato do `wrapper.pl`, estado "pronto", 314 factos iniciais do `factos_iniciais.json`; só a R7 portada (molde) |
+| Módulo `motores/drools` com `MotorDrools` | Infraestrutura feita (issue #4): factos numerados, justificação, resposta no formato do `wrapper.pl`, estado "pronto", 314 factos iniciais do `factos_iniciais.json`. Regras A a G e N portadas (issue #13), iguais ao Prolog nas 10 variantes de cenários; H a M e condições calculadas no PR #31 (issues #14, #15) |
 | Backend: `MotorInferencia` e `DroolsAdapter` | Feito; sem endpoints REST ainda |
 | Base de conhecimento v6 (`base_conhecimento/`) | Feito: factos, 92 regras, 67 ficheiros de cenário e `soc_cenarios.pl` |
 | Motor Prolog (`soc_motor.pl`) | Feito: corre a v6; resultados de referência em `motores/prolog/referencia_prolog/` |
@@ -250,14 +250,14 @@ O módulo Drools tem de estar instalado no repositório local antes de arrancar 
 | :--- | :--- |
 | Backend | `http://localhost:8080` — arranca, mas ainda não expõe endpoints |
 
-Cada motor também corre sozinho, sem o backend, com o mesmo pedido JSON no `stdin` e a resposta no `stdout`:
+Cada motor também corre sozinho, sem o backend, de duas formas:
 
-```powershell
-Get-Content pedido.json | .\mvnw.cmd -q -pl motores/drools compile exec:java          # Drools
-Get-Content pedido.json | swipl motores/prolog/wrapper.pl base_conhecimento           # Prolog
-```
+| Modo | Drools | Prolog |
+| :--- | :--- | :--- |
+| **Interativo** (o mesmo menu nos dois: cenários, factos, perguntas ao analista, incidentes, "como?", "porque não?") | No IntelliJ, *Run* na `ConsolaDrools`; ou `.\mvnw.cmd -q -pl motores/drools compile exec:java "-Dexec.args=--interativo"` | Na raiz: `swipl motores/prolog/soc_motor.pl`, depois `?- menu.`, opção `1.` e o ficheiro `'base_conhecimento/soc_factos.txt'.` (entre plicas e com ponto final; o exemplo do menu, `'../../...'`, só serve se o `swipl` arrancar dentro de `motores/prolog/`) |
+| **Um pedido** (JSON no `stdin`, resposta no `stdout`) | `Get-Content pedido.json \| .\mvnw.cmd -q -pl motores/drools compile exec:java` | `Get-Content pedido.json \| swipl motores/prolog/wrapper.pl base_conhecimento` |
 
-Exemplo de pedido e limites atuais em [`motores/drools/README.md`](motores/drools/README.md#correr-só-o-drools).
+A consola do Drools tem o menu do Prolog (opções 0–14 por ordem, os mesmos textos) com o "porque?" (10: a regra completa e os factos de uma conclusão) junto do "como?" e do "porque não?"; os factos escrevem-se `nome(arg, arg)`, sem sintaxe Prolog e arranca com a base já carregada (regras, `factos_iniciais.json`, `cenarios.json` e `regras.json` vêm no módulo). Detalhes e exemplo de pedido em [`motores/drools/README.md`](motores/drools/README.md#correr-só-o-drools).
 
 ### Troubleshooting
 
@@ -286,9 +286,12 @@ swipl -g run_tests -t halt motores/prolog/testes/testes.pl
 
 | Suite | Path | Expectation |
 | :--- | :--- | :--- |
-| `MotorDroolsTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/` | A R7 dá os mesmos factos que o `wrapper.pl`; perguntas, tickets, estado "pronto" e erros do pedido como no wrapper |
+| `MotorDroolsTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/` | A R7 e o grupo N dão os mesmos factos que o `wrapper.pl`; perguntas, tickets, estado "pronto" e erros do pedido como no wrapper |
+| `ParidadeTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/` | Paridade com o Prolog nas 10 variantes de cenários (AC14/AC15): só regras A–G+N contra `referencia_agn/`, e as 92 contra `motores/prolog/referencia_prolog/` (diferenças H–M listadas) |
 | `TermosJsonTest`, `RespostaTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/json/` | Termos JSON ↔ Java; premissas no formato do wrapper, com os nomes das variáveis |
-| `BaseFactosTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/sessao/` | Numeração, origem, passo e factos repetidos |
+| `BaseFactosTest`, `CondicoesCalculadasTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/sessao/` | Numeração, origem, passo, factos repetidos e marcas; os resultados da `origem_evidencia` |
+| `ConsolaDroolsTest`, `TermoTextoTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/consola/` | A consola com entradas escritas no teste: cenários, perguntas com "porque", factos sem sintaxe Prolog, "como?", "porque?", "porque não?", recuperação, pedido de um ficheiro |
+| `PorqueNaoTest`, `UnificacaoTest` | `motores/drools/src/test/java/cyberrangers/motores/drools/consola/`, `.../explicacao/` | O "porque não?" igual, linha a linha, ao `whynot/1` do Prolog em 10 factos (formato Prolog, só para o teste); unificação e condições calculadas com variáveis por ligar; a regra completa nos dados do "porque não?" (`PorqueNaoRegraTest`) |
 | `DroolsAdapterTest` | `backend/cyber/src/test/java/cyberrangers/cyber/engine/drools/` | O adaptador chama o `MotorDrools` e devolve a conclusão da R7 |
 | `CyberApplicationTests` | `backend/cyber/src/test/java/cyberrangers/cyber/` | O contexto Spring arranca com o Drools carregado e o `PrologInstaller` copia os ficheiros Prolog |
 | `PrologPropertiesTest` | `backend/cyber/src/test/java/cyberrangers/cyber/config/` | Valores de omissão de `cyber.prolog.*`, nomes do YAML e recusa de valores inválidos |

@@ -2,8 +2,10 @@ package cyberrangers.motores.drools.sessao;
 
 import cyberrangers.motores.drools.modelo.Facto;
 import cyberrangers.motores.drools.modelo.Termo;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Condicoes calculadas do soc_suporte.txt implementadas como metodos Java estaticos.
@@ -245,7 +247,7 @@ public final class CondicoesCalculadas {
             Object inst = va.arg(2);
             boolean revisto = false;
             for (Facto r : base.factos()) {
-                if ("revisto/2".equals(r.getFunctor()) && Objects.equals(r.arg(0), va)) {
+                if ("revisto/2".equals(r.getFunctor()) && estaRevisto(r.arg(0), va)) {
                     revisto = true;
                     break;
                 }
@@ -427,21 +429,11 @@ public final class CondicoesCalculadas {
                 if (!"evidencia_impacto/3".equals(ei.getFunctor())) continue;
                 if (!Objects.equals(ei.arg(0), imp)) continue;
                 Object tipo = ei.arg(1);
-                Object pergunta = null;
-                for (Facto pe : base.factos()) {
-                    if ("pergunta_evidencia/2".equals(pe.getFunctor()) && Objects.equals(pe.arg(0), tipo)) {
-                        pergunta = pe.arg(1);
-                        break;
-                    }
-                }
-                if (pergunta == null) return false;
+                // Como no Prolog: basta uma das perguntas desta evidencia ter a resposta "nao".
                 boolean respondeuNao = false;
-                for (Facto ra : base.factos()) {
-                    if ("resposta_analista/4".equals(ra.getFunctor())
-                            && Objects.equals(ra.arg(0), ativo)
-                            && Objects.equals(ra.arg(1), ev)
-                            && Objects.equals(ra.arg(2), pergunta)
-                            && "nao".equals(ra.arg(3))) {
+                for (Facto pe : base.factos()) {
+                    if ("pergunta_evidencia/2".equals(pe.getFunctor()) && Objects.equals(pe.arg(0), tipo)
+                            && base.existe(Facto.de("resposta_analista", ativo, ev, pe.arg(1), "nao"))) {
                         respondeuNao = true;
                         break;
                     }
@@ -450,6 +442,115 @@ public final class CondicoesCalculadas {
             }
         }
         return true;
+    }
+
+    /**
+     * origem_evidencia/5: de onde veio um evento do host (uma evidencia, ou o trafego para um C2) em relacao ao ataque
+     * EvAtaque a vulnerabilidade Vuln. Devolve o ultimo argumento ja calculado, como o classifica_origem do
+     * soc_suporte.txt: {@code "ligada"}, {@code de_outro_processo(programa(P))}, {@code de_outro_processo(instancia(I))},
+     * {@code por_confirmar(sem_processo)}, {@code por_confirmar(processo_desconhecido(N))},
+     * {@code por_confirmar(instancia_por_identificar(N))} ou {@code por_confirmar(instancia_nao_inventariada(N))}.
+     * Devolve null se o catalogo nao disser que programa a vulnerabilidade afeta (a condicao falha).
+     * Os "once" do Prolog sao o primeiro facto por ordem do numero.
+     */
+    public static Object origemEvidencia(Object evHost, Object evAtaque, Object ativo, Object vuln, BaseFactos base) {
+        Facto afeta = primeiro(base, "vuln_afeta/2", vuln, null);
+        if (afeta == null) return null;
+        Object prog = afeta.arg(1);
+
+        Facto inst = primeiro(base, "evento_instancia/2", evHost, null);
+        if (inst != null) {
+            return instanciaLigada(evAtaque, ativo, vuln, inst.arg(1), base);
+        }
+        Facto proc = primeiro(base, "evento_processo/2", evHost, null);
+        if (proc == null) {
+            return Termo.de("por_confirmar", "sem_processo");
+        }
+        Object nome = proc.arg(1);
+        Facto doNome = null;
+        boolean doPrograma = false;
+        for (Facto f : base.factos()) {
+            if ("processo_componente/2".equals(f.getFunctor()) && Objects.equals(f.arg(1), nome)) {
+                if (doNome == null) doNome = f;
+                if (Objects.equals(f.arg(0), prog)) doPrograma = true;
+            }
+        }
+        if (doNome == null) {
+            return Termo.de("por_confirmar", Termo.de("processo_desconhecido", nome));
+        }
+        if (!doPrograma) {
+            return Termo.de("de_outro_processo", Termo.de("programa", doNome.arg(0)));
+        }
+        Set<Object> instancias = instanciasComNome(ativo, nome, base);
+        if (instancias.size() == 1) {
+            return instanciaLigada(evAtaque, ativo, vuln, instancias.iterator().next(), base);
+        }
+        return instancias.isEmpty()
+                ? Termo.de("por_confirmar", Termo.de("instancia_nao_inventariada", nome))
+                : Termo.de("por_confirmar", Termo.de("instancia_por_identificar", nome));
+    }
+
+    private static Object instanciaLigada(Object evAtaque, Object ativo, Object vuln, Object instancia, BaseFactos base) {
+        return instanciaAtacada(evAtaque, ativo, vuln, instancia, base)
+                ? "ligada"
+                : Termo.de("de_outro_processo", Termo.de("instancia", instancia));
+    }
+
+    /**
+     * instancia_atacada/4: a instancia e a de uma instalacao vulneravel a que chega um vetor em vigor (nao revisto)
+     * do ataque.
+     */
+    private static boolean instanciaAtacada(Object evAtaque, Object ativo, Object vuln, Object instancia, BaseFactos base) {
+        for (Facto va : base.factos()) {
+            if (!"vetor_aberto/4".equals(va.getFunctor())) continue;
+            if (!Objects.equals(va.arg(0), evAtaque) || !Objects.equals(va.arg(1), ativo)
+                    || !Objects.equals(va.arg(3), vuln)) continue;
+            Object inst = va.arg(2);
+            if (revisto(va, base)) continue;
+            if (!base.existe(Facto.de("vulneravel", inst, vuln))) continue;
+            if (base.existe(Facto.de("instancia_processo", inst, instancia))) return true;
+        }
+        return false;
+    }
+
+    /** instancias_com_nome/3: as instancias de processo do ativo cujo programa corre com esse nome, sem repetidos. */
+    private static Set<Object> instanciasComNome(Object ativo, Object nome, BaseFactos base) {
+        Set<Object> r = new HashSet<>();
+        for (Facto ip : base.factos()) {
+            if (!"instancia_processo/2".equals(ip.getFunctor())) continue;
+            Object inst = ip.arg(0);
+            for (Facto c : base.factos()) {
+                if ("componente/3".equals(c.getFunctor()) && Objects.equals(c.arg(0), inst)
+                        && Objects.equals(c.arg(1), ativo)
+                        && base.existe(Facto.de("processo_componente", c.arg(2), nome))) {
+                    r.add(ip.arg(1));
+                }
+            }
+        }
+        return r;
+    }
+
+    /** revisto(F, _): aceita o facto revisto como termo (o formato do modelo, ver Facto) ou como Facto. */
+    private static boolean revisto(Facto f, BaseFactos base) {
+        Termo comoTermo = new Termo(f.getPredicado(), f.getArgs());
+        for (Facto r : base.factos()) {
+            if ("revisto/2".equals(r.getFunctor())
+                    && (Objects.equals(r.arg(0), comoTermo) || Objects.equals(r.arg(0), f))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** O primeiro facto (por numero) com o functor dado e o primeiro argumento igual a a0 (e o segundo a a1, se nao for null). */
+    private static Facto primeiro(BaseFactos base, String functor, Object a0, Object a1) {
+        for (Facto f : base.factos()) {
+            if (functor.equals(f.getFunctor()) && Objects.equals(f.arg(0), a0)
+                    && (a1 == null || Objects.equals(f.arg(1), a1))) {
+                return f;
+            }
+        }
+        return null;
     }
 
     private static boolean impactoExcluido(Object ev, Object ativo, Object vuln, Object imp, BaseFactos base) {
@@ -490,7 +591,7 @@ public final class CondicoesCalculadas {
             Facto motivoFacto = Facto.de("motivo", inc, m);
             boolean revisto = false;
             for (Facto r : base.factos()) {
-                if ("revisto/2".equals(r.getFunctor()) && Objects.equals(r.arg(0), motivoFacto)) {
+                if ("revisto/2".equals(r.getFunctor()) && estaRevisto(r.arg(0), motivoFacto)) {
                     revisto = true;
                     break;
                 }
@@ -498,5 +599,15 @@ public final class CondicoesCalculadas {
             if (!revisto) return false;
         }
         return temMotivo;
+    }
+
+    /**
+     * Verifica se o argumento do revisto/2 representa o facto: pode ser o proprio Facto ou um Termo equivalente.
+     */
+    private static boolean estaRevisto(Object argRevisto, Facto facto) {
+        if (Objects.equals(argRevisto, facto)) return true;
+        if (argRevisto instanceof Termo t)
+            return t.f().equals(facto.getPredicado()) && t.args().equals(facto.getArgs());
+        return false;
     }
 }

@@ -3,6 +3,7 @@ package cyberrangers.cyber.engine.drools;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import cyberrangers.cyber.domain.Metaconhecimento;
 import cyberrangers.cyber.domain.SaudeMotor;
 import org.junit.jupiter.api.Test;
 
@@ -33,6 +34,8 @@ class DroolsAdapterTest {
         assertEquals("drools", e.motor());
         assertTrue(e.pronto(), e.toString());
         assertEquals("6", e.versaoKB());
+        assertTrue(e.baseCarregada(), e.toString());
+        assertEquals(Metaconhecimento.NAO_APLICAVEL, e.metaconhecimento());
         assertTrue(e.erros().isEmpty(), e.toString());
     }
 }

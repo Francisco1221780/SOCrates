@@ -66,6 +66,7 @@ class InferControllerTest {
                 TipoResultado.OK, 200,
                 TipoResultado.MOTOR_INEXISTENTE, 404,
                 TipoResultado.PEDIDO_INVALIDO, 400,
+                TipoResultado.NAO_ENCONTRADO, 422,
                 TipoResultado.OCUPADO, 503,
                 TipoResultado.TIMEOUT, 504,
                 TipoResultado.FALHA_MOTOR, 500);

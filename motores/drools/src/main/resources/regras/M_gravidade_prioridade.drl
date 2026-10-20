@@ -33,7 +33,7 @@ when
     $c : Facto(functor == "criticidade/2", $ativo : arg(0), $n : arg(1))
     eval(((Number) $n).longValue() >= 8)
 then
-    List<Premissa> p = List.of(Premissa.calculada("criticidade", $ativo, ">=", 8L));
+    List<Premissa> p = List.of(Premissa.de($c));
     base.cria(kcontext, 74, p, Facto.de("classe_ativo", $ativo, "critico"));
 end
 
@@ -43,7 +43,7 @@ when
     $c : Facto(functor == "criticidade/2", $ativo : arg(0), $n : arg(1))
     eval(((Number) $n).longValue() < 8)
 then
-    List<Premissa> p = List.of(Premissa.calculada("criticidade", $ativo, "<", 8L));
+    List<Premissa> p = List.of(Premissa.de($c));
     base.cria(kcontext, 75, p, Facto.de("classe_ativo", $ativo, "normal"));
 end
 
