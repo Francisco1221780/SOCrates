@@ -51,7 +51,7 @@ A tabela separa o que existe do que está previsto, para ninguém assumir uma pe
 | Backend: adaptadores `DroolsAdapter` e `PrologAdapter` | Feito: o `PrologAdapter` lança o `wrapper.pl` num processo `swipl` por pedido, com timeout, limite de processos e cópia dos ficheiros Prolog dentro do jar (`PrologInstaller`, issue #11) |
 | Backend: API REST | Feito: `/api/{motor}/infer`, `/como`, `/porque`, `/porque-pergunta`, `/api/cenarios` e `/api/health`, com Swagger UI. Falta o `whynot` (depende do "porque não?" estruturado no Prolog) |
 | Scripts de geração | Feito: `gera_json.pl` gera `factos_iniciais.json` e `cenarios.json` (issue #10); `gera_meta.pl --verificar` diz se o metaconhecimento está em dia (AC13) |
-| UI web e comparador de motores | Por fazer no `develop` (a branch `feature/ui-dashboard` existe no remoto, ainda sem merge) |
+| UI web e comparador de motores | Feito (PR #39): `backend/socrates/src/main/resources/static/index.html`, servida pelo backend em `/` — cenários passo a passo, incidentes, tickets, perguntas e respostas, o "Como?" e o comparador dos dois motores. A paridade pela API, sem o UI, corre com `ferramentas/paridade.py` (#16) |
 
 ---
 
@@ -66,6 +66,7 @@ A tabela separa o que existe do que está previsto, para ninguém assumir uma pe
 | Motor Prolog | **SWI-Prolog 10.0.2** | Versão em uso no desenvolvimento, ainda não fixada; corre como processo externo |
 | JSON | **Jackson 2.18.2** no módulo Drools | O backend usa o Jackson do Spring Boot |
 | API docs | **springdoc-openapi 3.1.1** | Swagger UI e OpenAPI do backend |
+| UI | **HTML/JS estático** (`index.html`), servido pelo backend | Sem build; os testes do UI usam Playwright (`testes/ui/`) |
 | Tests | **JUnit 5** (`junit-jupiter` 5.11.4 no módulo Drools, `spring-boot-starter-test` no backend) | Surefire 3.5.2 no módulo Drools |
 
 ---
@@ -76,7 +77,7 @@ Dois motores independentes respondem ao **mesmo pedido** com o **mesmo formato d
 
 ```mermaid
 flowchart TD
-    UI["UI web (prevista)<br/><i>cenários, passo a passo, perguntas, comparador</i>"]
+    UI["UI web<br/><i>static/index.html: cenários, passo a passo, perguntas, comparador</i>"]
     API["api<br/><i>controllers REST</i>"]
     APP["application<br/><i>InferenceService, MotorInferencia</i>"]
     DA["engine.drools<br/><i>DroolsAdapter</i>"]
@@ -85,7 +86,7 @@ flowchart TD
     MP["motores/prolog<br/><i>wrapper.pl + soc_motor.pl (processo swipl)</i>"]
     KB["base_conhecimento<br/><i>factos, regras, cenários v6</i>"]
 
-    UI -.-> API
+    UI --> API
     API --> APP
     DA --> APP
     PA --> APP
@@ -95,7 +96,7 @@ flowchart TD
     KB -.-> MD
 ```
 
-Linhas contínuas são dependências que já existem no código; tracejadas são as previstas, ou ficheiros que o motor lê em vez de importar.
+Linhas contínuas são dependências no código ou chamadas à API; tracejadas são ficheiros que o motor lê em vez de importar.
 
 | Camada | Responsabilidade | Path |
 | :--- | :--- | :--- |
@@ -175,7 +176,9 @@ O endpoint `POST /api/{motor}/porque` devolve a árvore de um facto com a regra 
 │   ├── pom.xml                   Spring Boot 4.1.1; depende de motores-drools
 │   └── src/main/
 │       ├── java/socrates/backend/{api,application,domain,engine,config}
-│       └── resources/{generated,static}   JSON gerado e UI web (por fazer)
+│       └── resources/{generated,static}   JSON gerado e UI web (index.html)
+├── ferramentas/                  paridade.py: compara os dois motores pela API (#16)
+├── testes/ui/                    testes do UI com Playwright (correr.js, verificacoes.js)
 ├── docs/                         registo das features em docs/changes/features/
 ├── assets/                       banner deste README (com o logo do Desafio 1)
 └── .github/workflows/            CI: backend.yml, drools.yml, prolog.yml
@@ -187,9 +190,10 @@ Cada pasta de código tem um `README.md` com o seu papel.
 
 ## Módulos
 
-O código organiza-se por **motor**: cada motor é um projeto com os seus testes e as suas regras, e o backend limita-se a adaptadores. Há quatro blocos.
+O código organiza-se por **motor**: cada motor é um projeto com os seus testes e as suas regras, e o backend limita-se a adaptadores. Há cinco blocos.
 
 - **`motores/drools`** — `MotorDrools.infere(String)` abre uma `KieSession` nova por pedido, insere os factos iniciais e corre as regras sobre eles, depois insere os factos de cada passo, corre `fireAllRules()` e faz `dispose()` no fim. A resposta tem o formato do `wrapper.pl`, com justificação por facto. As regras estão em `src/main/resources/regras/` (um `.drl` por grupo, de `A_afetado.drl` a `N_catalogo.drl`) e são carregadas por `META-INF/kmodule.xml`. O módulo traz também as explicações (`como`, `porque`, `porqueNao`, `porquePergunta`) e a `ConsolaDrools`.
+- **`ferramentas` e `testes/ui`** — `paridade.py` envia o mesmo pedido aos dois motores e compara as respostas pelo conteúdo; `testes/ui/` verifica que o UI mostra exatamente o que o motor devolve (nós e setas do grafo, tickets, perguntas, "Como?").
 - **`motores/prolog`** — o núcleo (`soc_motor.pl`) faz encadeamento direto com metaconhecimento, todas as instanciações e ponto fixo. O `wrapper.pl` lê o pedido do `stdin` e escreve um único documento JSON no `stdout`.
 - **`base_conhecimento`** — 314 factos fixos, 92 regras e 67 cenários; é o que os dois motores têm de reproduzir de forma igual.
 - **`backend/socrates`** — `SocratesApplication` e os pacotes da tabela de arquitetura: os controllers, o `InferenceService`, a interface `MotorInferencia`, o `DroolsAdapter`, o `PrologAdapter` (um processo `swipl` por pedido, configurado por `socrates.prolog.*` em `PrologProperties`) e o `PrologInstaller`. Sem `socrates.prolog.home`, o `PrologInstaller` copia o `wrapper.pl`, o `soc_motor.pl` e a `base_conhecimento/` que o Maven pôs no jar (`prolog-dist/`) para uma pasta temporária, apagada quando a aplicação termina; com ele, usa essa pasta (por exemplo, a raiz do repositório).
@@ -234,13 +238,13 @@ O módulo Drools tem de estar instalado no repositório local antes de arrancar 
 
 | Surface | URL |
 | :--- | :--- |
-| Backend | `http://localhost:8080` |
+| Backend e UI web | `http://localhost:8080` |
 | Swagger UI | `http://localhost:8080/swagger-ui/index.html` |
 | OpenAPI (JSON) | `http://localhost:8080/v3/api-docs` |
 | Estado dos motores | `http://localhost:8080/api/health` |
 | Catálogo de cenários | `http://localhost:8080/api/cenarios` |
 
-Na Swagger UI, os `POST /api/{motor}/...` pedem o motor (`drools` ou `prolog`) e um corpo com `versaoKB` e `passos`. Um passo pronto a enviar de cada cenário está em `backend/socrates/src/main/resources/generated/cenarios.json`.
+O UI usa a API do próprio backend, por isso basta abrir `http://localhost:8080/`. Na Swagger UI, os `POST /api/{motor}/...` pedem o motor (`drools` ou `prolog`) e um corpo com `versaoKB` e `passos`. Um passo pronto a enviar de cada cenário está em `backend/socrates/src/main/resources/generated/cenarios.json`.
 
 Cada motor também corre sozinho, sem o backend, de duas formas:
 
@@ -276,6 +280,13 @@ A consola do Drools tem o menu do Prolog (opções 0 a 13, os mesmos textos e a 
 
 # Lado Prolog: wrapper e JSON gerados (precisa do SWI-Prolog)
 swipl -g run_tests -t halt motores/prolog/testes/testes.pl
+
+# Com o backend a correr em localhost:8080: paridade Prolog x Drools pela API (precisa de Python 3)
+python3 ferramentas/paridade.py
+
+# Com o backend a correr em localhost:8080: o UI mostra o que o motor devolve (precisa de Node)
+npm install playwright && npx playwright install chromium   # uma vez
+node testes/ui/correr.js
 ```
 
 | Suite | Path | Expectation |
@@ -294,6 +305,8 @@ swipl -g run_tests -t halt motores/prolog/testes/testes.pl
 | `SocratesApplicationTests` | `backend/socrates/src/test/java/socrates/backend/` | O contexto Spring arranca com o Drools carregado e o `PrologInstaller` copia os ficheiros Prolog |
 | `PrologPropertiesTest` | `backend/socrates/src/test/java/socrates/backend/config/` | Valores de omissão de `socrates.prolog.*`, nomes do YAML e recusa de valores inválidos |
 | `PrologAdapterTest` | `backend/socrates/src/test/java/socrates/backend/engine/prolog/` | AC1–AC7 do #11 com o `swipl` real: resposta normal, cópia do jar sem `home` (AC6), acentos (AC2), resposta acima do buffer do pipe (AC4), timeout sem processos vivos (AC5), "ocupado" (AC7), erros do motor e executável em falta; `wrapper.pl` falsos numa pasta temporária provocam as falhas |
+| `verificacoes.js`, `correr.js` | `testes/ui/` | O UI mostra exatamente o que o motor devolve: nós e setas do grafo, tickets, perguntas, o "Como?" de cada ticket e as vistas por cenário; sai com 1 se algo falhar |
+| `paridade.py` | `ferramentas/` | Os dois motores dão os mesmos incidentes, tickets e perguntas (AC14) e as mesmas conclusões com a mesma regra e premissas (AC15); sai com 0, 1 ou 2 |
 | `testes.pl` (plunit) | `motores/prolog/testes/` | O wrapper cumpre os AC2, AC3, AC10–AC12 e M9; os JSON gerados (AC18) e as referências do motor estão em dia |
 
 Naming: `<Classe>Test.java` para testes unitários e `<Classe>Tests.java` no teste de contexto do Spring.
@@ -312,6 +325,8 @@ CI: em cada PR e em cada push para `develop` e `main` correm três GitHub Action
 
 | Document | What it covers |
 | :--- | :--- |
+| [`ferramentas/README.md`](ferramentas/README.md) | `paridade.py`: a paridade Prolog × Drools pela API |
+| [`testes/ui/README.md`](testes/ui/README.md) | Os testes do UI e o que cada verificação cobre |
 | [`motores/README.md`](motores/README.md) | Um projeto por motor e como cada um corre |
 | [`motores/drools/README.md`](motores/drools/README.md) | Módulo Drools: contrato, regras, consola e testes |
 | [`motores/prolog/README.md`](motores/prolog/README.md) | Lado Prolog: núcleo, menu, wrapper e regras do wrapper |
