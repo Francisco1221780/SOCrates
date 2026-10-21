@@ -111,12 +111,26 @@ class SystemControllerTest {
     }
 
     /**
-     * Verifica que os dois endpoints so aceitam GET (405 para POST).
+     * Verifica que o GET /api/regras devolve as regras tal como a BaseCarregada as tem (sem conversao), em JSON.
+     * @throws Exception
+     */
+    @Test
+    void regrasVemTalComoNaBase() throws Exception {
+        String regras = "{ \"versaoKB\" : \"6\", \"regras\" : [ {\"id\":7,\"se\":[],\"entao\":[]} ] }";
+        when(baseCarregada.regrasJson()).thenReturn(regras);
+        MvcResult r = le("/api/regras");
+        assertEquals(200, r.getResponse().getStatus());
+        assertEquals(regras, r.getResponse().getContentAsString(StandardCharsets.UTF_8));
+        assertTrue(MediaType.parseMediaType(r.getResponse().getContentType()).isCompatibleWith(MediaType.APPLICATION_JSON));
+    }
+
+    /**
+     * Verifica que os endpoints do sistema so aceitam GET (405 para POST).
      * @throws Exception
      */
     @Test
     void soAceitamGet() throws Exception {
-        for (String caminho : List.of("/api/cenarios", "/api/health")) {
+        for (String caminho : List.of("/api/cenarios", "/api/regras", "/api/health")) {
             mvc.perform(post(caminho)).andExpect(status().isMethodNotAllowed());
         }
     }

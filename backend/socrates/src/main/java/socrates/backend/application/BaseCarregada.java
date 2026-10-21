@@ -12,18 +12,21 @@ import java.nio.charset.StandardCharsets;
 /**
  * A base de conhecimento em uso, tal como o gera_json.pl a descreve no cenarios.json: a versao (que o
  * RequestValidator compara com a do pedido) e os cenarios (que o GET /api/cenarios devolve). O ficheiro e gerado a
- * partir do soc_factos.txt, por isso a versao vem da fonte unica da base e nao de um valor escrito a mao.
+ * partir do soc_factos.txt, por isso a versao vem da fonte unica da base e nao de um valor escrito a mao. Tem tambem
+ * as regras (o regras.json do modulo Drools, gerado do soc_regras.txt), que o GET /api/regras devolve.
  */
 @Component
 public class BaseCarregada {
 
     private static final String RECURSO = "/generated/cenarios.json";
+    private static final String REGRAS = "/regras.json";
 
     private final String cenariosJson;
     private final String versaoKB;
+    private final String regrasJson;
 
     /**
-     * Le o cenarios.json do classpath, uma vez, no arranque.
+     * Le o cenarios.json e o regras.json do classpath, uma vez, no arranque.
      * @param jsonMapper
      */
     @Autowired
@@ -32,18 +35,29 @@ public class BaseCarregada {
     }
 
     /**
-     * Usa o conteudo dado em vez do ficheiro (para os testes). Sem versaoKB a aplicacao nao arranca: nenhum pedido
-     * podia ser validado, para nenhum dos motores.
+     * Usa o catalogo dado em vez do ficheiro (para os testes), com as regras do classpath.
      * @param jsonMapper
      * @param cenariosJson
      */
     BaseCarregada(JsonMapper jsonMapper, String cenariosJson) {
+        this(jsonMapper, cenariosJson, le(REGRAS));
+    }
+
+    /**
+     * Usa o conteudo dado em vez dos ficheiros (para os testes). Sem versaoKB a aplicacao nao arranca: nenhum pedido
+     * podia ser validado, para nenhum dos motores.
+     * @param jsonMapper
+     * @param cenariosJson
+     * @param regrasJson
+     */
+    BaseCarregada(JsonMapper jsonMapper, String cenariosJson, String regrasJson) {
         String versao = jsonMapper.readTree(cenariosJson).path("versaoKB").asString();
         if (versao.isBlank()) {
             throw new IllegalStateException("o catalogo de cenarios nao tem versaoKB");
         }
         this.cenariosJson = cenariosJson;
         this.versaoKB = versao;
+        this.regrasJson = regrasJson;
     }
 
     /**
@@ -60,6 +74,15 @@ public class BaseCarregada {
      */
     public String cenariosJson() {
         return cenariosJson;
+    }
+
+    /**
+     * O regras.json tal como esta no ficheiro: {versaoKB, regras: [{id, se, entao}]}, cada regra no mesmo formato da
+     * regraCompleta do /como?regras=true.
+     * @return
+     */
+    public String regrasJson() {
+        return regrasJson;
     }
 
     /**

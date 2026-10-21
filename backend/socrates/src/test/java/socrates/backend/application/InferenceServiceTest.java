@@ -463,7 +463,7 @@ class InferenceServiceTest {
                 {"\"facto\":{\"args\":[]}", "falta o predicado do facto"}};
         for (String[] caso : casos) {
             MotorFalso prolog = motor("prolog", COM_FACTOS);
-            Resultado r = servico(prolog).como("prolog", comCampos(caso[0]));
+            Resultado r = servico(prolog).como("prolog", comCampos(caso[0]), false);
             assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado(), caso[0]);
             assertEquals(caso[1], assertErro(r, "prolog"), caso[0]);
             assertTrue(prolog.pedidos.isEmpty(), "o motor nao devia ter sido chamado: " + caso[0]);
@@ -475,7 +475,7 @@ class InferenceServiceTest {
      */
     @Test
     void errosDoPedidoEDaExplicacaoVemJuntos() {
-        Resultado r = servico(motor("prolog", COM_FACTOS)).porque("prolog", PEDIDO.replace("\"" + VERSAO + "\"", "\"5\""));
+        Resultado r = servico(motor("prolog", COM_FACTOS)).como("prolog", PEDIDO.replace("\"" + VERSAO + "\"", "\"5\""), true);
         assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado());
         assertEquals(List.of("versaoKB desconhecida: 5 (carregada: " + VERSAO + ")", "falta o facto"),
                 List.of(assertErro(r, "prolog").split("; ")));
@@ -502,7 +502,7 @@ class InferenceServiceTest {
     void comoMontaAArvoreDaRespostaDoMotor() {
         MotorFalso prolog = motor("prolog", COM_FACTOS);
         String corpo = comCampos("\"facto\":{\"numero\":2}");
-        Resultado r = servico(prolog).como("prolog", corpo);
+        Resultado r = servico(prolog).como("prolog", corpo, false);
         assertEquals(TipoResultado.OK, r.tipoResultado(), r.jsonResultado());
         assertEquals(List.of(corpo), prolog.pedidos);
         JsonNode n = json.readTree(r.jsonResultado());
@@ -517,7 +517,7 @@ class InferenceServiceTest {
     @Test
     void erroDoMotorNaoEExplicado() {
         String timeout = "{\"estado\":\"erro\",\"motor\":\"prolog\",\"versaoKB\":null,\"erro\":\"timeout\"}";
-        Resultado r = servico(motor("prolog", timeout)).como("prolog", comCampos("\"facto\":{\"numero\":2}"));
+        Resultado r = servico(motor("prolog", timeout)).como("prolog", comCampos("\"facto\":{\"numero\":2}"), false);
         assertEquals(TipoResultado.TIMEOUT, r.tipoResultado());
         assertEquals(timeout, r.jsonResultado());
     }
@@ -529,7 +529,7 @@ class InferenceServiceTest {
     void factoOuPerguntaQueNaoEstaoNaRespostaDaoNaoEncontrado() {
         InferenceService s = servico(motor("prolog", COM_FACTOS));
         assertEquals(TipoResultado.NAO_ENCONTRADO,
-                s.como("prolog", comCampos("\"facto\":{\"numero\":9}")).tipoResultado());
+                s.como("prolog", comCampos("\"facto\":{\"numero\":9}"), false).tipoResultado());
         assertEquals(TipoResultado.NAO_ENCONTRADO, s.porquePergunta("prolog",
                 comCampos("\"ativo\":\"a1\",\"evento\":\"e1\",\"pergunta\":\"outra\"")).tipoResultado());
     }
@@ -541,7 +541,7 @@ class InferenceServiceTest {
     @Test
     void respostaDeOutraVersaoDaFalhaMotor() {
         Resultado r = servico(motor("prolog", COM_FACTOS.replace("\"versaoKB\":\"" + VERSAO + "\"", "\"versaoKB\":\"5\"")))
-                .como("prolog", comCampos("\"facto\":{\"numero\":2}"));
+                .como("prolog", comCampos("\"facto\":{\"numero\":2}"), false);
         assertEquals(TipoResultado.FALHA_MOTOR, r.tipoResultado());
         assertTrue(json.readTree(r.jsonResultado()).path("erro").asString().contains("versaoKB 5"), r.jsonResultado());
     }
@@ -576,22 +576,60 @@ class InferenceServiceTest {
     }
 
     /**
-     * Verifica, com os dois motores reais, que o porque de um incidente do c6 da a mesma arvore nos dois (so o motor
-     * muda): as explicacoes do Prolog montam-se com as regras do modulo Drools.
+     * Verifica, com os dois motores reais, que o como com as regras de um incidente do c6 da a mesma arvore nos dois
+     * (so o motor muda): as explicacoes do Prolog montam-se com as regras do modulo Drools.
      */
     @Test
-    void porqueDaAMesmaArvoreNosDoisMotores() {
-        String facto = "\"facto\":{\"predicado\":\"incidente\",\"args\":[{\"f\":\"inc\",\"args\":"
-                + "[\"versao_por_confirmar\",\"ev_f1\"]},\"versao_por_confirmar\",\"web_srv_05\",[\"web_srv_05\"]]}";
-        String corpo = pedidoDosCenarios(facto, "c6");
+    void comoComRegrasDaAMesmaArvoreNosDoisMotores() {
+        String corpo = pedidoDosCenarios(INCIDENTE_C6, "c6");
         InferenceService s = servicoReal();
-        JsonNode drools = json.readTree(s.porque("drools", corpo).jsonResultado());
-        JsonNode prolog = json.readTree(s.porque("prolog", corpo).jsonResultado());
+        JsonNode drools = json.readTree(s.como("drools", corpo, true).jsonResultado());
+        JsonNode prolog = json.readTree(s.como("prolog", corpo, true).jsonResultado());
         assertEquals("concluido", drools.path("estado").asString(), drools.toString());
         assertEquals("concluido", prolog.path("estado").asString(), prolog.toString());
         assertEquals("prolog", prolog.path("motor").asString());
         assertEquals(7, prolog.path("arvore").path("regraCompleta").path("id").asInt());
         assertEquals(drools.path("arvore"), prolog.path("arvore"));
+    }
+
+    /**
+     * Verifica que o como sem as regras e a mesma arvore sem regraCompleta em nenhum no, e que a regraCompleta de
+     * cada no e a regra do regras.json (o que o GET /api/regras devolve).
+     */
+    @Test
+    void comoSemRegrasNaoTrazRegraCompleta() {
+        String corpo = pedidoDosCenarios(INCIDENTE_C6, "c6");
+        InferenceService s = servicoReal();
+        JsonNode sem = json.readTree(s.como("prolog", corpo, false).jsonResultado()).path("arvore");
+        JsonNode com = json.readTree(s.como("prolog", corpo, true).jsonResultado()).path("arvore");
+        assertTrue(sem.findValues("regraCompleta").isEmpty(), sem.toString());
+        assertFalse(com.findValues("regraCompleta").isEmpty(), com.toString());
+
+        JsonNode regras = json.readTree(new BaseCarregada(json).regrasJson()).path("regras");
+        for (JsonNode regraCompleta : com.findValues("regraCompleta")) {
+            JsonNode doCatalogo = null;
+            for (JsonNode r : regras) {
+                if (r.path("id").asInt() == regraCompleta.path("id").asInt()) {
+                    doCatalogo = r;
+                }
+            }
+            assertEquals(doCatalogo, regraCompleta);
+        }
+        ObjectNode semRegraCompleta = (ObjectNode) com.deepCopy();
+        tiraCampo(semRegraCompleta, "regraCompleta");
+        assertEquals(sem, semRegraCompleta);
+    }
+
+    private static final String INCIDENTE_C6 = "\"facto\":{\"predicado\":\"incidente\",\"args\":[{\"f\":\"inc\","
+            + "\"args\":[\"versao_por_confirmar\",\"ev_f1\"]},\"versao_por_confirmar\",\"web_srv_05\",[\"web_srv_05\"]]}";
+
+    private static void tiraCampo(JsonNode n, String campo) {
+        if (n instanceof ObjectNode o) {
+            o.remove(campo);
+        }
+        for (JsonNode filho : n) {
+            tiraCampo(filho, campo);
+        }
     }
 
     /**

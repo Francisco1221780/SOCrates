@@ -18,18 +18,19 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import static socrates.backend.api.HttpResponseUtils.codigoHttp;
 
 /**
- * POST /api/{motor}/como, /porque, /porque-pergunta e /whynot: as explicacoes de uma resposta. Cada pedido traz os
- * passos (como o /infer) e o que se quer explicar; o servidor corre os passos no motor. O como e os porques montam-se a
- * partir da resposta; o whynot e o motor que o faz, sobre os factos da sessao.
+ * POST /api/{motor}/como, /porque-pergunta e /whynot: as tres explicacoes (como?, porque? de uma pergunta e porque
+ * nao?). Cada pedido traz os passos (como o /infer) e o que se quer explicar; o servidor corre os passos no motor. O como
+ * e o porque da pergunta montam-se a partir da resposta; o whynot e o motor que o faz, sobre os factos da sessao.
  */
 @RestController
 @RequestMapping("/api")
-@Tag(name = "Explicacoes", description = "Como?, porque?, porque? de uma pergunta e porque nao?")
+@Tag(name = "Explicacoes", description = "Como?, porque? (de uma pergunta) e porque nao?")
 public class ExplicacaoController {
 
     /**
@@ -41,15 +42,15 @@ public class ExplicacaoController {
             + "campos da explicacao")
     @ApiResponse(responseCode = "404", description = "Motor desconhecido")
     @ApiResponse(responseCode = "415", description = "O Content-Type nao e application/json")
-    @ApiResponse(responseCode = "500", description = "O motor falhou (no como e nos porques, tambem uma resposta de "
-            + "outra versaoKB que as regras)")
+    @ApiResponse(responseCode = "500", description = "O motor falhou (no como e no porque da pergunta, tambem uma "
+            + "resposta de outra versaoKB que as regras)")
     @ApiResponse(responseCode = "503", description = "Todos os processos do motor estao ocupados; tentar mais tarde")
     @ApiResponse(responseCode = "504", description = "O motor nao respondeu dentro do timeout")
     @interface RespostasDeErro {
     }
 
     /**
-     * O 422 das explicacoes que se montam a partir da resposta (o como e os porques): o que se pediu nao esta la.
+     * O 422 das explicacoes que se montam a partir da resposta (o como e o porque da pergunta): o que se pediu nao esta la.
      */
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
@@ -64,8 +65,9 @@ public class ExplicacaoController {
     }
 
     /**
-     * Corre o pedido no motor dado e devolve a arvore de factos do facto pedido.
+     * Corre o pedido no motor dado e devolve a arvore de factos do facto pedido, com ou sem as regras completas.
      * @param motor
+     * @param regras
      * @param corpo
      * @return
      */
@@ -73,7 +75,9 @@ public class ExplicacaoController {
             description = "O corpo e o do /infer (versaoKB e passos) com o campo facto: {\"numero\": N} ou "
                     + "{\"predicado\", \"args\"}, nunca os dois. A resposta e {estado, motor, versaoKB, facto, arvore, "
                     + "erro}; cada no da arvore e {numero, predicado, args, regra, jaExplicado, premissas}, e cada "
-                    + "premissa {tipo: facto, no}, {tipo: nao, termo} ou {tipo: calculada, termo}.")
+                    + "premissa {tipo: facto, no}, {tipo: nao, termo} ou {tipo: calculada, termo}. Com regras=true, "
+                    + "cada no concluido por uma regra traz tambem regraCompleta: {id, se, entao}, com os nomes das "
+                    + "variaveis do soc_regras.txt (o mesmo formato de cada regra do GET /api/regras).")
     @ApiResponse(responseCode = "200", description = "A arvore do facto")
     @RespostasDeErro
     @SemAlvoNaResposta
@@ -83,32 +87,11 @@ public class ExplicacaoController {
     public ResponseEntity<String> como(
             @Parameter(description = "Motor de inferencia", schema = @Schema(allowableValues = {"drools", "prolog"}))
             @PathVariable String motor,
+            @Parameter(description = "Se cada no concluido traz a regra completa (regraCompleta)")
+            @RequestParam(defaultValue = "false") boolean regras,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "versaoKB, passos e facto")
             @RequestBody(required = false) String corpo) {
-        return responde(inferenceService::como, motor, corpo);
-    }
-
-    /**
-     * Corre o pedido no motor dado e devolve a arvore do facto pedido, com a regra completa em cada no concluido.
-     * @param motor
-     * @param corpo
-     * @return
-     */
-    @Operation(summary = "Porque? (a arvore com as regras)",
-            description = "O mesmo pedido e a mesma resposta do /como, e cada no concluido por uma regra traz "
-                    + "regraCompleta: {id, se, entao}, com os nomes das variaveis do soc_regras.txt.")
-    @ApiResponse(responseCode = "200", description = "A arvore do facto, com as regras")
-    @RespostasDeErro
-    @SemAlvoNaResposta
-    @PostMapping(path = "/{motor}/porque",
-            consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> porque(
-            @Parameter(description = "Motor de inferencia", schema = @Schema(allowableValues = {"drools", "prolog"}))
-            @PathVariable String motor,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "versaoKB, passos e facto")
-            @RequestBody(required = false) String corpo) {
-        return responde(inferenceService::porque, motor, corpo);
+        return responde((m, c) -> inferenceService.como(m, c, regras), motor, corpo);
     }
 
     /**

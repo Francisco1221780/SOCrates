@@ -14,11 +14,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * O que o sistema tem carregado: o catalogo de cenarios e o estado dos motores.
+ * O que o sistema tem carregado: o catalogo de cenarios, as regras da base e o estado dos motores.
  */
 @RestController
 @RequestMapping("/api")
-@Tag(name = "Sistema", description = "Catalogo de cenarios e estado dos motores")
+@Tag(name = "Sistema", description = "Catalogo de cenarios, regras da base e estado dos motores")
 public class SystemController {
     private final InferenceService inferenceService;
     private final BaseCarregada baseCarregada;
@@ -40,6 +40,22 @@ public class SystemController {
     @GetMapping(path = "/cenarios", produces = MediaType.APPLICATION_JSON_VALUE)
     public String cenarios() {
         return baseCarregada.cenariosJson();
+    }
+
+    /**
+     * As regras da base, tal como o gera_json.pl as escreve no regras.json.
+     * @return
+     */
+    @Operation(summary = "Regras da base",
+            description = "Todas as regras do soc_regras.txt como dados: {versaoKB, regras: [{id, se, entao}]}. Cada "
+                    + "condicao do se e um termo, {\"nao\": termo} ou {\"avalia\": termo} (condicao calculada); as "
+                    + "variaveis sao {\"var\": nome}, com os nomes do soc_regras.txt. Cada regra tem o formato da "
+                    + "regraCompleta do /como?regras=true.")
+    @ApiResponse(responseCode = "200", description = "As regras",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object")))
+    @GetMapping(path = "/regras", produces = MediaType.APPLICATION_JSON_VALUE)
+    public String regras() {
+        return baseCarregada.regrasJson();
     }
 
     /**

@@ -1,6 +1,7 @@
 package socrates.backend.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -60,17 +61,16 @@ class ExplicacaoControllerTest {
     @Test
     void cadaCaminhoChamaOSeuMetodo() throws Exception {
         Resultado ok = new Resultado(TipoResultado.OK, RESPOSTA);
-        when(inferenceService.como(anyString(), anyString())).thenReturn(ok);
-        when(inferenceService.porque(anyString(), anyString())).thenReturn(ok);
+        when(inferenceService.como(anyString(), anyString(), anyBoolean())).thenReturn(ok);
         when(inferenceService.porquePergunta(anyString(), anyString())).thenReturn(ok);
         when(inferenceService.porqueNao(anyString(), anyString())).thenReturn(ok);
-        for (String caminho : new String[] {"como", "porque", "porque-pergunta", "whynot"}) {
+        for (String caminho : new String[] {"como", "como?regras=true", "porque-pergunta", "whynot"}) {
             MvcResult r = envia("/api/prolog/" + caminho, CORPO, MediaType.APPLICATION_JSON);
             assertEquals(200, r.getResponse().getStatus(), caminho);
             assertEquals(RESPOSTA, r.getResponse().getContentAsString(StandardCharsets.UTF_8), caminho);
         }
-        verify(inferenceService).como("prolog", CORPO);
-        verify(inferenceService).porque("prolog", CORPO);
+        verify(inferenceService).como("prolog", CORPO, false);
+        verify(inferenceService).como("prolog", CORPO, true);
         verify(inferenceService).porquePergunta("prolog", CORPO);
         verify(inferenceService).porqueNao("prolog", CORPO);
     }
@@ -95,7 +95,7 @@ class ExplicacaoControllerTest {
     @Test
     void naoEncontradoDa422() throws Exception {
         String erro = "{\"estado\":\"erro\",\"motor\":\"prolog\",\"versaoKB\":\"6\",\"erro\":\"esse facto nao esta\"}";
-        when(inferenceService.como(anyString(), anyString())).thenReturn(new Resultado(TipoResultado.NAO_ENCONTRADO, erro));
+        when(inferenceService.como(anyString(), anyString(), anyBoolean())).thenReturn(new Resultado(TipoResultado.NAO_ENCONTRADO, erro));
         MvcResult r = envia("/api/prolog/como", CORPO, MediaType.APPLICATION_JSON);
         assertEquals(422, r.getResponse().getStatus());
         assertEquals(erro, r.getResponse().getContentAsString(StandardCharsets.UTF_8));
@@ -107,10 +107,21 @@ class ExplicacaoControllerTest {
      */
     @Test
     void pedidoSemCorpoChegaAoServicoComoTextoVazio() throws Exception {
-        when(inferenceService.porque("drools", "")).thenReturn(new Resultado(TipoResultado.PEDIDO_INVALIDO, RESPOSTA));
-        MvcResult r = envia("/api/drools/porque", null, MediaType.APPLICATION_JSON);
+        when(inferenceService.como("drools", "", false)).thenReturn(new Resultado(TipoResultado.PEDIDO_INVALIDO, RESPOSTA));
+        MvcResult r = envia("/api/drools/como", null, MediaType.APPLICATION_JSON);
         assertEquals(400, r.getResponse().getStatus());
-        verify(inferenceService).porque("drools", "");
+        verify(inferenceService).como("drools", "", false);
+    }
+
+    /**
+     * Verifica que o /porque por facto ja nao existe: e o /como?regras=true.
+     * @throws Exception
+     */
+    @Test
+    void porquePorFactoJaNaoExiste() throws Exception {
+        MvcResult r = envia("/api/prolog/porque", CORPO, MediaType.APPLICATION_JSON);
+        assertEquals(404, r.getResponse().getStatus());
+        verifyNoInteractions(inferenceService);
     }
 
     /**
@@ -119,7 +130,7 @@ class ExplicacaoControllerTest {
      */
     @Test
     void contentTypeQueNaoEJsonDa415() throws Exception {
-        for (String caminho : new String[] {"como", "porque", "porque-pergunta", "whynot"}) {
+        for (String caminho : new String[] {"como", "porque-pergunta", "whynot"}) {
             MvcResult r = envia("/api/prolog/" + caminho, CORPO, MediaType.TEXT_PLAIN);
             assertEquals(415, r.getResponse().getStatus(), caminho);
         }
