@@ -148,10 +148,10 @@ public class ExplicacaoController {
                     + "nao existe), em que os args podem ter variaveis ({\"var\": \"Ev\"}), e opcionalmente a "
                     + "profundidade (1 a 8, 4 por omissao). A resposta e {estado, motor, versaoKB, facto, explicacao, "
                     + "erro}: explicacao e uma lista de linhas {nivel, tipo, termo?, regra?, numero?}; as linhas regra "
-                    + "trazem o se (cada condicao com verificada) e o entao. Por agora so no Drools: o Prolog responde "
-                    + "501.")
+                    + "trazem o se (cada condicao com verificada) e o entao. Os dois motores dao as mesmas linhas; so os "
+                    + "numeros dos factos mudam.")
     @ApiResponse(responseCode = "200", description = "As linhas da explicacao")
-    @ApiResponse(responseCode = "501", description = "O motor ainda nao tem o porque nao (o Prolog, por agora)")
+    @ApiResponse(responseCode = "501", description = "O motor nao tem o porque nao")
     @RespostasDeErro
     @PostMapping(path = "/{motor}/whynot",
             consumes = MediaType.APPLICATION_JSON_VALUE,

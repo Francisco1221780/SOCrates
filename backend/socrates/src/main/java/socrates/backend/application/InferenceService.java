@@ -25,7 +25,9 @@ public class InferenceService {
 
     private static final List<String> ERROS_DO_PEDIDO = List.of(
             "pedido JSON invalido", "o pedido tem de", "versaoKB desconhecida", "o passo ",
-            "facto invalido no passo", "termo invalido no passo");
+            "facto invalido no passo", "termo invalido no passo",
+            // os do modo whynot do wrapper.pl e do MotorDrools.porqueNao
+            "falta o facto do porque nao", "o facto do porque nao", "o facto tem de ser", "a profundidade tem de ser");
 
     private static final int PROFUNDIDADE_POR_OMISSAO = 4;
 

@@ -579,15 +579,98 @@ class PrologAdapterTest {
         assertEquals(List.of("copia falhou"), e.erros());
     }
 
+    // --- porque nao (modo whynot do wrapper) -------------------------------------------------------------------
+
+    private static final String EXPLORACAO = "{\"predicado\":\"exploracao_possivel\",\"args\":[\"ev_f1\",\"web_srv_05\",{\"var\":\"V\"}]}";
+
     /**
-     * Verifica que o porque nao responde "nao suportado" no formato do contrato, sem lancar o swipl (com um
-     * executavel que nao existe, lancar daria outro erro).
+     * Verifica que o porque nao corre o wrapper real no modo whynot: depois do c6, exploracao_possivel(ev_f1,
+     * web_srv_05, V) nao se concluiu, e a explicacao passa pela regra 6, com o se (cada condicao com verificada) e o
+     * entao. O facto volta como veio, com a variavel.
      */
     @Test
-    void porqueNaoAindaNaoESuportado() {
-        JsonNode r = le(adapter("swipl_que_nao_existe", RAIZ).porqueNao(PEDIDO, "{\"predicado\":\"x\",\"args\":[]}", 4));
-        assertEquals("erro", r.path("estado").asString());
+    void porqueNaoDoWrapper() {
+        JsonNode r = le(adapter("swipl", RAIZ).porqueNao(PEDIDO, EXPLORACAO, 4));
+        assertEquals("concluido", r.path("estado").asString(), r.toString());
         assertEquals("prolog", r.path("motor").asString());
-        assertTrue(r.path("erro").asString().startsWith("nao suportado"), r.toString());
+        assertEquals("6", r.path("versaoKB").asString());
+        assertEquals(json.readTree(EXPLORACAO), r.path("facto"));
+        JsonNode regra6 = null;
+        for (JsonNode linha : r.path("explicacao")) {
+            if (linha.path("tipo").asString().equals("regra") && linha.path("regra").asInt() == 6) {
+                regra6 = linha;
+            }
+        }
+        assertTrue(regra6 != null, r.toString());
+        assertTrue(regra6.path("se").isArray() && !regra6.path("se").isEmpty(), regra6.toString());
+        for (JsonNode c : regra6.path("se")) {
+            assertTrue(c.path("verificada").isBoolean(), c.toString());
+        }
+        assertTrue(regra6.path("entao").isArray() && !regra6.path("entao").isEmpty(), regra6.toString());
+    }
+
+    /**
+     * Verifica que a profundidade chega ao wrapper: com 1, a explicacao para mais cedo (tem uma linha profundidade e
+     * menos linhas que com 4).
+     */
+    @Test
+    void porqueNaoLevaAProfundidade() {
+        PrologAdapter a = adapter("swipl", RAIZ);
+        JsonNode r1 = le(a.porqueNao(PEDIDO, EXPLORACAO, 1));
+        JsonNode r4 = le(a.porqueNao(PEDIDO, EXPLORACAO, 4));
+        assertEquals("concluido", r1.path("estado").asString(), r1.toString());
+        boolean parou = false;
+        for (JsonNode linha : r1.path("explicacao")) {
+            parou |= linha.path("tipo").asString().equals("profundidade");
+        }
+        assertTrue(parou, r1.toString());
+        assertTrue(r1.path("explicacao").size() < r4.path("explicacao").size(),
+                r1.path("explicacao").size() + " linhas com 1, " + r4.path("explicacao").size() + " com 4");
+    }
+
+    /**
+     * Verifica que o erro do wrapper no modo whynot (um facto sem args, que o RequestValidator ja apanharia) vem tal
+     * como veio (M9).
+     */
+    @Test
+    void porqueNaoComErroDoWrapper() {
+        JsonNode r = le(adapter("swipl", RAIZ).porqueNao(PEDIDO, "{\"predicado\":\"x\"}", 4));
+        assertEquals("erro", r.path("estado").asString(), r.toString());
+        assertEquals("prolog", r.path("motor").asString(), r.toString());
+        assertTrue(r.path("erro").asString().startsWith("o facto do porque nao"), r.toString());
+    }
+
+    /**
+     * Verifica que um pedido que nao e um objeto JSON da erro do contrato sem lancar o swipl.
+     */
+    @Test
+    void porqueNaoComPedidoQueNaoEObjeto() {
+        JsonNode r = le(adapter("swipl-que-nao-existe", RAIZ).porqueNao("[1]", EXPLORACAO, 4));
+        assertErro(r);
+        assertEquals("o pedido tem de ser um objeto JSON", r.path("erro").asString());
+    }
+
+    /**
+     * Verifica que o porque nao usa os mesmos lugares que o infere (AC7): com o unico lugar ocupado por um infere e
+     * sem espera, o porque nao da "ocupado".
+     * @param tmp
+     * @throws Exception
+     */
+    @Test
+    void porqueNaoPartilhaOsLugaresComOInfere(@TempDir Path tmp) throws Exception {
+        String lento = "main :- sleep(2), write('{\"estado\":\"concluido\",\"motor\":\"prolog\"}'), nl.";
+        PrologAdapter a = adapter(homeFalsa(tmp, lento), Duration.ofSeconds(10), 1, Duration.ZERO);
+
+        CompletableFuture<String> primeiro = CompletableFuture.supplyAsync(() -> a.infere(PEDIDO));
+        long limite = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (ProcessHandle.current().children().noneMatch(ProcessHandle::isAlive)) {
+            assertTrue(System.nanoTime() < limite, "o primeiro pedido nao lancou o swipl");
+            Thread.sleep(10);
+        }
+
+        JsonNode segundo = le(a.porqueNao(PEDIDO, EXPLORACAO, 4));
+        assertErro(segundo);
+        assertTrue(segundo.path("erro").asString().startsWith("ocupado"), segundo.toString());
+        assertEquals("concluido", le(primeiro.get(10, TimeUnit.SECONDS)).path("estado").asString());
     }
 }

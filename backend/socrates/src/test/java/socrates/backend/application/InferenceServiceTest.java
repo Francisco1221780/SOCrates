@@ -20,10 +20,13 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 class InferenceServiceTest {
 
@@ -654,24 +657,48 @@ class InferenceServiceTest {
     }
 
     /**
-     * Verifica, com os dois motores reais, que o porque nao do Drools explica pela regra 6 porque nao ha
-     * exploracao_possivel(ev_f1, web_srv_05, V) no c6, e que o Prolog responde NAO_SUPORTADO por agora.
+     * Verifica, com os dois motores reais, que o porque nao explica pela regra 6 porque nao ha
+     * exploracao_possivel(ev_f1, web_srv_05, V) no c6, e que os dois motores dao a mesma explicacao (sem os numeros
+     * dos factos, que mudam entre motores).
      */
     @Test
     void porqueNaoNosDoisMotores() {
         String corpo = pedidoDosCenarios("\"facto\":{\"predicado\":\"exploracao_possivel\",\"args\":"
                 + "[\"ev_f1\",\"web_srv_05\",{\"var\":\"V\"}]}", "c6");
         InferenceService s = servicoReal();
-        Resultado drools = s.porqueNao("drools", corpo);
-        assertEquals(TipoResultado.OK, drools.tipoResultado(), drools.jsonResultado());
-        JsonNode n = json.readTree(drools.jsonResultado());
-        assertEquals("drools", n.path("motor").asString());
-        boolean regra6 = false;
-        for (JsonNode linha : n.path("explicacao")) {
-            regra6 |= linha.path("tipo").asString().equals("regra") && linha.path("regra").asInt() == 6;
+        Map<String, JsonNode> explicacoes = new HashMap<>();
+        for (String m : List.of("drools", "prolog")) {
+            Resultado r = s.porqueNao(m, corpo);
+            assertEquals(TipoResultado.OK, r.tipoResultado(), m + ": " + r.jsonResultado());
+            JsonNode n = json.readTree(r.jsonResultado());
+            assertEquals(m, n.path("motor").asString());
+            boolean regra6 = false;
+            for (JsonNode linha : n.path("explicacao")) {
+                regra6 |= linha.path("tipo").asString().equals("regra") && linha.path("regra").asInt() == 6;
+            }
+            assertTrue(regra6, m + ": " + r.jsonResultado());
+            explicacoes.put(m, semNumeros(n.path("explicacao")));
         }
-        assertTrue(regra6, drools.jsonResultado());
-        Resultado prolog = s.porqueNao("prolog", corpo);
-        assertEquals(TipoResultado.NAO_SUPORTADO, prolog.tipoResultado(), prolog.jsonResultado());
+        assertEquals(explicacoes.get("drools"), explicacoes.get("prolog"));
+    }
+
+    /**
+     * Uma copia do JSON sem os campos numero (o numero de um facto muda entre motores).
+     * @param n
+     * @return
+     */
+    private static JsonNode semNumeros(JsonNode n) {
+        JsonNode c = n.deepCopy();
+        tiraNumeros(c);
+        return c;
+    }
+
+    private static void tiraNumeros(JsonNode n) {
+        if (n instanceof ObjectNode o) {
+            o.remove("numero");
+        }
+        for (JsonNode filho : n) {
+            tiraNumeros(filho);
+        }
     }
 }
