@@ -13,8 +13,8 @@ Lado Drools do sistema. Módulo Maven próprio, sem Spring: o backend depende de
 | `src/main/resources/regras/` | Regras DRL, um ficheiro por grupo da base (92, portadas por grupos; nomes e molde no README da pasta). |
 | `src/main/resources/` | `cenarios.json` (igual ao do backend), `regras.json` (as regras como dados, para o "porque não?") e `factos_iniciais.json` (`{"versaoKB", "factos"}`), gerados a partir de `base_conhecimento/` por `motores/prolog/ferramentas/gera_json.pl` (issue #10); não se editam à mão. Se a `versaoKB` não for a do motor, o motor fica "não pronto". |
 | `src/test/java/` | Testes do motor e `ParidadeTest`, que compara o Drools com o Prolog em 10 variantes de cenários (ver "Paridade com o Prolog"). |
-| `src/test/resources/` | Ficheiros de factos iniciais alternativos para casos de teste (R7 sobre os dados fixos, versão errada, catálogo com falhas para o grupo N) `referencia_agn/` e `porque_nao/` (geradas, não se editam à mão). Os outros testes usam o `factos_iniciais.json` real. |
-| `ferramentas/` | `gera_referencia_agn.pl` e `gera_porque_nao.pl`: geram as referências Prolog dos testes (ver o README da pasta). |
+| `src/test/resources/` | Ficheiros de factos iniciais alternativos para casos de teste (R7 sobre os dados fixos, versão errada, catálogo com falhas para o grupo N) e `porque_nao/` (gerada, não se edita à mão). Os outros testes usam o `factos_iniciais.json` real. |
+| `ferramentas/` | `gera_porque_nao.pl`: gera a referência Prolog do `PorqueNaoTest` (ver o README da pasta). |
 
 ## Como corre um pedido
 
@@ -135,19 +135,7 @@ Os números mudam entre motores; compara-se pelo conteúdo.
 
 ## Paridade com o Prolog
 
-O `ParidadeTest` (corre em cada `mvnw verify`) envia ao Drools os passos de cada variante de cenários e compara a resposta, facto a facto, com a do `wrapper.pl`: conteúdo, origem, passo, regra e premissas. Uma premissa que aponta para um facto compara-se pelo conteúdo desse facto. Corre a dois níveis, nas 10 variantes do `gera_referencias.pl`:
-
-| Nível | Regras ativas no Drools | Referência | Diferenças aceites |
-| --- | --- | --- | --- |
-| A–G+N | R1–R34 e R89–R92 (filtro pelo nome da regra) | `src/test/resources/referencia_agn/`, o `wrapper.pl` com um `soc_regras.txt` só com essas regras | Nenhuma |
-| Completo | As 92 | `motores/prolog/referencia_prolog/` | Só as que têm causa de raiz numa regra H–M listada em `ParidadeTest.CAUSAS_H_M` / `ERROS_H_M`, com a razão |
-
-Quando mudam as regras, os factos ou os cenários, regenera-se a referência A–G+N (precisa do `swipl`; o build não o chama):
-
-```bash
-swipl motores/drools/ferramentas/gera_referencia_agn.pl              # escreve os 10 JSON
-swipl motores/drools/ferramentas/gera_referencia_agn.pl --verificar  # código 1 se algum estiver desatualizado
-```
+O `ParidadeTest` (corre em cada `mvnw verify`) envia ao Drools os passos de cada variante de cenários e compara a resposta, facto a facto, com a do `wrapper.pl`: conteúdo, origem, passo, regra e premissas. Uma premissa que aponta para um facto compara-se pelo conteúdo desse facto. Corre nas 14 variantes do `gera_referencias.pl`, com as 107 regras; entre elas disparam 103 regras (as R89 a R92, falhas no catálogo, comparam-se no `MotorDroolsTest` com uma base própria), contra `motores/prolog/referencia_prolog/`. Só se aceitam diferenças com causa de raiz numa regra H–M listada em `ParidadeTest.CAUSAS_H_M` / `ERROS_H_M`, com a razão (as duas listas estão vazias). Havia também um nível só com os grupos A a G e N, do tempo em que o Drools só tinha essas regras (issue #13); saiu na F0008.
 
 Três diferenças entre os motores que o código trata para a resposta ser igual:
 
@@ -165,4 +153,4 @@ Regras do módulo:
 - Não depende de Spring nem de classes do backend. A fronteira é JSON de entrada e JSON de saída.
 - Compara-se com o Prolog pelo conteúdo dos factos, nunca pelos números nem pela ordem de disparo.
 
-Estado: infraestrutura (issue #4), regras A a G e N (issue #13, iguais ao Prolog nas 10 variantes) e regras H a M com as condições calculadas (PR #31, issues #14 e #15; diferenças listadas no `ParidadeTest`).
+Estado: infraestrutura (issue #4), regras A a G e N (issue #13) e regras H a M com as condições calculadas (PR #31, issues #14 e #15; diferenças listadas no `ParidadeTest`).

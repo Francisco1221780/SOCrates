@@ -1,6 +1,6 @@
 # regras
 
-Regras DRL (as 92 regras da base v6, portadas por grupos), um ficheiro por grupo de `soc_regras.txt`. Escritas à mão: é o `ParidadeTest` que garante que dizem o mesmo que as regras Prolog (ver o README do módulo).
+Regras DRL (as 107 regras da base v6.1, portadas por grupos), um ficheiro por grupo de `soc_regras.txt`. Escritas à mão: é o `ParidadeTest` que garante que dizem o mesmo que as regras Prolog (ver o README do módulo).
 
 ## Um ficheiro por grupo
 
@@ -22,6 +22,7 @@ O nome é a letra do grupo mais uma palavra do título, para os ficheiros ficare
 | `L_ciclo_vida.drl` | L. Ciclo de vida: incidentes que fecham e conclusões históricas | R53–R73 | #15 |
 | `M_gravidade_prioridade.drl` | M. Gravidade, prioridade e tickets | R74–R88 | #15 |
 | `N_catalogo.drl` | N. Validação do catálogo | R89–R92 | #13 |
+| `O_fecho_tickets.drl` | O. Fechar os tickets | R93–R107 | F0008 |
 
 ## Como se porta uma regra
 
@@ -85,4 +86,4 @@ No outro sentido (H–M → A–G):
 | `impacto_confirmado` | R50 | R25, R26 |
 | `compromisso_confirmado` | R43, R49 | R29 |
 
-Estado: todas as regras portadas. A–G e N dão os mesmos factos, regras e premissas que o Prolog nas 10 variantes (nível A–G+N do `ParidadeTest`). Com as 92 juntas, as diferenças que restam têm causa nas regras H–M e estão listadas, com a razão, em `ParidadeTest.CAUSAS_H_M` e `ERROS_H_M`.
+Estado: todas as regras portadas (R1 a R107). Dão os mesmos factos, regras e premissas que o Prolog nas 14 variantes do `ParidadeTest`; as listas de diferenças aceites (`ParidadeTest.CAUSAS_H_M` e `ERROS_H_M`) estão vazias.

@@ -39,7 +39,7 @@ cenário já estão neste formato no `passo` de cada cenário do `cenarios.json`
 ```json
 {"versaoKB": "6", "passos": [
   {"id": "cenario_07", "factos": [{"predicado": "alerta_ids", "args": ["ev_e1", "web_srv_04", "sig_apache_path_traversal"]}]},
-  {"id": "cenario_07b_sim", "factos": [{"predicado": "resposta_analista", "args": ["web_srv_04", "ev_e1", "shell_servico", "sim"]}]}
+  {"id": "resposta_07", "factos": [{"predicado": "resposta_analista", "args": ["web_srv_04", "ev_e1", "shell_servico", "sim"]}]}
 ]}
 ```
 
