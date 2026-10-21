@@ -456,120 +456,180 @@ escreve_premissa(C) :- legivel(C, CL), format('    a condicao ~w verifica-se (ca
 % Diferencas para o sp_exp2: trata as condicoes calculadas (nao tem regras: diz so que sao falsas),
 % nao repete um facto ja explicado, diz quando um facto e um dado de entrada, e uma premissa que falhou
 % nao fica com valores inventados por uma condicao que vem a seguir (ver encontra_premissas_falsas).
+% A explicacao monta-se primeiro como uma lista de linhas (whynot_linhas/3, issue #7), que o wrapper.pl da em JSON,
+% e o whynot/1 escreve essas linhas.
 
 whynot(Facto) :-
+	opcao(profundidade_whynot, Max),
+	whynot_linhas(Facto, Max, Linhas),
+	forall(member(L, Linhas), escreve_linha_whynot(L)).
+
+% whynot_linhas(+Facto, +Profundidade, -Linhas): as linhas do "porque nao?", pela ordem em que se escrevem.
+% Cada linha e linha(Nivel, Tipo, Campos), em que Campos e uma lista Chave-Valor com o que a linha precisa:
+%   termo-T, numero-N (o numero do facto, ou '?'), encontrado-T (o facto que verificou uma negacao),
+%   regra-ID, se-Condicoes (o LHS, cada uma condicao(Tipo, Termo, sim/nao, Numero ou nenhum)) e entao-Factos.
+% Os tipos sao os do Drools (PorqueNao.java), para os dois motores darem as mesmas linhas.
+% Os termos sao copias tiradas no momento da linha: uma ligacao feita depois nao muda uma linha ja feita.
+whynot_linhas(Facto, Max, Linhas) :-
 	retractall(ja_visto_whynot(_)),
-	whynot(Facto, 1),
+	phrase(whynot(Facto, 1, Max), Linhas),
 	retractall(ja_visto_whynot(_)).
 
-whynot(Facto, _) :-
-	\+ Facto = (nao _),
-	facto(N, Facto), !,
-	legivel(Facto, FL),
-	format('O facto ~w nao e falso! (facto n. ~w)~n', [FL, N]).
-whynot(nao Facto, Nivel) :- !,
-	legivel(Facto, FL),
-	formata(Nivel), format('Porque: o facto ~w e verdadeiro~n', [FL]).
-whynot(Facto, Nivel) :-
-	calculada(Facto), !,
-	legivel(Facto, FL),
-	formata(Nivel), format('Porque: a condicao calculada ~w e falsa~n', [FL]).
-whynot(Facto, Nivel) :-
-	ja_visto_whynot(F0), F0 =@= Facto, !,
-	legivel(Facto, FL),
-	formata(Nivel), format('(~w: ja explicado acima)~n', [FL]).
-whynot(Facto, Nivel) :-
-	\+ regra_conclui(Facto), !,
-	legivel(Facto, FL),
-	formata(Nivel), format('Porque: o facto ~w nao esta na base e nenhuma regra o conclui (e um dado de entrada)~n', [FL]).
-whynot(_, Nivel) :-
-	opcao(profundidade_whynot, Max), Nivel > Max, !,
-	formata(Nivel), writeln('(... para ver mais fundo: define_opcao(profundidade_whynot, N))').
-whynot(Facto, Nivel) :-
-	copy_term(Facto, Copia),
-	assertz(ja_visto_whynot(Copia)),
-	encontra_regras_whynot(Facto, LLPF),
-	LLPF \== [], !,
-	whynot1(LLPF, Nivel).
-whynot(Facto, Nivel) :-
-	legivel(Facto, FL),
-	formata(Nivel), format('As premissas de uma regra que conclui ~w verificam-se: falta correr o motor (arranca_motor).~n', [FL]).
+whynot(Facto, Nivel, _) -->
+	{ \+ Facto = (nao _), facto(N, Facto) }, !,
+	linha_whynot(Nivel, verdadeiro, [termo-Facto, numero-N]).
+whynot(nao Facto, Nivel, _) --> !,
+	linha_whynot(Nivel, nao_verdadeiro, [termo-Facto]).
+whynot(Facto, Nivel, _) -->
+	{ calculada(Facto) }, !,
+	linha_whynot(Nivel, calculada_falsa, [termo-Facto]).
+whynot(Facto, Nivel, _) -->
+	{ ja_visto_whynot(F0), F0 =@= Facto }, !,
+	linha_whynot(Nivel, ja_explicado, [termo-Facto]).
+whynot(Facto, Nivel, _) -->
+	{ \+ regra_conclui(Facto) }, !,
+	linha_whynot(Nivel, dado_de_entrada, [termo-Facto]).
+whynot(_, Nivel, Max) -->
+	{ Nivel > Max }, !,
+	linha_whynot(Nivel, profundidade, []).
+whynot(Facto, Nivel, Max) -->
+	{ copy_term(Facto, Copia),
+	  assertz(ja_visto_whynot(Copia)),
+	  encontra_regras_whynot(Facto, LR),
+	  LR \== [] }, !,
+	whynot1(LR, Nivel, Max).
+whynot(Facto, Nivel, _) -->
+	linha_whynot(Nivel, falta_correr_motor, [termo-Facto]).
+
+linha_whynot(Nivel, Tipo, Campos0) -->
+	{ copy_term(Campos0, Campos) },
+	[linha(Nivel, Tipo, Campos)].
 
 regra_conclui(Facto) :-
 	regra _ se _ entao RHS,
 	member(cria_facto(Facto), RHS), !.
 
-% As explicacoes consideram todas as regras que poderiam dar origem a conclusao relativa ao facto
-encontra_regras_whynot(Facto, LLPF) :-
-	findall((ID, LPF),
+% As explicacoes consideram todas as regras que poderiam dar origem a conclusao relativa ao facto.
+% Cada uma vem com as premissas falsas, o LHS com o estado de cada condicao e os factos que a regra conclui.
+encontra_regras_whynot(Facto, LR) :-
+	findall(r(ID, LPF, Se, Entao),
 		( regra ID se LHS entao RHS,
 		  member(cria_facto(Facto), RHS),
-		  encontra_premissas_falsas(LHS, LPF),
-		  LPF \== [] ),
-		LLPF).
+		  encontra_premissas_falsas(LHS, LPF, Se),
+		  LPF \== [],
+		  conclusoes(RHS, Entao) ),
+		LR).
 
-whynot1([], _).
-whynot1([(ID, LPF)|LLPF], Nivel) :-
-	formata(Nivel), format('Porque pela regra ~w:~n', [ID]),
-	Nivel1 is Nivel + 1,
-	explica_porque_nao(LPF, Nivel1),
-	whynot1(LLPF, Nivel).
+conclusoes([], []).
+conclusoes([cria_facto(F)|As], [F|Fs]) :- !, conclusoes(As, Fs).
+conclusoes([_|As], Fs) :- conclusoes(As, Fs).
+
+whynot1([], _, _) --> [].
+whynot1([r(ID, LPF, Se, Entao)|LR], Nivel, Max) -->
+	linha_whynot(Nivel, regra, [regra-ID, se-Se, entao-Entao]),
+	{ Nivel1 is Nivel + 1 },
+	explica_porque_nao(LPF, Nivel1, Max),
+	whynot1(LR, Nivel, Max).
 
 % Percorre o LHS por ordem. Uma condicao que se verifica fica com as variaveis instanciadas (para as seguintes);
 % uma que falha vai para a lista das premissas falsas. Uma condicao que partilha variaveis com uma premissa
-% que ja falhou so se testa (com \+ \+), sem instanciar nada: senao uma condicao calculada como
+% que ja falhou so se testa (sobre uma copia), sem instanciar nada: senao uma condicao calculada como
 % anterior(EvAnterior, Ev) dava a premissa falhada um valor qualquer e a explicacao ficava errada.
-encontra_premissas_falsas(LHS, LPF) :-
+% Se tem o estado de cada condicao, pela ordem do LHS (ver estado_condicao).
+encontra_premissas_falsas(LHS, LPF, Se) :-
 	lista_condicoes(LHS, Cs),
-	premissas_falsas(Cs, [], LPF).
+	premissas_falsas(Cs, [], LPF, Se).
 
 lista_condicoes([C e Resto], [C|Cs]) :- !, lista_condicoes([Resto], Cs).
 lista_condicoes([C], [C]).
 
-premissas_falsas([], _, []).
-premissas_falsas([C|Cs], Falhadas, LPF) :-
+premissas_falsas([], _, [], []).
+premissas_falsas([C|Cs], Falhadas, LPF, [E|Es]) :-
 	(   partilha_variaveis(C, Falhadas)
-	->  ( \+ \+ verifica_condicao(C, _) -> Ok = sim ; Ok = nao )
-	;   ( verifica_condicao(C, _) -> Ok = sim ; Ok = nao )
+	->  ( copy_term(C, C1), verifica_condicao(C1, J) -> Ok = sim ; Ok = nao )
+	;   ( verifica_condicao(C, J) -> Ok = sim ; Ok = nao )
 	),
 	(   Ok == sim
 	->  LPF = LPF1, Falhadas1 = Falhadas
 	;   LPF = [C|LPF1], Falhadas1 = [C|Falhadas]
 	),
-	premissas_falsas(Cs, Falhadas1, LPF1).
+	estado_condicao(C, Ok, J, E),
+	premissas_falsas(Cs, Falhadas1, LPF1, Es).
+
+% condicao(Tipo, Termo, Verificada, Numero): Tipo e nao (Termo e o que esta negado), avalia (Termo e o de avalia/1)
+% ou facto (tambem as condicoes calculadas); Numero e o do facto que verificou a condicao, so num facto, ou nenhum.
+estado_condicao(nao T, Ok, _, condicao(nao, T, Ok, nenhum)) :- !.
+estado_condicao(avalia(T), Ok, _, condicao(avalia, T, Ok, nenhum)) :- !.
+estado_condicao(C, Ok, J, condicao(facto, C, Ok, N)) :-
+	( Ok == sim, integer(J) -> N = J ; N = nenhum ).
 
 partilha_variaveis(C, Termos) :-
 	term_variables(C, V1),
 	term_variables(Termos, V2),
 	member(X, V1), member(Y, V2), X == Y, !.
 
-explica_porque_nao([], _).
-explica_porque_nao([nao avalia(X)|LPF], Nivel) :- !,
-	legivel(X, XL),
-	formata(Nivel), format('A condicao nao ~w e falsa~n', [XL]),
-	explica_porque_nao(LPF, Nivel).
-explica_porque_nao([avalia(X)|LPF], Nivel) :- !,
-	legivel(X, XL),
-	formata(Nivel), format('A condicao ~w e falsa~n', [XL]),
-	explica_porque_nao(LPF, Nivel).
-explica_porque_nao([nao X|LPF], Nivel) :- !,
-	legivel(X, XL),
-	formata(Nivel), format('A premissa nao ~w e falsa~n', [XL]),
-	Nivel1 is Nivel + 1,
-	( facto(N, X) -> true ; N = '?' ),
-	formata(Nivel1), format('Porque: o facto ~w e verdadeiro (facto n. ~w)~n', [XL, N]),
-	explica_porque_nao(LPF, Nivel).
-explica_porque_nao([C|LPF], Nivel) :-
-	calculada(C), !,
-	legivel(C, CL),
-	formata(Nivel), format('A condicao calculada ~w e falsa~n', [CL]),
-	explica_porque_nao(LPF, Nivel).
-explica_porque_nao([P|LPF], Nivel) :-
-	legivel(P, PL),
-	formata(Nivel), format('A premissa ~w e falsa~n', [PL]),
-	Nivel1 is Nivel + 1,
-	whynot(P, Nivel1),
-	explica_porque_nao(LPF, Nivel).
+explica_porque_nao([], _, _) --> [].
+explica_porque_nao([nao avalia(X)|LPF], Nivel, Max) --> !,
+	linha_whynot(Nivel, condicao_nao_falsa, [termo-X]),
+	explica_porque_nao(LPF, Nivel, Max).
+explica_porque_nao([avalia(X)|LPF], Nivel, Max) --> !,
+	linha_whynot(Nivel, condicao_falsa, [termo-X]),
+	explica_porque_nao(LPF, Nivel, Max).
+explica_porque_nao([nao X|LPF], Nivel, Max) --> !,
+	linha_whynot(Nivel, premissa_nao_falsa, [termo-X]),
+	% o facto procura-se sobre uma copia: as premissas seguintes nao ficam com os valores dele (como no Drools)
+	{ Nivel1 is Nivel + 1,
+	  copy_term(X, X1),
+	  ( facto(N, X1) -> Campos = [termo-X, numero-N, encontrado-X1] ; Campos = [termo-X, numero-'?'] ) },
+	linha_whynot(Nivel1, facto_verdadeiro, Campos),
+	explica_porque_nao(LPF, Nivel, Max).
+explica_porque_nao([C|LPF], Nivel, Max) -->
+	{ calculada(C) }, !,
+	linha_whynot(Nivel, calculada_premissa_falsa, [termo-C]),
+	explica_porque_nao(LPF, Nivel, Max).
+explica_porque_nao([P|LPF], Nivel, Max) -->
+	linha_whynot(Nivel, premissa_falsa, [termo-P]),
+	{ Nivel1 is Nivel + 1 },
+	whynot(P, Nivel1, Max),
+	explica_porque_nao(LPF, Nivel, Max).
+
+% Escreve uma linha do "porque nao?". So a primeira (o facto existe) nao leva a margem do nivel.
+escreve_linha_whynot(linha(_, verdadeiro, [termo-F, numero-N])) :- !,
+	legivel(F, FL),
+	format('O facto ~w nao e falso! (facto n. ~w)~n', [FL, N]).
+escreve_linha_whynot(linha(Nivel, Tipo, Campos)) :-
+	( memberchk(termo-T, Campos) -> legivel(T, TL) ; TL = '' ),
+	formata(Nivel),
+	texto_linha_whynot(Tipo, TL, Campos).
+
+texto_linha_whynot(nao_verdadeiro, TL, _) :-
+	format('Porque: o facto ~w e verdadeiro~n', [TL]).
+texto_linha_whynot(calculada_falsa, TL, _) :-
+	format('Porque: a condicao calculada ~w e falsa~n', [TL]).
+texto_linha_whynot(ja_explicado, TL, _) :-
+	format('(~w: ja explicado acima)~n', [TL]).
+texto_linha_whynot(dado_de_entrada, TL, _) :-
+	format('Porque: o facto ~w nao esta na base e nenhuma regra o conclui (e um dado de entrada)~n', [TL]).
+texto_linha_whynot(profundidade, _, _) :-
+	writeln('(... para ver mais fundo: define_opcao(profundidade_whynot, N))').
+texto_linha_whynot(falta_correr_motor, TL, _) :-
+	format('As premissas de uma regra que conclui ~w verificam-se: falta correr o motor (arranca_motor).~n', [TL]).
+texto_linha_whynot(regra, _, Campos) :-
+	memberchk(regra-ID, Campos),
+	format('Porque pela regra ~w:~n', [ID]).
+texto_linha_whynot(condicao_nao_falsa, TL, _) :-
+	format('A condicao nao ~w e falsa~n', [TL]).
+texto_linha_whynot(condicao_falsa, TL, _) :-
+	format('A condicao ~w e falsa~n', [TL]).
+texto_linha_whynot(premissa_nao_falsa, TL, _) :-
+	format('A premissa nao ~w e falsa~n', [TL]).
+texto_linha_whynot(facto_verdadeiro, TL, Campos) :-
+	memberchk(numero-N, Campos),
+	format('Porque: o facto ~w e verdadeiro (facto n. ~w)~n', [TL, N]).
+texto_linha_whynot(calculada_premissa_falsa, TL, _) :-
+	format('A condicao calculada ~w e falsa~n', [TL]).
+texto_linha_whynot(premissa_falsa, TL, _) :-
+	format('A premissa ~w e falsa~n', [TL]).
 
 formata(Nivel) :- Esp is (Nivel - 1) * 5, tab(Esp).
 

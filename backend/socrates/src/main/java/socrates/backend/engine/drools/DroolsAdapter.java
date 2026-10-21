@@ -23,6 +23,11 @@ public class DroolsAdapter implements MotorInferencia {
     }
 
     @Override
+    public String porqueNao(String pedidoJson, String factoJson, int profundidade) {
+        return motor.porqueNao(pedidoJson, factoJson, profundidade);
+    }
+
+    @Override
     public SaudeMotor estado() {
         EstadoMotor estado = motor.estado();
         boolean baseCarregada = estado.regrasCarregadas() && estado.factosIniciais() > 0;

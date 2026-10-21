@@ -25,7 +25,11 @@ public class InferenceService {
 
     private static final List<String> ERROS_DO_PEDIDO = List.of(
             "pedido JSON invalido", "o pedido tem de", "versaoKB desconhecida", "o passo ",
-            "facto invalido no passo", "termo invalido no passo");
+            "facto invalido no passo", "termo invalido no passo",
+            // os do modo whynot do wrapper.pl e do MotorDrools.porqueNao
+            "falta o facto do porque nao", "o facto do porque nao", "o facto tem de ser", "a profundidade tem de ser");
+
+    private static final int PROFUNDIDADE_POR_OMISSAO = 4;
 
     private static final List<String> ERROS_SEM_ALVO = List.of("esse facto nao esta", "essa pergunta nao esta");
 
@@ -71,7 +75,7 @@ public class InferenceService {
      * @return
      */
     public Resultado infere(String nomeMotor, String corpo) {
-        return corre(nomeMotor, corpo, pedido -> List.of(), null);
+        return corre(nomeMotor, corpo, pedido -> List.of(), (motor, pedido) -> motor.infere(corpo), null);
     }
 
     /**
@@ -103,9 +107,35 @@ public class InferenceService {
      * @return
      */
     public Resultado porquePergunta(String nomeMotor, String corpo) {
-        return corre(nomeMotor, corpo, requestValidator::validaPergunta,
+        return corre(nomeMotor, corpo, requestValidator::validaPergunta, (motor, pedido) -> motor.infere(corpo),
                 (pedido, resposta) -> explicador.porquePergunta(resposta, pedido.get("ativo").asString(),
                         pedido.get("evento").asString(), pedido.get("pergunta").asString()));
+    }
+
+    /**
+     * "Porque nao?": corre o pedido no motor e explica porque o facto pedido (predicado e args, com variaveis) nao se
+     * concluiu, ate a profundidade do pedido (4 por omissao). Ao contrario das outras explicacoes, nao se monta a
+     * partir da resposta: e o motor que testa as regras contra os factos da sessao. NAO_SUPORTADO num motor que ainda
+     * nao o faz.
+     * @param nomeMotor
+     * @param corpo
+     * @return
+     */
+    public Resultado porqueNao(String nomeMotor, String corpo) {
+        return corre(nomeMotor, corpo, requestValidator::validaPorqueNao,
+                (motor, pedido) -> motor.porqueNao(corpo, jsonMapper.writeValueAsString(pedido.get("facto")),
+                        profundidade(pedido)),
+                null);
+    }
+
+    /**
+     * A profundidade do pedido do "porque nao?", ou a por omissao se nao vier.
+     * @param pedido
+     * @return
+     */
+    private static int profundidade(JsonNode pedido) {
+        JsonNode p = pedido.get("profundidade");
+        return p == null || p.isNull() ? PROFUNDIDADE_POR_OMISSAO : p.asInt();
     }
 
     /**
@@ -116,22 +146,24 @@ public class InferenceService {
      * @return
      */
     private Resultado arvore(String nomeMotor, String corpo, boolean comRegras) {
-        return corre(nomeMotor, corpo, requestValidator::validaFacto,
+        return corre(nomeMotor, corpo, requestValidator::validaFacto, (motor, pedido) -> motor.infere(corpo),
                 (pedido, resposta) -> explicador.como(resposta, jsonMapper.writeValueAsString(pedido.get("facto")),
                         comRegras));
     }
 
     /**
-     * Verifica que o motor existe e que o pedido e valido (os passos e os campos da explicacao), e so depois corre o
-     * pedido no motor, com o corpo original. Sem explicacao, o resultado e o do motor; com explicacao, e o que ela
+     * Verifica que o motor existe e que o pedido e valido (os passos e os campos da explicacao), e so depois chama o
+     * motor (executa), com o corpo original. Sem explicacao, o resultado e o do motor; com explicacao, e o que ela
      * monta a partir da resposta, se o motor respondeu sem erro.
      * @param nomeMotor
      * @param corpo
      * @param validaCampos
+     * @param executa
      * @param explica
      * @return
      */
     private Resultado corre(String nomeMotor, String corpo, Function<JsonNode, List<String>> validaCampos,
+                            BiFunction<MotorInferencia, JsonNode, String> executa,
                             BiFunction<JsonNode, String, String> explica) {
         MotorInferencia motor = motores.get(nomeMotor);
         if (motor == null) {
@@ -153,7 +185,7 @@ public class InferenceService {
         if (!erros.isEmpty()) {
             return new Resultado(TipoResultado.PEDIDO_INVALIDO, erro(nomeMotor, String.join("; ", erros)));
         }
-        Resultado resultado = classifica(nomeMotor, motor.infere(corpo));
+        Resultado resultado = classifica(nomeMotor, executa.apply(motor, arvore));
         if (explica == null || resultado.tipoResultado() != TipoResultado.OK) {
             return resultado;
         }
@@ -187,6 +219,9 @@ public class InferenceService {
         }
         if (erro.startsWith("ocupado")) {
             return new Resultado(TipoResultado.OCUPADO, resposta);
+        }
+        if (erro.startsWith("nao suportado")) {
+            return new Resultado(TipoResultado.NAO_SUPORTADO, resposta);
         }
         if (ERROS_SEM_ALVO.stream().anyMatch(erro::startsWith)) {
             return new Resultado(TipoResultado.NAO_ENCONTRADO, resposta);

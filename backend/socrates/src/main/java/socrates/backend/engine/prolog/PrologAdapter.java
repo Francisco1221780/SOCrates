@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -27,6 +28,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 @Component
 public class PrologAdapter implements MotorInferencia {
@@ -69,6 +71,42 @@ public class PrologAdapter implements MotorInferencia {
      */
     @Override
     public String infere(String pedidoJson) {
+        return comLugar(() -> corre(pedidoJson, List.of()));
+    }
+
+    /**
+     * Corre o wrapper.pl no modo whynot ("porque nao?", issue #7): o pedido vai pelo stdin com o facto e a profundidade
+     * (nunca na linha de comandos, AC1), e a resposta e a do wrapper, no formato do MotorDrools.porqueNao. Usa os mesmos
+     * lugares que o infere (AC7).
+     * @param pedidoJson
+     * @param factoJson
+     * @param profundidade
+     * @return
+     */
+    @Override
+    public String porqueNao(String pedidoJson, String factoJson, int profundidade) {
+        String pedido;
+        try {
+            JsonNode corpo = json.readTree(pedidoJson);
+            if (!(corpo instanceof ObjectNode o)) {
+                return erro("o pedido tem de ser um objeto JSON");
+            }
+            o.set("facto", json.readTree(factoJson));
+            o.put("profundidade", profundidade);
+            pedido = json.writeValueAsString(o);
+        } catch (JacksonException e) {
+            return erro("pedido JSON invalido: " + e.getOriginalMessage());
+        }
+        return comLugar(() -> corre(pedido, List.of("whynot")));
+    }
+
+    /**
+     * Corre o pedido se houver um lugar livre. Se os socrates.prolog.max-processos lugares estiverem ocupados, espera
+     * no maximo socrates.prolog.espera e depois devolve o erro "ocupado".
+     * @param pedido
+     * @return
+     */
+    private String comLugar(Supplier<String> pedido) {
         boolean temLugar;
         try {
             temLugar = lugares.tryAcquire(prologProperties.espera().toMillis(), TimeUnit.MILLISECONDS);
@@ -80,9 +118,9 @@ public class PrologAdapter implements MotorInferencia {
             return erro("ocupado: " + prologProperties.maxProcessos() + " pedidos prolog em curso");
         }
         try {
-            return corre(pedidoJson);
+            return pedido.get();
         } finally {
-                lugares.release();
+            lugares.release();
         }
     }
 
@@ -262,18 +300,23 @@ public class PrologAdapter implements MotorInferencia {
     }
 
     /**
-     * Executa o wrapper.pl com o pedido JSON, devolvendo a resposta JSON ou uma mensagem de erro.
+     * Executa o wrapper.pl com o pedido JSON e o modo dado (nenhum para inferir, "whynot" para o porque nao),
+     * devolvendo a resposta JSON ou uma mensagem de erro.
      * @param pedidoJson
+     * @param modo
      * @return
      */
-    private String corre(String pedidoJson) {
+    private String corre(String pedidoJson, List<String> modo) {
         String erroPastas = verificaPastas();
         if (erroPastas != null) {
             return erro(erroPastas);
         }
         Saida s;
         try {
-            s = executa(List.of(prologProperties.swipl(), wrapper().toString(), base().toString()), pedidoJson);
+            List<String> comando = new ArrayList<>(
+                    List.of(prologProperties.swipl(), wrapper().toString(), base().toString()));
+            comando.addAll(modo);
+            s = executa(comando, pedidoJson);
         } catch (IOException e) {
             return erro("swipl nao encontrado ou falhou ao iniciar: " + e.getMessage());
         } catch (TimeoutException e) {

@@ -63,7 +63,8 @@ class ExplicacaoControllerTest {
         when(inferenceService.como(anyString(), anyString())).thenReturn(ok);
         when(inferenceService.porque(anyString(), anyString())).thenReturn(ok);
         when(inferenceService.porquePergunta(anyString(), anyString())).thenReturn(ok);
-        for (String caminho : new String[] {"como", "porque", "porque-pergunta"}) {
+        when(inferenceService.porqueNao(anyString(), anyString())).thenReturn(ok);
+        for (String caminho : new String[] {"como", "porque", "porque-pergunta", "whynot"}) {
             MvcResult r = envia("/api/prolog/" + caminho, CORPO, MediaType.APPLICATION_JSON);
             assertEquals(200, r.getResponse().getStatus(), caminho);
             assertEquals(RESPOSTA, r.getResponse().getContentAsString(StandardCharsets.UTF_8), caminho);
@@ -71,6 +72,20 @@ class ExplicacaoControllerTest {
         verify(inferenceService).como("prolog", CORPO);
         verify(inferenceService).porque("prolog", CORPO);
         verify(inferenceService).porquePergunta("prolog", CORPO);
+        verify(inferenceService).porqueNao("prolog", CORPO);
+    }
+
+    /**
+     * Verifica que um motor sem porque nao (NAO_SUPORTADO) da 501 com o erro do contrato no corpo.
+     * @throws Exception
+     */
+    @Test
+    void naoSuportadoDa501() throws Exception {
+        String erro = "{\"estado\":\"erro\",\"motor\":\"prolog\",\"versaoKB\":null,\"erro\":\"nao suportado\"}";
+        when(inferenceService.porqueNao(anyString(), anyString())).thenReturn(new Resultado(TipoResultado.NAO_SUPORTADO, erro));
+        MvcResult r = envia("/api/prolog/whynot", CORPO, MediaType.APPLICATION_JSON);
+        assertEquals(501, r.getResponse().getStatus());
+        assertEquals(erro, r.getResponse().getContentAsString(StandardCharsets.UTF_8));
     }
 
     /**
@@ -104,7 +119,7 @@ class ExplicacaoControllerTest {
      */
     @Test
     void contentTypeQueNaoEJsonDa415() throws Exception {
-        for (String caminho : new String[] {"como", "porque", "porque-pergunta"}) {
+        for (String caminho : new String[] {"como", "porque", "porque-pergunta", "whynot"}) {
             MvcResult r = envia("/api/prolog/" + caminho, CORPO, MediaType.TEXT_PLAIN);
             assertEquals(415, r.getResponse().getStatus(), caminho);
         }

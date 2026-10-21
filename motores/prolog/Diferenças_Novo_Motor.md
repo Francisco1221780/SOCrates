@@ -1,6 +1,6 @@
 # Motor de inferência: diferenças para o `sp_exp2.pl`
 
-O `soc_motor.pl` é o `sp_exp2.pl` da UC com quatro alterações ao núcleo, exigidas pela nossa base de conhecimento, e algumas camadas por cima. O núcleo continua a ser o mesmo motor de encadeamento direto: as mesmas regras `regra ID se [...] entao [...]`, os mesmos factos `facto(N, F)`, o metaconhecimento `facto_dispara_regras/2` e a negação `nao`.
+O `soc_motor.pl` é o `sp_exp2.pl` da UC com quatro alterações ao núcleo (M1 a M4), exigidas pela nossa base de conhecimento, mais a reavaliação por `condicao_le/2` que a base v6 pede, e algumas camadas por cima. O núcleo continua a ser o mesmo motor de encadeamento direto: as mesmas regras `regra ID se [...] entao [...]`, os mesmos factos `facto(N, F)`, o metaconhecimento `facto_dispara_regras/2` e a negação `nao`.
 
 Teve de mudar porque o `sp_exp2.pl` não consegue correr a nossa base: não avalia condições calculadas, como `depois(Ev2, Ev1, Janela)`, dispara cada regra uma só vez por facto e tem de ser chamado várias vezes. As quatro alterações (M1 a M4) estão na issue #3 do repositório.
 
@@ -25,17 +25,18 @@ A tabela compara os três motores no que cada um faz; as secções seguintes exp
 | Comparações `avalia(...)` | Sim | Sim | Sim, igual |
 | Condições calculadas (M1) | Não | Não: são procuradas como factos e falham sempre | Sim: `call(C)` quando `condicao_calculada(C)` |
 | Instanciações por regra e facto (M2) | A primeira | A primeira | Todas |
+| Facto lido por uma condição calculada (v6) | Não dispara a regra | Não dispara a regra | Reavalia a regra por inteiro (`condicao_le/2`) |
 | Factos criados durante a passagem (M3) | Não são vistos: é preciso voltar a chamar o motor | Igual | Vistos na mesma passagem; repete até não haver conclusões novas |
 | `cria_facto` (M4) | Escreve e espera por uma tecla | Igual | Não escreve nem espera; as duas coisas são opções |
 | `como` | Não existe | Por número; repete sub-árvores | Por número ou pelo facto; árvore sem repetições |
-| `whynot` | Não existe | Existe, com dois defeitos (secção Explicações) | Corrigido; trata condições calculadas; profundidade máxima |
+| `whynot` | Não existe | Existe, com dois defeitos (secção Explicações) | Corrigido; trata condições calculadas; profundidade máxima; também devolve a explicação como estrutura (`whynot_linhas/3`) |
 | Factos vindos de fora | À mão, no ficheiro da base | À mão, no ficheiro da base | `introduz_facto`, `injeta_cenario`, `injeta_todos` |
 | Perguntas ao analista | Não | Não | Como factos (`pergunta_analista`, `resposta_analista`), com "porquê?" no menu |
 | Interface | Consultas na consola | Consultas na consola | Consultas na consola e `menu/0` |
 
 ## As alterações M1 a M4
 
-São as quatro mudanças ao núcleo sem as quais a nossa base não corre; o resto do motor é acrescentado por cima.
+São as quatro mudanças ao núcleo sem as quais a nossa base não corre. A reavaliação por `condicao_le/2`, pedida pela v6, completa a M2; o resto do motor é acrescentado por cima.
 
 ### M1: condições calculadas
 
@@ -52,10 +53,15 @@ verifica_condicoes([X e Y],[N|LF]):- !,
 No `soc_motor.pl`, cada condição passa por `verifica_condicao/2`, que avalia as calculadas com `call/1` (também dentro de um `nao`):
 
 ```prolog
-verifica_condicao(nao C, nao C) :- calculada(C), !, \+ chama_calculada(C).
-verifica_condicao(C, C)         :- calculada(C), !, chama_calculada(C).
-verifica_condicao(X, N)         :- facto(N, X).
+verifica_condicao(nao avalia(X), nao X) :- !, \+ avalia(_, X).
+verifica_condicao(avalia(X), N)        :- !, avalia(N, X).
+verifica_condicao(nao C, nao C)         :- calculada(C), !, \+ chama_calculada(C).
+verifica_condicao(nao X, nao X)         :- !, \+ facto(_, X).
+verifica_condicao(C, C)                 :- calculada(C), !, chama_calculada(C).
+verifica_condicao(X, N)                 :- facto(N, X).
 ```
+
+O `chama_calculada/1` faz o `call/1`, mas conta como falsa uma condição com um argumento por instanciar, em vez de dar erro (só acontece nas explicações, quando uma premissa anterior falhou).
 
 Na justificação fica a própria condição em vez do número de um facto, e é assim que o `como` a mostra: "a condição depois(ev_a2,ev_a1,60) verifica-se (calculada)".
 
@@ -82,8 +88,27 @@ dispara_regra(N, Facto, ID) :-
 		 facto_esta_numa_condicao(Facto, LHS),
 		 verifica_condicoes(LHS, LFactos),
 		 memberchk(N, LFactos) ),
+	       concluir(RHS, ID, LFactos)),
+	forall(( regra ID se LHS entao RHS,
+		 \+ \+ facto_lido_por_condicao_calculada(Facto, LHS),
+		 verifica_condicoes(LHS, LFactos) ),
 	       concluir(RHS, ID, LFactos)).
 ```
+
+O primeiro `forall` é a M2. O segundo é a reavaliação da secção seguinte.
+
+### Reavaliação por `condicao_le/2` (base v6)
+
+Uma condição calculada pode passar a ser verdadeira por causa de um facto que não é premissa da regra. Por exemplo, o `tempo/2` de um evento que chega depois do próprio evento torna verdadeira uma condição `depois/3` em que esse tempo não aparece diretamente. Com só o primeiro `forall`, esse facto não dispara a regra.
+
+A v6 declara no `soc_suporte.txt` que factos cada condição calculada lê:
+
+```prolog
+condicao_le(depois(_, _, _), [tempo(_, _), janela(_, _)]).
+condicao_le(anterior(_, _), [tempo(_, _)]).
+```
+
+Quando chega um facto que uma condição calculada positiva do SE lê (`facto_lido_por_condicao_calculada/2`), o motor avalia a regra por inteiro, sem exigir que esse facto seja uma das premissas. O `gera_meta.pl` junta estas regras ao `facto_dispara_regras/2`, para o metaconhecimento as deixar passar. Numa base sem `condicao_le/2` (as bases da UC, por exemplo), o segundo `forall` nunca dispara nada e o motor comporta-se como antes.
 
 ### M3: até não haver conclusões novas
 
@@ -106,7 +131,7 @@ processa_factos_desde(N) :-
 	processa_factos_desde(N1).
 ```
 
-A repetição é precisa por causa das condições calculadas: uma pode passar a ser verdadeira por causa de um facto que não é premissa da regra (por exemplo, o `tempo/2` de um evento), e esse facto não volta a disparar a regra.
+A repetição é precisa por causa das condições calculadas: uma pode passar a ser verdadeira por causa de um facto que não é premissa da regra (por exemplo, o `tempo/2` de um evento), e esse facto não volta a disparar a regra. Com a v6, a reavaliação por `condicao_le/2` já apanha estes casos quando o facto chega; a repetição continua a servir de garantia para as condições que o `condicao_le/2` não declare e para as bases que não o têm.
 
 ### M4: sem pausa nem escrita no `cria_facto`
 
@@ -137,11 +162,14 @@ O `whynot` do `sp_exp2.pl` tem dois defeitos que a nossa base torna visíveis:
 
 No `soc_motor.pl`:
 
-- uma condição que partilha variáveis com uma premissa falhada só é testada (com `\+ \+`), sem instanciar nada;
+- uma condição que partilha variáveis com uma premissa falhada só é testada sobre uma cópia, sem instanciar nada (e numa premissa `nao X` falsa, o facto que existe também se procura numa cópia, como no Drools);
 - um facto que nenhuma regra conclui é apresentado como "dado de entrada";
 - uma condição calculada falsa é apresentada como tal, sem procurar regras para ela;
 - um facto já explicado não se repete, e a explicação para numa profundidade máxima (`profundidade_whynot`, 4 por omissão);
-- as variáveis aparecem como `A`, `B`, … em vez de `_1234`.
+- as variáveis aparecem como `A`, `B`, … em vez de `_1234`;
+- se as premissas de uma regra que conclui o facto se verificam, diz que falta correr o motor (`arranca_motor`).
+
+A explicação também existe como estrutura: `whynot_linhas(Facto, Profundidade, Linhas)` devolve as linhas pela ordem em que o `whynot/1` as escreve, cada uma `linha(Nivel, Tipo, Campos)`, com os mesmos tipos que o `porqueNao` do Drools (`regra`, `premissa_falsa`, `dado_de_entrada`, `calculada_falsa`, …). O `whynot/1` limita-se a escrever essas linhas, e o `wrapper.pl` passa-as a JSON (com `swipl wrapper.pl <pasta da base> whynot`), por isso o texto e a estrutura dizem sempre o mesmo.
 
 Exemplo, depois dos cenários 1, 2, 3 e 7:
 
@@ -162,14 +190,16 @@ Nada disto existe nos motores de exemplo, e nada disto muda o raciocínio: são 
 | O quê | Predicados | Para quê |
 | --- | --- | --- |
 | Factos vindos de fora | `introduz_facto/1`, `introduz_factos/1` | Telemetria, respostas do analista e recuperações entram durante a execução, com o número seguinte e sem repetir factos. Nos exemplos, os factos só se escrevem no ficheiro da base. |
-| Cenários | `injeta_cenario/1`, `injeta_ficheiro/1`, `injeta_todos/0` | Injeta um ficheiro da pasta `cenarios/` (pelo nome, como `c2`, ou pelo ficheiro) e corre o motor; ou todos, do 1 ao 34, pela ordem do índice. |
-| Carregar a base | `carrega_bc/1` | Recomeça do zero (apaga os factos e as justificações da execução anterior) e guarda a pasta da base, para os cenários se encontrarem seja qual for a pasta de trabalho. |
+| Cenários | `injeta_cenario/1`, `injeta_cenarios/1`, `injeta_ficheiro/1`, `injeta_todos/0`, `lista_cenarios/0` | Injeta um cenário pelo nome (como `c2`, definido com `cenario/3` no `soc_cenarios.pl`) ou pelo ficheiro, e corre o motor. O `injeta_todos` recarrega a base e injeta a sequência base e os cenários de atividade normal, pela ordem do índice, com o motor a correr entre cada um; as respostas do analista ficam de fora, porque algumas são alternativas umas às outras. |
+| Carregar a base | `carrega_bc/1` | Recomeça do zero (apaga os factos e as justificações da execução anterior), guarda a pasta e o ficheiro da base, para os cenários se encontrarem seja qual for a pasta de trabalho, e carrega o `soc_cenarios.pl` se estiver ao lado. |
 | Perguntas ao analista | `perguntas_pendentes/1`, `pergunta_pendente/4` | As perguntas são factos concluídos pelas regras (`pergunta_analista`); a resposta entra como facto (`resposta_analista`) e o motor corre outra vez. O motor nunca fica parado à espera. |
 | Tickets e ações | `tickets_abertos/1`, `tickets_fechados/1`, `mostra_incidentes/0`, `mostra_acoes/0`, `estado/0` | Tickets abertos por prioridade, fechados com o motivo, ações por ativo, e um resumo do estado. |
+| Ver factos e regras | `mostra_factos/0,1`, `mostra_conclusoes/0`, `mostra_regra/1` | Todos os factos, só os de um nome, só os concluídos (com a regra), ou uma regra escrita por extenso. |
+| Explicação estruturada | `whynot_linhas/3` | O `whynot` como lista de linhas, para o `wrapper.pl` passar a JSON. |
 | Opções | `define_opcao/2` | `mostrar_conclusoes`, `passo_a_passo` e `profundidade_whynot`. |
-| Menu | `menu/0` | Carregar, correr, injetar cenários, responder às perguntas (com "porquê?", que mostra a regra que gerou a pergunta), ver tickets, ações e explicações. |
+| Menu | `menu/0` | Carregar, correr, injetar um cenário ou todos, introduzir factos, responder às perguntas (com "porquê?", que mostra a regra que gerou a pergunta), registar a recuperação de uma máquina (`recuperado/2`), ver tickets, ações, factos e explicações, e mudar as opções. |
 
-O menu e as consultas para a interface ainda estão no `soc_motor.pl`. O `README.md` de `motores/prolog/` prevê passá-los para um `soc_menu.pl` à parte, para o wrapper do backend carregar só o núcleo.
+O menu e as consultas para a interface ainda estão no `soc_motor.pl`. O `wrapper.pl`, que o backend lança, já existe e carrega o `soc_motor.pl` inteiro; o `README.md` de `motores/prolog/` prevê passar o menu para um `soc_menu.pl` à parte, para o wrapper carregar só o núcleo.
 
 ## O que se manteve do `sp_exp2.pl`
 
@@ -179,7 +209,7 @@ Tudo o que define a linguagem da base ficou igual, por isso as regras e os facto
 - A forma das regras (`regra ID se [C1 e C2 e ...] entao [cria_facto(F), ...]`) e dos factos (`facto(N, F)`, `ultimo_facto/1`).
 - O metaconhecimento `facto_dispara_regras/2` e o `facto_esta_numa_condicao/2`, que só dispara uma regra se o facto estiver numa condição positiva do SE.
 - As comparações `avalia/2` e `compara/3`.
-- O `concluir/3` e o `cria_facto/3`: não repetir factos, numerar pelo `ultimo_facto` e guardar `justifica(N, Regra, Premissas)`.
+- O `concluir/3` e o `cria_facto/3`: não repetir factos, numerar pelo `ultimo_facto` e guardar `justifica(N, Regra, Premissas)`. A única diferença no `concluir` é que uma ação desconhecida no ENTÃO dá um aviso, em vez de falhar em silêncio.
 - A negação por falha: `nao X` é verdadeiro quando `X` não está na memória de trabalho.
 - Os factos só existem em memória: o motor não escreve nos ficheiros da base.
 
@@ -190,4 +220,4 @@ As alterações mudam como o motor percorre as regras, não o que as regras conc
 - **Com a base de exemplo da UC.** Com o `veiculos2.txt`, o `soc_motor.pl` conclui os mesmos factos que o `sp_exp2.pl`.
 - **Com um verificador independente.** Um motor mínimo, sem metaconhecimento, que dispara cada regra sempre que o SE se verifica, até não haver conclusões novas. Com a nossa base e os cenários, os factos finais dos dois motores são exatamente os mesmos.
 
-Os resultados de cada variante estão em `referencia_prolog/`, como referência para o Drools e o comparador.
+Os resultados de cada variante estão em `referencia_prolog/`, como referência para o Drools e o comparador. O teste `referencias_em_dia` (`testes/testes.pl`) confirma que continuam a ser o que o motor dá hoje.

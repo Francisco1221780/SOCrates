@@ -38,4 +38,21 @@ class DroolsAdapterTest {
         assertEquals(Metaconhecimento.NAO_APLICAVEL, e.metaconhecimento());
         assertTrue(e.erros().isEmpty(), e.toString());
     }
+
+    /**
+     * Verifica que o porque nao chama o MotorDrools com o facto e a profundidade: no c6 a regra 6 podia concluir
+     * exploracao_possivel(ev_f1, web_srv_05, V), mas falta vulneravel.
+     */
+    @Test
+    void porqueNaoChamaOMotorDrools() {
+        String pedido = """
+                {"versaoKB":"6","passos":[{"id":"cenario_06","factos":[
+                  {"predicado":"vetor_aberto","args":["ev_f1","web_srv_05","web_srv_05_apache","cve_2021_41773"]}]}]}
+                """;
+        String facto = "{\"predicado\":\"exploracao_possivel\",\"args\":[\"ev_f1\",\"web_srv_05\",{\"var\":\"V\"}]}";
+        String resposta = adapter.porqueNao(pedido, facto, 4);
+        assertTrue(resposta.contains("\"estado\":\"concluido\""), resposta);
+        assertTrue(resposta.contains("\"tipo\":\"regra\""), resposta);
+        assertTrue(resposta.contains("\"regra\":6"), resposta);
+    }
 }

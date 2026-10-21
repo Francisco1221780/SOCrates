@@ -136,6 +136,8 @@ Porque pela regra 13:
 
 Percorre todas as regras que podiam concluir o facto e, em cada uma, as premissas que falham, descendo pelas que outras regras poderiam concluir. Para numa premissa que é um dado de entrada (nenhuma regra a conclui), numa condição calculada falsa, ou ao chegar à profundidade máxima. Para ver mais fundo: `define_opcao(profundidade_whynot, 6).`
 
+A explicação monta-se primeiro como uma lista de linhas, `whynot_linhas(Facto, Profundidade, Linhas)`, e o `whynot/1` escreve-as. Cada linha é `linha(Nivel, Tipo, Campos)`, com os mesmos tipos do `PorqueNao` do Drools; é o que o wrapper dá em JSON no modo `whynot` (ver `README.md`).
+
 ## Perguntas ao analista
 
 O motor nunca fica parado à espera de uma resposta: as perguntas são factos.
