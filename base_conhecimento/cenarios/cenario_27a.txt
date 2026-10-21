@@ -1,0 +1,4 @@
+% Cenario 27a - Versao registada num formato valido: web_srv_11 tem o Apache 2.4.49 (com o CGI ativo). O ataque do
+%   cenario 27 passa a exploracao possivel e o incidente "versao por confirmar" fecha.
+
+:- novo_facto(versao(web_srv_11_apache,v(2,4,49))).

@@ -1,7 +1,7 @@
 % Cenario 23 - Processo nao classificado: novo exploit contra web_srv_06 e, 10 s depois, uma shell lancada por python3,
 %   que nao esta na tabela processo_componente. Nao se sabe de que programa e: compromisso provavel, como no cenario 20
 %   (e nao impacto ambiguo, como no cenario 12, onde se sabe que o sshd e de outro programa).
-%   web_srv_06 ja tem um compromisso confirmado (cenario 20b), mas este e um incidente a parte: pode ser um segundo ataque.
+%   web_srv_06 ja tem um compromisso confirmado (cenario 20a), mas este e um incidente a parte: pode ser um segundo ataque.
 
 :- novo_facto(alerta_ids(ev_y1,web_srv_06,sig_apache_path_traversal)).
 :- novo_facto(origem(ev_y1,ip_198_51_100_41)).

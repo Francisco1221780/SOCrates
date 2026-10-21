@@ -1,6 +1,7 @@
 package socrates.backend.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,12 +16,14 @@ class BaseCarregadaTest {
     private final JsonMapper json = JsonMapper.builder().build();
 
     /**
-     * Verifica que a versao vem do cenarios.json real e que o catalogo tem os cenarios e as sequencias.
+     * Verifica que a versao vem do cenarios.json real (a mesma do factos_iniciais.json do Drools: as duas vem do
+     * cabecalho do soc_factos.txt) e que o catalogo tem os cenarios e as sequencias.
      */
     @Test
     void leAVersaoDoFicheiroReal() {
         BaseCarregada base = new BaseCarregada(json);
-        assertEquals("6", base.versaoKB());
+        assertEquals(socrates.motores.drools.MotorDrools.VERSAO_KB, base.versaoKB());
+        assertFalse(base.versaoKB().isBlank());
         assertTrue(base.cenariosJson().contains("\"cenarios\""));
         assertTrue(base.cenariosJson().contains("\"sequencias\""));
     }

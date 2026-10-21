@@ -1,6 +1,7 @@
-% CENARIOS - Analista virtual de SOC (SOCrates), versao 6
+% CENARIOS - Analista virtual de SOC (SOCrates), versao 6.1
 % Cada ficheiro desta pasta e um cenario: a telemetria que chega ao sistema nesse momento (alertas, eventos dos hosts,
-% logins, trafego), uma atualizacao do inventario ou do catalogo, ou uma resposta do analista.
+% logins, trafego), ou uma atualizacao do inventario ou do catalogo. As respostas do analista nao estao aqui: o sistema
+% faz as perguntas e o analista responde-lhes pela interface.
 % O estado inicial esta em soc_factos.txt; os cenarios acrescentam-lhe factos.
 %
 % COMO SE USA
@@ -23,7 +24,7 @@
 % outro ataque entretanto", todos os ataques ate essa hora ja sao conhecidos.
 % Se, na operacao real, um alerta chegar atrasado (com uma hora anterior a eventos ja tratados), a base trata-o: as
 % conclusoes que dependiam de nao haver esse ataque passam a historicas (regra 69).
-% As atualizacoes do inventario e do catalogo (06b, 13b, 21b, 27b) e as respostas do analista nao tem hora.
+% As atualizacoes do inventario e do catalogo (06a, 13a, 21a, 27a) nao tem hora.
 % Para experimentar um cenario sozinho, carregam-se antes os de que ele depende.
 %
 %   Telemetria:
@@ -37,10 +38,10 @@
 %     cenario_08.txt    Log4Shell com evidencia tardia
 %     cenario_09.txt    SQL injection confirmada: exposicao de dados
 %     cenario_10.txt    reconhecimento
-%     cenario_10b.txt   acesso depois do reconhecimento
-%     cenario_10c.txt   C2 depois de um acesso suspeito
+%     cenario_10a.txt   acesso depois do reconhecimento
+%     cenario_10b.txt   C2 depois de um acesso suspeito
 %     cenario_11.txt    C2 sem ligacao conhecida ao ataque
-%     cenario_11b.txt   a ligacao aparece: C2 feito pelo processo atacado
+%     cenario_11a.txt   a ligacao aparece: C2 feito pelo processo atacado
 %     cenario_12.txt    shell de outro programa: impacto ambiguo
 %     cenario_13.txt    inventario incompleto
 %     cenario_14.txt    C2 nao corroborado
@@ -50,35 +51,35 @@
 %     cenario_18.txt    movimento lateral a partir de uma maquina nao comprometida
 %     cenario_19.txt    sensor em baixo numa SQL injection
 %     cenario_20.txt    evidencia sem telemetria de processo
-%     cenario_20b.txt   a telemetria do processo chega depois
+%     cenario_20a.txt   a telemetria do processo chega depois
 %     cenario_21.txt    catalogo sem intervalos de versoes
 %     cenario_22.txt    porto de destino conhecido
 %     cenario_23.txt    processo nao classificado
 %     cenario_24.txt    CGI desligado: execucao remota excluida
-%     cenario_24b.txt   shell num servidor sem CGI
+%     cenario_24a.txt   shell num servidor sem CGI
 %     cenario_25.txt    configuracao desconhecida
-%     cenario_25b.txt   a configuracao chega depois
+%     cenario_25a.txt   a configuracao chega depois
 %     cenario_26.txt    C2 numa maquina ja comprometida
 %     cenario_27.txt    versao num formato desconhecido
 %     cenario_28.txt    movimento lateral horas depois do compromisso
 %     cenario_29.txt    SQL injection sem telemetria de processo: exposicao provavel
-%     cenario_29b.txt   a telemetria do processo chega depois (em alternativa ao 29c)
+%     cenario_29a.txt   a telemetria do processo chega depois
 %     cenario_35.txt    duas instalacoes ao alcance, uma corrigida e outra vulneravel
-%     cenario_35b.txt   shell de um httpd sem se saber de que instancia
-%     cenario_35c.txt   a instancia e a atacada (em alternativa ao 35d)
+%     cenario_35a.txt   shell de um httpd sem se saber de que instancia
+%     cenario_35b.txt   a instancia e a atacada (em alternativa ao 35c)
 %     cenario_36.txt    acesso com a politica incompleta: politica por confirmar
-%     cenario_36b.txt   a politica fica completa: violacao (em alternativa ao 36c)
+%     cenario_36a.txt   a politica fica completa: violacao (em alternativa ao 36b)
 %     cenario_37.txt    ataque sem porto de destino
-%     cenario_37b.txt   o porto de destino chega depois
+%     cenario_37a.txt   o porto de destino chega depois
 %     cenario_38.txt    shell sem hora
-%     cenario_38b.txt   a hora chega depois
+%     cenario_38a.txt   a hora chega depois
 %     cenario_39.txt    maquina recuperada
 %
 %   Atualizacoes do inventario e do catalogo (carregam-se depois do cenario 39):
-%     cenario_06b.txt   versao de web_srv_05 (corrigida): fecha a duvida do cenario 6 e o provavel do cenario 17
-%     cenario_13b.txt   inventario de web_srv_07: fecha os dois incidentes de inventario do cenario 13
-%     cenario_21b.txt   intervalos da falha de upload: fecha o catalogo incompleto do cenario 21
-%     cenario_27b.txt   versao valida de web_srv_11: fecha a duvida do cenario 27
+%     cenario_06a.txt   versao de web_srv_05 (corrigida): fecha a duvida do cenario 6 e o provavel do cenario 17
+%     cenario_13a.txt   inventario de web_srv_07: fecha os dois incidentes de inventario do cenario 13
+%     cenario_21a.txt   intervalos da falha de upload: fecha o catalogo incompleto do cenario 21
+%     cenario_27a.txt   versao valida de web_srv_11: fecha a duvida do cenario 27
 %
 %   Atividade normal (controlos negativos: o sistema nao deve concluir nada). Carregam-se no fim, depois de tudo o resto
 %   (as horas sao as mais tardias), ou sozinhos so com o estado inicial. O 34 so faz sentido depois do 4.
@@ -88,12 +89,6 @@
 %     cenario_33.txt    login que a politica permite
 %     cenario_34.txt    shell num servidor que so teve uma tentativa sem impacto
 %
-%   Respostas do analista e alternativas (carregam-se depois do cenario a que respondem):
-%     cenario_07b_sim.txt, cenario_07b_nao.txt, cenario_07b_nao_sei.txt     resposta a pergunta do cenario 7 (so UM)
-%     cenario_19b_sim.txt, cenario_19b_nao.txt, cenario_19b_nao_sei.txt     resposta a pergunta do cenario 19 (so UM)
-%     cenario_03b.txt   o analista confirma o compromisso do cenario 3: propagacao
-%     cenario_10d.txt   o analista descarta o compromisso provavel do cenario 10c
-%     cenario_17b.txt   o analista ainda nao conseguiu verificar o cenario 17
-%     cenario_29c.txt   o analista confirma a exposicao do cenario 29 (em alternativa ao 29b)
-%     cenario_35d.txt   a shell do 35b veio da outra instancia (em alternativa ao 35c): impacto ambiguo
-%     cenario_36c.txt   a politica autoriza o acesso do cenario 36 (em alternativa ao 36b)
+%   Alternativas (carregam-se em vez do cenario indicado):
+%     cenario_35c.txt   a shell do 35a veio da outra instancia (em alternativa ao 35b): impacto ambiguo
+%     cenario_36b.txt   a politica autoriza o acesso do cenario 36 (em alternativa ao 36a)

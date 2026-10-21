@@ -1,5 +1,5 @@
 {
-  "versaoKB":"6",
+  "versaoKB":"6.1",
   "regras": [
     {
       "id":1,
@@ -1575,6 +1575,273 @@
         {
           "f":"falha_catalogo",
           "args": [ {"var":"Vuln"},  {"f":"classe_sem_tipo_provavel","args": [ {"var":"Classe"} ]} ]
+        }
+      ]
+    },
+    {
+      "id":93,
+      "se": [
+        {
+          "f":"incidente",
+          "args": [ {"f":"inc","args": [ {"var":"Tipo"},  {"var":"Ev"} ]},  {"var":"Tipo"},  {"var":"Alvo"},  {"var":"_"} ]
+        },
+        {"f":"pergunta_fecho","args": [ {"var":"Tipo"},  {"var":"Pergunta"} ]},
+        {"nao": {"f":"resposta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"},  {"var":"Pergunta"},  {"var":"_"} ]}},
+        {"f":"em_aberto","args": [ {"f":"inc","args": [ {"var":"Tipo"},  {"var":"Ev"} ]} ]}
+      ],
+      "entao": [ {"f":"pergunta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"},  {"var":"Pergunta"} ]} ]
+    },
+    {
+      "id":94,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"},  {"var":"Pergunta"}, "sim" ]},
+        {"f":"pergunta_fecho","args": [ {"var":"Tipo"},  {"var":"Pergunta"} ]},
+        {"f":"fecho_por_acao","args": [ {"var":"Tipo"} ]},
+        {
+          "f":"incidente",
+          "args": [ {"f":"inc","args": [ {"var":"Tipo"},  {"var":"Ev"} ]},  {"var":"Tipo"},  {"var":"Alvo"},  {"var":"_"} ]
+        }
+      ],
+      "entao": [
+        {
+          "f":"resolvido",
+          "args": [ {"f":"inc","args": [ {"var":"Tipo"},  {"var":"Ev"} ]}, "acao_concluida_pelo_analista" ]
+        }
+      ]
+    },
+    {
+      "id":95,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"}, "maquina_recuperada", "sim" ]},
+        {"f":"compromisso_confirmado","args": [ {"var":"Alvo"},  {"var":"Ev"} ]}
+      ],
+      "entao": [ {"f":"recuperado","args": [ {"var":"Alvo"},  {"var":"Ev"} ]} ]
+    },
+    {
+      "id":96,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Destino"},  {"var":"Ev"}, "maquinas_recuperadas", "sim" ]},
+        {
+          "f":"incidente",
+          "args": [
+            {"f":"inc","args": ["propagacao",  {"var":"Ev"} ]},
+            "propagacao",
+            {"var":"Destino"},
+            [ {"var":"Destino"},  {"var":"Origem"} ]
+          ]
+        },
+        {
+          "f":"motivo",
+          "args": [
+            {"f":"inc","args": ["compromisso_provavel",  {"var":"Ev"} ]},
+            {"f":"login_a_partir_de_ativo_comprometido","args": [ {"var":"Origem"},  {"var":"EvOrigem"} ]}
+          ]
+        }
+      ],
+      "entao": [
+        {"f":"recuperado","args": [ {"var":"Destino"},  {"var":"Ev"} ]},
+        {"f":"recuperado","args": [ {"var":"Origem"},  {"var":"EvOrigem"} ]},
+        {"f":"resolvido","args": [ {"f":"inc","args": ["propagacao",  {"var":"Ev"} ]}, "maquinas_recuperadas" ]}
+      ]
+    },
+    {
+      "id":97,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"}, "inventario_rede_completo", "sim" ]},
+        {
+          "f":"incidente",
+          "args": [
+            {"f":"inc","args": ["inventario_rede_incompleto",  {"var":"Ev"} ]},
+            "inventario_rede_incompleto",
+            {"var":"Alvo"},
+            {"var":"_"}
+          ]
+        }
+      ],
+      "entao": [ {"f":"cobertura","args": [ {"var":"Alvo"}, "rede", "completa" ]} ]
+    },
+    {
+      "id":98,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"}, "sbom_completo", "sim" ]},
+        {
+          "f":"incidente",
+          "args": [ {"f":"inc","args": ["sbom_incompleto",  {"var":"Ev"} ]}, "sbom_incompleto",  {"var":"Alvo"},  {"var":"_"} ]
+        }
+      ],
+      "entao": [ {"f":"cobertura","args": [ {"var":"Alvo"}, "sbom", "completa" ]} ]
+    },
+    {
+      "id":99,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Destino"},  {"var":"Ev"}, "acesso_autorizado", "sim" ]},
+        {
+          "f":"incidente",
+          "args": [
+            {"f":"inc","args": ["politica_por_confirmar",  {"var":"Ev"} ]},
+            "politica_por_confirmar",
+            {"var":"Destino"},
+            {"var":"_"}
+          ]
+        },
+        {"f":"login_ok","args": [ {"var":"Ev"},  {"var":"Destino"},  {"var":"Origem"},  {"var":"Servico"} ]}
+      ],
+      "entao": [ {"f":"permitido","args": [ {"var":"Destino"},  {"var":"Servico"},  {"var":"Origem"} ]} ]
+    },
+    {
+      "id":100,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Destino"},  {"var":"Ev"}, "acesso_autorizado", "nao" ]},
+        {
+          "f":"incidente",
+          "args": [
+            {"f":"inc","args": ["politica_por_confirmar",  {"var":"Ev"} ]},
+            "politica_por_confirmar",
+            {"var":"Destino"},
+            {"var":"_"}
+          ]
+        },
+        {"f":"login_ok","args": [ {"var":"Ev"},  {"var":"Destino"},  {"var":"_"},  {"var":"Servico"} ]}
+      ],
+      "entao": [ {"f":"cobertura_politica","args": [ {"var":"Destino"},  {"var":"Servico"}, "completa" ]} ]
+    },
+    {
+      "id":101,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"}, "configuracao_ativa", "sim" ]},
+        {
+          "f":"incidente",
+          "args": [
+            {"f":"inc","args": ["configuracao_por_confirmar",  {"var":"Ev"} ]},
+            "configuracao_por_confirmar",
+            {"var":"Alvo"},
+            {"var":"_"}
+          ]
+        },
+        {
+          "f":"motivo",
+          "args": [
+            {"f":"inc","args": ["configuracao_por_confirmar",  {"var":"Ev"} ]},
+            {"f":"condicao_desconhecida","args": [ {"var":"Inst"},  {"var":"Cond"} ]}
+          ]
+        }
+      ],
+      "entao": [ {"f":"configuracao","args": [ {"var":"Inst"},  {"var":"Cond"}, "sim" ]} ]
+    },
+    {
+      "id":102,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"}, "configuracao_ativa", "nao" ]},
+        {
+          "f":"incidente",
+          "args": [
+            {"f":"inc","args": ["configuracao_por_confirmar",  {"var":"Ev"} ]},
+            "configuracao_por_confirmar",
+            {"var":"Alvo"},
+            {"var":"_"}
+          ]
+        },
+        {
+          "f":"motivo",
+          "args": [
+            {"f":"inc","args": ["configuracao_por_confirmar",  {"var":"Ev"} ]},
+            {"f":"condicao_desconhecida","args": [ {"var":"Inst"},  {"var":"Cond"} ]}
+          ]
+        }
+      ],
+      "entao": [ {"f":"configuracao","args": [ {"var":"Inst"},  {"var":"Cond"}, "nao" ]} ]
+    },
+    {
+      "id":103,
+      "se": [
+        {"f":"pergunta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"},  {"var":"Pergunta"} ]},
+        {"f":"pergunta_fecho","args": [ {"var":"Tipo"},  {"var":"Pergunta"} ]},
+        {"f":"ticket_fechado","args": [ {"f":"inc","args": [ {"var":"Tipo"},  {"var":"Ev"} ]},  {"var":"_"} ]}
+      ],
+      "entao": [ {"f":"pergunta_retirada","args": [ {"var":"Alvo"},  {"var":"Ev"},  {"var":"Pergunta"} ]} ]
+    },
+    {
+      "id":104,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"}, "versao_afetada", "sim" ]},
+        {
+          "f":"motivo",
+          "args": [
+            {"f":"inc","args": ["versao_por_confirmar",  {"var":"Ev"} ]},
+            {"f":"instalacao_sem_versao_valida","args": [ {"var":"Inst"} ]}
+          ]
+        },
+        {"f":"vetor_aberto","args": [ {"var":"Ev"},  {"var":"Alvo"},  {"var":"Inst"},  {"var":"Vuln"} ]}
+      ],
+      "entao": [
+        {"f":"vulneravel","args": [ {"var":"Inst"},  {"var":"Vuln"} ]},
+        {
+          "f":"resolvido",
+          "args": [ {"f":"inc","args": ["versao_por_confirmar",  {"var":"Ev"} ]}, "afetacao_indicada_pelo_analista" ]
+        }
+      ]
+    },
+    {
+      "id":105,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"}, "versao_afetada", "nao" ]},
+        {
+          "f":"motivo",
+          "args": [
+            {"f":"inc","args": ["versao_por_confirmar",  {"var":"Ev"} ]},
+            {"f":"instalacao_sem_versao_valida","args": [ {"var":"Inst"} ]}
+          ]
+        },
+        {"f":"vetor_aberto","args": [ {"var":"Ev"},  {"var":"Alvo"},  {"var":"Inst"},  {"var":"Vuln"} ]}
+      ],
+      "entao": [
+        {"f":"nao_afetado","args": [ {"var":"Inst"},  {"var":"Vuln"} ]},
+        {
+          "f":"resolvido",
+          "args": [ {"f":"inc","args": ["versao_por_confirmar",  {"var":"Ev"} ]}, "afetacao_indicada_pelo_analista" ]
+        }
+      ]
+    },
+    {
+      "id":106,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"}, "catalogo_afetado", "sim" ]},
+        {
+          "f":"motivo",
+          "args": [
+            {"f":"inc","args": ["catalogo_incompleto",  {"var":"Ev"} ]},
+            {"f":"sem_intervalos","args": [ {"var":"Vuln"} ]}
+          ]
+        },
+        {"f":"vetor_aberto","args": [ {"var":"Ev"},  {"var":"Alvo"},  {"var":"Inst"},  {"var":"Vuln"} ]},
+        {"nao": {"f":"corrigido_backport","args": [ {"var":"Inst"},  {"var":"Vuln"} ]}}
+      ],
+      "entao": [
+        {"f":"vulneravel","args": [ {"var":"Inst"},  {"var":"Vuln"} ]},
+        {
+          "f":"resolvido",
+          "args": [ {"f":"inc","args": ["catalogo_incompleto",  {"var":"Ev"} ]}, "afetacao_indicada_pelo_analista" ]
+        }
+      ]
+    },
+    {
+      "id":107,
+      "se": [
+        {"f":"resposta_analista","args": [ {"var":"Alvo"},  {"var":"Ev"}, "catalogo_afetado", "nao" ]},
+        {
+          "f":"motivo",
+          "args": [
+            {"f":"inc","args": ["catalogo_incompleto",  {"var":"Ev"} ]},
+            {"f":"sem_intervalos","args": [ {"var":"Vuln"} ]}
+          ]
+        },
+        {"f":"vetor_aberto","args": [ {"var":"Ev"},  {"var":"Alvo"},  {"var":"Inst"},  {"var":"Vuln"} ]}
+      ],
+      "entao": [
+        {"f":"nao_afetado","args": [ {"var":"Inst"},  {"var":"Vuln"} ]},
+        {
+          "f":"resolvido",
+          "args": [ {"f":"inc","args": ["catalogo_incompleto",  {"var":"Ev"} ]}, "afetacao_indicada_pelo_analista" ]
         }
       ]
     }

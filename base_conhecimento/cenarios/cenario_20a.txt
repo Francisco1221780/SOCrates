@@ -1,0 +1,4 @@
+% Cenario 20a - A telemetria do processo chega depois: o sensor envia mais tarde que a shell do cenario 20 foi lancada
+%   pelo httpd. Confirma-se o compromisso; o compromisso provavel do cenario 20 nao se apaga, mas fica superado.
+
+:- novo_facto(evento_processo(ev_u2,httpd)).

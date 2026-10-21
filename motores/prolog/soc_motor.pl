@@ -1,7 +1,7 @@
 % =====================================================================================
 % MOTOR DE INFERENCIA - Analista virtual de SOC (SOCrates)
 % Parte do sp_exp2.pl da UC (encadeamento direto, metaconhecimento, negacao "nao",
-% explicacoes "como" e "porque nao") e acrescenta o que a base de conhecimento v6 exige:
+% explicacoes "como" e "porque nao") e acrescenta o que a base de conhecimento (v6 e seguintes) exige:
 %   1. CONDICOES CALCULADAS: uma condicao C com condicao_calculada(C) avalia-se com call(C)
 %      (depois/3, versao_cmp/3, anterior/2, ...), em vez de se procurar como facto.
 %   2. TODAS AS INSTANCIACOES: cada regra dispara para todas as combinacoes de factos que
@@ -80,6 +80,17 @@ carrega_bc(NBC) :-
 	findall(N, facto(N,_), L), length(L, NF),
 	findall(ID, regra ID se _ entao _, LR), length(LR, NR),
 	format('Base carregada: ~w factos e ~w regras.~n', [NF, NR]).
+
+% A versao da base carregada, da primeira linha do soc_factos.txt: "% FACTOS - ... versao 6.1" da '6.1'.
+% E o mesmo criterio do ferramentas/gera_json.pl, que poe a versao nos JSON gerados: a versao so esta escrita ali.
+versao_base(Versao) :-
+	ficheiro_base(F),
+	setup_call_cleanup(open(F, read, S, [encoding(utf8)]), read_line_to_string(S, Linha), close(S)),
+	string(Linha),
+	sub_string(Linha, _, _, Depois, "versao "),
+	sub_string(Linha, _, Depois, 0, V0),
+	split_string(V0, " ", " ", [V|_]), V \== "", !,
+	atom_string(Versao, V).
 
 % Se houver um ficheiro de cenarios ao lado da base (soc_cenarios.pl), carrega-o tambem.
 carrega_cenarios(NBC) :-
@@ -338,10 +349,9 @@ termo_cenario((:- G)) :- !, ( catch(G, E, (print_message(error, E), fail)) -> tr
 termo_cenario(novo_facto(F)) :- !, introduz_facto(F).
 termo_cenario(F) :- introduz_facto(F).
 
-% Injeta de uma so vez todos os cenarios, pela ordem do indice: os de ataque (1 a 29b) e os de atividade normal
+% Injeta de uma so vez todos os cenarios, pela ordem do indice: os de ataque (1 a 29a) e os de atividade normal
 % (30 a 34), com o motor a correr entre cada um. Recomeca do estado inicial (recarrega a base) e mostra o estado no fim.
-% As respostas do analista (7b, 19b, 3b, 10d, 17b, 29c) nao entram: injetam-se depois, uma a uma, porque algumas
-% sao alternativas umas as outras.
+% As respostas do analista nao sao cenarios: entram depois, pela opcao 5 do menu ou com introduz_facto/1.
 injeta_todos :-
 	ficheiro_base(B), !,
 	carrega_bc(B),

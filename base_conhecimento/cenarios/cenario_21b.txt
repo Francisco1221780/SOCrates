@@ -1,4 +1,0 @@
-% Cenario 21b - Catalogo completado: a falha de upload da loja afeta as versoes 1.0.0 a 1.2.0. A loja de app_srv_01
-%   (1.2.0) e vulneravel: o ataque do cenario 21 passa a exploracao possivel e o incidente "catalogo incompleto" fecha.
-
-:- novo_facto(intervalo_afetado(vuln_interna_upload_loja,v(1,0,0),v(1,2,0))).

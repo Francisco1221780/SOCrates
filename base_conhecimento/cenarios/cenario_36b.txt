@@ -1,5 +1,4 @@
-% Cenario 36b - A politica do PostgreSQL fica completa, sem autorizar web_srv_04: o acesso do cenario 36 e uma violacao
-%   -> movimento lateral (revogar credenciais e cortar sessoes); o incidente "politica por confirmar" fica superado.
-%   Em alternativa ao 36c (usa-se um dos dois). Depende do cenario 36.
+% Cenario 36b - em vez do 36a: o levantamento mostra que web_srv_04 pode entrar no PostgreSQL. O acesso do cenario 36
+%   era autorizado -> o incidente "politica por confirmar" fica resolvido. Depende do cenario 36.
 
-:- novo_facto(cobertura_politica(db_srv_01,postgresql,completa)).
+:- novo_facto(permitido(db_srv_01,postgresql,web_srv_04)).

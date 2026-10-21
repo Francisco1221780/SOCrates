@@ -1,8 +1,9 @@
-% FACTOS - Analista virtual de SOC (SOCrates), versao 6
+% FACTOS - Analista virtual de SOC (SOCrates), versao 6.1
 % ESTADO INICIAL: os dados fixos da organizacao (ativos, software, servicos, configuracao, vulnerabilidades, rede,
 % politicas, janelas de tempo, tipos de incidente e prioridades). E o que o sistema sabe antes de chegar qualquer evento.
-% A telemetria (alertas, eventos dos hosts, logins, respostas do analista) nao esta aqui: cada cenario tem o seu
-% ficheiro na pasta cenarios/, e acrescenta factos a este estado (ver cenarios/indice.txt).
+% A telemetria (alertas, eventos dos hosts, logins) nao esta aqui: cada cenario tem o seu ficheiro na pasta cenarios/,
+% e acrescenta factos a este estado (ver cenarios/indice.txt). As respostas do analista tambem nao: o sistema faz as
+% perguntas (pergunta_analista) e o analista responde-lhes pela interface (resposta_analista).
 % Cada facto tem um numero de ordem: facto(Numero, ...).
 
 :-dynamic facto/2,ultimo_facto/1.
@@ -462,4 +463,103 @@ facto(312,prioridade_acima(p2,p1)).
 facto(313,prioridade_acima(p3,p2)).
 facto(314,prioridade_acima(p4,p3)).
 
-ultimo_facto(314).
+% PERGUNTAS PARA FECHAR OS TICKETS (v6.1): pergunta_fecho(TipoDeIncidente, Pergunta).
+% Cada ticket em aberto passa a ter uma pergunta ao analista cuja resposta "sim" o fecha (regras R93 a R107).
+% Ja tinham pergunta o compromisso provavel, a exposicao provavel e a inspecao manual (acima). Na versao por confirmar e
+% no catalogo incompleto pergunta-se so se a versao instalada esta afetada (a versao ou os intervalos podem chegar depois).
+% familia: recuperacao (a resposta regista a recuperacao da maquina), dados (a resposta regista o dado que faltava),
+% acao (a resposta diz que a acao pedida pelo ticket ja foi feita; ver fecho_por_acao).
+
+facto(315,pergunta_fecho(compromisso,maquina_recuperada)).
+facto(316,texto_pergunta(maquina_recuperada,'O ticket pede para isolar a maquina comprometida. A maquina ja foi recuperada (limpa ou reinstalada) e pode voltar a ligar-se a rede?')).
+facto(317,opcao_resposta(maquina_recuperada,sim,'Sim, a maquina esta recuperada')).
+facto(318,opcao_resposta(maquina_recuperada,nao_sei,'Ainda nao')).
+
+facto(319,pergunta_fecho(propagacao,maquinas_recuperadas)).
+facto(320,texto_pergunta(maquinas_recuperadas,'O ticket pede para isolar a origem e o destino do ataque. As duas maquinas ja foram recuperadas (limpas ou reinstaladas)?')).
+facto(321,opcao_resposta(maquinas_recuperadas,sim,'Sim, as duas maquinas estao recuperadas')).
+facto(322,opcao_resposta(maquinas_recuperadas,nao_sei,'Ainda nao')).
+
+facto(323,pergunta_fecho(inventario_rede_incompleto,inventario_rede_completo)).
+facto(324,texto_pergunta(inventario_rede_completo,'O ticket pede para recolher o inventario de rede deste ativo (portos e servicos abertos). O inventario ja esta completo?')).
+facto(325,opcao_resposta(inventario_rede_completo,sim,'Sim, o inventario de rede esta completo')).
+facto(326,opcao_resposta(inventario_rede_completo,nao_sei,'Ainda nao')).
+
+facto(327,pergunta_fecho(sbom_incompleto,sbom_completo)).
+facto(328,texto_pergunta(sbom_completo,'O ticket pede para recolher o inventario de software deste ativo. O inventario ja esta completo?')).
+facto(329,opcao_resposta(sbom_completo,sim,'Sim, o inventario de software esta completo')).
+facto(330,opcao_resposta(sbom_completo,nao_sei,'Ainda nao')).
+
+facto(331,pergunta_fecho(politica_por_confirmar,acesso_autorizado)).
+facto(332,texto_pergunta(acesso_autorizado,'Houve um login da DMZ para a rede interna e a politica deste servico esta incompleta. Depois de verificar a politica de acesso, este acesso esta autorizado?')).
+facto(333,opcao_resposta(acesso_autorizado,sim,'Sim, o acesso esta autorizado')).
+facto(334,opcao_resposta(acesso_autorizado,nao,'Nao, o acesso nao esta autorizado')).
+facto(335,opcao_resposta(acesso_autorizado,nao_sei,'Nao sei, ainda nao consegui verificar')).
+
+facto(336,pergunta_fecho(configuracao_por_confirmar,configuracao_ativa)).
+facto(337,texto_pergunta(configuracao_ativa,'Falta saber uma configuracao do servico atacado (a indicada no motivo do ticket). Depois de verificar, a configuracao esta ativa?')).
+facto(338,opcao_resposta(configuracao_ativa,sim,'Sim, a configuracao esta ativa')).
+facto(339,opcao_resposta(configuracao_ativa,nao,'Nao, a configuracao nao esta ativa')).
+facto(340,opcao_resposta(configuracao_ativa,nao_sei,'Nao sei, ainda nao consegui verificar')).
+
+facto(341,pergunta_fecho(versao_por_confirmar,versao_afetada)).
+facto(342,texto_pergunta(versao_afetada,'Nao se sabe a versao do programa atacado nesta maquina (ou nao esta num formato reconhecido). Depois de verificar a versao instalada, ela esta afetada pela vulnerabilidade do ataque?')).
+facto(343,opcao_resposta(versao_afetada,sim,'Sim, a versao instalada esta afetada')).
+facto(344,opcao_resposta(versao_afetada,nao,'Nao, a versao instalada nao esta afetada')).
+facto(345,opcao_resposta(versao_afetada,nao_sei,'Nao sei, ainda nao consegui verificar')).
+
+facto(346,pergunta_fecho(catalogo_incompleto,catalogo_afetado)).
+facto(347,texto_pergunta(catalogo_afetado,'O catalogo ainda nao diz que versoes a vulnerabilidade do ataque afeta. Depois de consultar o fabricante, a versao instalada nesta maquina esta afetada?')).
+facto(348,opcao_resposta(catalogo_afetado,sim,'Sim, a versao instalada esta afetada')).
+facto(349,opcao_resposta(catalogo_afetado,nao,'Nao, a versao instalada nao esta afetada')).
+facto(350,opcao_resposta(catalogo_afetado,nao_sei,'Nao sei, ainda nao consegui verificar')).
+
+facto(351,pergunta_fecho(exploracao_possivel,vulnerabilidade_tratada)).
+facto(352,fecho_por_acao(exploracao_possivel)).
+facto(353,texto_pergunta(vulnerabilidade_tratada,'O ticket pede para verificar o host e corrigir a vulnerabilidade. O host foi verificado e a vulnerabilidade corrigida?')).
+facto(354,opcao_resposta(vulnerabilidade_tratada,sim,'Sim, esta verificado e corrigido')).
+facto(355,opcao_resposta(vulnerabilidade_tratada,nao_sei,'Ainda nao')).
+
+facto(356,pergunta_fecho(exposicao_de_dados,exposicao_tratada)).
+facto(357,fecho_por_acao(exposicao_de_dados)).
+facto(358,texto_pergunta(exposicao_tratada,'O ticket pede para conter o ataque e avaliar os dados expostos. A origem foi contida e os dados expostos foram avaliados?')).
+facto(359,opcao_resposta(exposicao_tratada,sim,'Sim, esta contido e avaliado')).
+facto(360,opcao_resposta(exposicao_tratada,nao_sei,'Ainda nao')).
+
+facto(361,pergunta_fecho(movimento_lateral,credenciais_revogadas)).
+facto(362,fecho_por_acao(movimento_lateral)).
+facto(363,texto_pergunta(credenciais_revogadas,'O ticket pede para revogar as credenciais e cortar as sessoes. Isso ja foi feito?')).
+facto(364,opcao_resposta(credenciais_revogadas,sim,'Sim, ja foi feito')).
+facto(365,opcao_resposta(credenciais_revogadas,nao_sei,'Ainda nao')).
+
+facto(366,pergunta_fecho(acesso_suspeito,acesso_verificado)).
+facto(367,fecho_por_acao(acesso_suspeito)).
+facto(368,texto_pergunta(acesso_verificado,'O ticket pede para revogar as credenciais e verificar o acesso. Isso ja foi feito e o acesso esta esclarecido?')).
+facto(369,opcao_resposta(acesso_verificado,sim,'Sim, esta feito e esclarecido')).
+facto(370,opcao_resposta(acesso_verificado,nao_sei,'Ainda nao')).
+
+facto(371,pergunta_fecho(impacto_ambiguo,processos_inspecionados)).
+facto(372,fecho_por_acao(impacto_ambiguo)).
+facto(373,texto_pergunta(processos_inspecionados,'O ticket pede para inspecionar os processos do host. A inspecao ja foi feita e o caso esta esclarecido?')).
+facto(374,opcao_resposta(processos_inspecionados,sim,'Sim, esta inspecionado e esclarecido')).
+facto(375,opcao_resposta(processos_inspecionados,nao_sei,'Ainda nao')).
+
+facto(376,pergunta_fecho(vigilancia,vigilancia_concluida)).
+facto(377,fecho_por_acao(vigilancia)).
+facto(378,texto_pergunta(vigilancia_concluida,'O ativo esta em vigilancia ativa. Ja se pode terminar a vigilancia?')).
+facto(379,opcao_resposta(vigilancia_concluida,sim,'Sim, pode terminar')).
+facto(380,opcao_resposta(vigilancia_concluida,nao_sei,'Ainda nao')).
+
+facto(381,pergunta_fecho(comunicacao_c2,trafego_c2_investigado)).
+facto(382,fecho_por_acao(comunicacao_c2)).
+facto(383,texto_pergunta(trafego_c2_investigado,'O ticket pede para investigar o trafego para o endereco de C2. A investigacao ja terminou?')).
+facto(384,opcao_resposta(trafego_c2_investigado,sim,'Sim, a investigacao terminou')).
+facto(385,opcao_resposta(trafego_c2_investigado,nao_sei,'Ainda nao')).
+
+facto(386,pergunta_fecho(tentativa_sem_impacto,origem_registada)).
+facto(387,fecho_por_acao(tentativa_sem_impacto)).
+facto(388,texto_pergunta(origem_registada,'O ticket pede para registar a tentativa e vigiar a origem. Isso ja foi feito?')).
+facto(389,opcao_resposta(origem_registada,sim,'Sim, ja foi feito')).
+facto(390,opcao_resposta(origem_registada,nao_sei,'Ainda nao')).
+
+ultimo_facto(390).

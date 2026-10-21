@@ -1,0 +1,5 @@
+% Cenario 37a - O IDS envia depois o porto de destino do ataque do cenario 37: foi o 80, o site corrigido. O vetor ate a
+%   consola (8081) passa a historico, a exploracao possivel tambem, e o seu incidente fica resolvido; o ataque passa a
+%   tentativa sem impacto (versao corrigida). Depende do cenario 37.
+
+:- novo_facto(destino(ev_ae1,80,tcp)).

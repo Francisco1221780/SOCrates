@@ -1,7 +1,0 @@
-% Cenario 7b (resposta: nao) - o analista responde a pergunta sobre a shell do cenario 7 (web_srv_04).
-%   Nao viu nenhuma shell -> sem evidencia observada. Nao prova que o ataque falhou: o servidor e vulneravel e a
-%   evidencia pode nao ter ficado onde se procurou. O ticket de inspecao manual fecha; o de exploracao possivel
-%   (verificar o host e corrigir a vulnerabilidade) continua aberto. Nao se bloqueia o IP.
-%   Usa-se UM dos ficheiros cenario_07b_*.txt, nao os tres. Depende do cenario 7.
-
-:- novo_facto(resposta_analista(web_srv_04,ev_e1,shell_servico,nao)).

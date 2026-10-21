@@ -36,7 +36,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.kie.api.KieServices;
 import org.kie.api.builder.Message;
@@ -50,7 +49,8 @@ import org.kie.api.runtime.KieSession;
  */
 public class MotorDrools {
 
-    public static final String VERSAO_KB = "6";
+    /** A versao da base, lida do factos_iniciais.json (que o gera_json.pl tira do cabecalho do soc_factos.txt). */
+    public static final String VERSAO_KB = FactosIniciais.versao(FactosIniciais.RECURSO);
 
     private static final String MOTOR = "drools";
     private static final String KBASE = "soc";
@@ -60,7 +60,6 @@ public class MotorDrools {
     private final KieBase base;
     private final FactosIniciais iniciais;
     private final EstadoMotor estado;
-    private final Predicate<String> regrasAtivas;
     private final int numeroRegras;
 
     public MotorDrools() {
@@ -88,15 +87,7 @@ public class MotorDrools {
 
     /** @param recursoFactos o ficheiro de factos iniciais no classpath (outro nome so nos testes) */
     MotorDrools(String recursoFactos) {
-        this(recursoFactos, regra -> true);
-    }
-
-    /**
-     * So para os testes: so disparam as regras cujo nome ({@code "R7"}, ...) o filtro aceita. O teste de paridade usa-o
-     * para correr so os grupos A a G e N contra a referencia Prolog com essas regras.
-     */
-    MotorDrools(String recursoFactos, Predicate<String> regrasAtivas) {
-        this(() -> FactosIniciais.carrega(recursoFactos, VERSAO_KB, new ObjectMapper()), regrasAtivas);
+        this(() -> FactosIniciais.carrega(recursoFactos, VERSAO_KB, new ObjectMapper()));
     }
 
     /**
@@ -104,11 +95,10 @@ public class MotorDrools {
      * da consola ("Carregar a base de conhecimento").
      */
     public static MotorDrools comFactosIniciais(Path ficheiro) {
-        return new MotorDrools(() -> FactosIniciais.carrega(ficheiro, VERSAO_KB, new ObjectMapper()), regra -> true);
+        return new MotorDrools(() -> FactosIniciais.carrega(ficheiro, VERSAO_KB, new ObjectMapper()));
     }
 
-    private MotorDrools(Supplier<FactosIniciais> factosIniciais, Predicate<String> regrasAtivas) {
-        this.regrasAtivas = regrasAtivas;
+    private MotorDrools(Supplier<FactosIniciais> factosIniciais) {
         List<String> erros = new ArrayList<>();
         KieBase c = null;
         try {
@@ -205,7 +195,7 @@ public class MotorDrools {
         }
     }
 
-    /** Quantas regras DRL compilaram (92 com a base v6 inteira). */
+    /** Quantas regras DRL compilaram (107 com a base v6.1 inteira). */
     public int numeroRegras() {
         return numeroRegras;
     }
@@ -353,7 +343,7 @@ public class MotorDrools {
     }
 
     private void dispara(KieSession sessao) {
-        sessao.fireAllRules(m -> regrasAtivas.test(m.getRule().getName()));
+        sessao.fireAllRules();
     }
 
     private String erro(String mensagem) {

@@ -24,7 +24,8 @@
 %   telemetria    correm-se pela ordem da lista: cada cenario depende do anterior que nao e alternativa de outro
 %   atualizacoes  "carregam-se depois do cenario N" (cabecalho da seccao)
 %   normal        independentes ("ou sozinhos so com o estado inicial"), salvo "O X so faz sentido depois do Y"
-%   respostas     "carregam-se depois do cenario a que respondem": o cenario citado no texto ("do cenario N", "do Nb")
+%   alternativas  seccao "Alternativas": dependem do cenario citado no texto ("do cenario N", "do Na"), como as antigas
+%                 respostas do analista (seccao "Respostas", que a base v6.1 ja nao tem)
 %   alternativas  "(em alternativa ao N)" e as linhas com varios ficheiros e "(so UM)"
 % Se o indice tiver uma linha que nao se percebe, ou faltar um ficheiro, para com erro em vez de gerar dados errados.
 
@@ -264,6 +265,7 @@ grupo_seccao(Cab, telemetria)  :- sub_string(Cab, 0, _, _, "Telemetria").
 grupo_seccao(Cab, atualizacao) :- sub_string(Cab, 0, _, _, "Atualizacoes").
 grupo_seccao(Cab, normal)      :- sub_string(Cab, 0, _, _, "Atividade normal").
 grupo_seccao(Cab, resposta)    :- sub_string(Cab, 0, _, _, "Respostas").
+grupo_seccao(Cab, alternativa) :- sub_string(Cab, 0, _, _, "Alternativas").
 
 % "cenario_07b_sim.txt, cenario_07b_nao.txt   texto" -> ficheiros e texto.
 entrada(Resto, Fichs, Texto) :-
@@ -359,6 +361,8 @@ depende(atualizacao, Cat, _, Cab, _, _, [Id]) :- !,
 	).
 depende(normal, Cat, _, Cab, Id, _, Deps) :- !,
 	findall(D, ( so_faz_sentido_depois(Cab, X, Y), id_numero(Cat, X, IdX), IdX == Id, id_numero(Cat, Y, D) ), Deps).
+depende(alternativa, Cat, Texto, Cab, Id0, Ant, Deps) :- !,
+	depende(resposta, Cat, Texto, Cab, Id0, Ant, Deps).
 depende(resposta, Cat, Texto, _, _, _, [Id]) :-
 	(   antes_de_alternativa(Texto, T1), cenario_citado(T1, Num) -> id_numero(Cat, Num, Id)
 	;   format(atom(M), 'indice.txt: nao percebo a que cenario responde "~w"', [Texto]), throw(erro_base(M))

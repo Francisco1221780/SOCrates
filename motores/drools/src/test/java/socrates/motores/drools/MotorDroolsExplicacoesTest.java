@@ -116,7 +116,7 @@ class MotorDroolsExplicacoesTest {
         JsonNode r = json.readTree(MOTOR.porquePergunta(pedido("c7"), "web_srv_04", "ev_e1", "shell_servico"));
         assertEquals("concluido", r.get("estado").asText());
         assertEquals(31, r.get("geradaPor").get("regraCompleta").get("id").asInt());
-        assertEquals(json.readTree("[32,33,34,50,51]"), r.get("regrasQueUsamAResposta"));
+        assertEquals(json.readTree("[32,33,34,50,51,94]"), r.get("regrasQueUsamAResposta"));
         assertEquals("shell_servico", r.get("pergunta").get("pergunta").asText());
         JsonNode inexistente = json.readTree(MOTOR.porquePergunta(pedido("c7"), "web_srv_04", "ev_e1", "outra"));
         assertEquals("erro", inexistente.get("estado").asText());
@@ -125,7 +125,7 @@ class MotorDroolsExplicacoesTest {
     @Test
     void cenariosEPredicados() throws Exception {
         JsonNode c = json.readTree(MOTOR.cenarios());
-        assertTrue(c.get("cenarios").size() > 60, "os cenarios da base");
+        assertTrue(c.get("cenarios").size() > 50, "os cenarios da base");
         assertEquals("c6", c.get("cenarios").get(5).get("id").asText());
         assertNotNull(c.get("cenarios").get(5).get("passo").get("factos"));
         assertTrue(c.get("sequencias").has("base") && c.get("sequencias").has("normal"));

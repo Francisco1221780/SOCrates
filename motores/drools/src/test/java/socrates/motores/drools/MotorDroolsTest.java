@@ -30,7 +30,7 @@ class MotorDroolsTest {
     }
 
     private static String pedido(String... passos) {
-        return "{\"versaoKB\":\"6\",\"passos\":[" + String.join(",", passos) + "]}";
+        return "{\"versaoKB\":\"" + MotorDrools.VERSAO_KB + "\",\"passos\":[" + String.join(",", passos) + "]}";
     }
 
     private static String passo(String id, String... factos) {
@@ -58,7 +58,7 @@ class MotorDroolsTest {
         EstadoMotor e = motor.estado();
         assertTrue(e.pronto(), e.erros().toString());
         assertTrue(e.regrasCarregadas());
-        assertEquals(314, e.factosIniciais());
+        assertEquals(390, e.factosIniciais());
     }
 
     @Test
@@ -66,7 +66,7 @@ class MotorDroolsTest {
         MotorDrools v5 = new MotorDrools("factos_iniciais_v5.json");
         assertFalse(v5.estado().pronto());
         JsonNode r = infere(v5, pedido(passo("p1")));
-        assertTrue(r.get("erro").asText().contains("e da versaoKB \"5.1\", o motor e da 6"), r.toString());
+        assertTrue(r.get("erro").asText().contains("e da versaoKB \"5.1\", o motor e da " + MotorDrools.VERSAO_KB), r.toString());
     }
 
     @Test
@@ -116,7 +116,9 @@ class MotorDroolsTest {
 
         assertEquals(1, factos(r, "exploracao_incerta").size());
         assertEquals(1, factos(r, "motivo").size());
-        assertEquals("concluido", r.get("estado").asText());
+        // v6.1: o ticket da versao por confirmar tem a sua pergunta de fecho (R93), por isso o pedido fica a aguardar
+        assertEquals("aguarda_resposta", r.get("estado").asText());
+        assertEquals("versao_afetada", r.get("perguntas").get(0).get("pergunta").asText());
     }
 
     @Test
@@ -204,7 +206,7 @@ class MotorDroolsTest {
                 p.get("opcoes").get(0).toString());
 
         String resposta = "{\"predicado\":\"resposta_analista\",\"args\":[\"web_srv_04\",\"ev_e1\",\"shell_servico\",\"sim\"]}";
-        JsonNode respondida = infere(pedido(passo("cenario_07", pergunta), passo("cenario_07b_sim", resposta)));
+        JsonNode respondida = infere(pedido(passo("cenario_07", pergunta), passo("resposta_07", resposta)));
         assertEquals("concluido", respondida.get("estado").asText());
         assertEquals(0, respondida.get("perguntas").size());
 
@@ -250,7 +252,7 @@ class MotorDroolsTest {
     @Test
     void pedidosInvalidosDaoAsMensagensDoWrapper() throws Exception {
         assertErro("[]", "o pedido tem de ser um objeto JSON");
-        assertErro("{\"versaoKB\":\"9.9\",\"passos\":[{\"factos\":[]}]}", "versaoKB desconhecida: \"9.9\" (carregada: 6)");
+        assertErro("{\"versaoKB\":\"9.9\",\"passos\":[{\"factos\":[]}]}", "versaoKB desconhecida: \"9.9\" (carregada: " + MotorDrools.VERSAO_KB + ")");
         assertErro(pedido(), "o pedido tem de ter pelo menos um passo");
         assertErro(pedido("1"), "o passo 1 nao e um objeto JSON");
         assertErro(pedido("{\"id\":\"c1\"}"), "o passo c1 nao tem a lista \"factos\"");

@@ -1,5 +1,5 @@
 {
-  "versaoKB": "6",
+  "versaoKB": "6.1",
   "factos": [
     {"predicado": "vuln_impacto", "args": ["vuln_x", "impacto_sem_evidencia"]},
     {"predicado": "vuln_impacto", "args": ["vuln_x", "impacto_sem_pergunta"]},

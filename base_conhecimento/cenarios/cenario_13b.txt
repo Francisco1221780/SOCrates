@@ -1,5 +1,0 @@
-% Cenario 13b - Inventario recolhido: web_srv_07 fica com os inventarios de rede e de software completos, sem Apache e
-%   sem nenhum porto aberto. O ataque do cenario 13 passa a tentativa sem impacto, e os dois incidentes de inventario fecham.
-
-:- novo_facto(cobertura(web_srv_07,rede,completa)).
-:- novo_facto(cobertura(web_srv_07,sbom,completa)).

@@ -64,13 +64,15 @@ corre_wrapper_args(Texto, Args, Codigo, Out, Err) :-
 
 base(Pasta) :- caminho(base_conhecimento, Pasta).
 
-% Pedido com os passos dos cenarios Ids, tirados do cenarios.json.
+% Pedido com os passos dos itens Ids, tirados do cenarios.json. Um item e o id de um cenario ou uma resposta do
+% analista, resposta(IdDoPasso, Ativo, Evento, Pergunta, Valor): as respostas nao sao cenarios (o motor faz a pergunta).
 pedido(Ids, Texto) :-
 	caminho('backend/socrates/src/main/resources/generated/cenarios.json', F),
 	setup_call_cleanup(open(F, read, S, [encoding(utf8)]), json_read_dict(S, C), close(S)),
 	maplist(passo(C), Ids, Passos),
 	with_output_to(string(Texto), json_write_dict(current_output, _{versaoKB: C.versaoKB, passos: Passos})).
 
+passo(_, resposta(Id, A, E, P, V), _{id: Id, factos: [_{predicado: resposta_analista, args: [A, E, P, V]}]}) :- !.
 passo(C, Id, Passo) :-
 	atom_string(Id, IdS),
 	member(X, C.cenarios), X.id == IdS, !,
@@ -97,12 +99,25 @@ json_termo(D, T) :- is_dict(D), !, maplist(json_termo, D.args, As), compound_nam
 json_termo(L, T) :- is_list(L), !, maplist(json_termo, L, T).
 json_termo(X, X).
 
-% Factos do motor depois de carregar a base e injetar os ficheiros de cenario Ids, pela ordem.
+% Factos do motor depois de carregar a base e injetar os itens Ids, pela ordem: os ficheiros de cenario, e as
+% respostas do analista com introduz_facto/1 (como a interface as envia).
 factos_motor(Ids, Factos) :-
 	base(Pasta), directory_file_path(Pasta, 'soc_factos.txt', F),
-	with_output_to(string(_), ( carrega_bc(F), arranca_motor, injeta_cenarios(Ids) )),
+	with_output_to(string(_), ( carrega_bc(F), arranca_motor, forall(member(I, Ids), injeta_item(I)) )),
 	ultimo_facto(U),
 	findall(T, ( between(1, U, N), facto(N, T) ), Factos).
+
+injeta_item(resposta(_, A, E, P, V)) :- !, introduz_facto(resposta_analista(A, E, P, V)), arranca_motor.
+injeta_item(Id) :- injeta_cenario(Id).
+
+% A versao da base, tal como esta nos JSON gerados (que o gera_json.pl tira do cabecalho do soc_factos.txt).
+versao_base_json(V) :-
+	caminho('backend/socrates/src/main/resources/generated/cenarios.json', F),
+	setup_call_cleanup(open(F, read, S, [encoding(utf8)]), json_read_dict(S, C), close(S)),
+	atom_string(V, C.versaoKB).
+
+% Respostas a pergunta do cenario 7 (sensor em baixo em web_srv_04).
+resposta_7(V, resposta(resposta_07, web_srv_04, ev_e1, shell_servico, V)).
 
 % O texto tem exatamente um documento JSON (e espacos a volta).
 um_so_json(Texto) :-
@@ -117,34 +132,44 @@ um_so_json(Texto) :-
 
 :- begin_tests(wrapper).
 
-% AC12: o cenario 7 pergunta ao analista; com a resposta, da o mesmo que injetar os ficheiros de cenario no motor.
+% AC12: o cenario 7 pergunta ao analista (a evidencia, com o sensor em baixo, e o fecho do ticket da exploracao
+% possivel); com a resposta, da o mesmo que injetar o cenario e a resposta no motor.
 test(ac12_pergunta) :-
 	resposta([c7], R, Codigo),
 	Codigo == 0,
 	R.estado == aguarda_resposta,
-	R.perguntas = [P],
-	P.pergunta == shell_servico,
-	length(P.opcoes, 3).
+	findall(Pg-N, ( member(P, R.perguntas), Pg = P.pergunta, length(P.opcoes, N) ), Ps),
+	msort(Ps, [shell_servico-3, vulnerabilidade_tratada-2]).
 
-test(ac12_resposta, [forall(member(Resp, [c7b_sim, c7b_nao, c7b_nao_sei]))]) :-
+test(ac12_resposta, [forall(member(V, [sim, nao, nao_sei]))]) :-
+	resposta_7(V, Resp),
 	resposta([c7, Resp], R, Codigo),
 	Codigo == 0,
-	R.estado == concluido,
+	R.estado == aguarda_resposta,
 	factos_resposta(R, FW),
 	factos_motor([c7, Resp], FM),
 	FW == FM.
 
+% "Nao sei" nao fecha a pergunta: continua pendente para se responder mais tarde; "sim" ou "nao" fecham-na.
+test(nao_sei_continua_pendente, [forall(member(V-Pendente, [nao_sei-true, sim-false, nao-false]))]) :-
+	resposta_7(V, Resp),
+	resposta([c7, Resp], R, 0),
+	(   ( member(P, R.perguntas), P.pergunta == shell_servico ) -> E = true ; E = false ),
+	E == Pendente.
+
 % AC11: um prefixo dos passos da os mesmos factos que esse ponto de um pedido mais longo.
 test(ac11_prefixo) :-
 	resposta([c7], R1, 0),
-	resposta([c7, c7b_sim], R2, 0),
+	resposta_7(sim, Resp),
+	resposta([c7, Resp], R2, 0),
 	length(R1.factos, N),
 	length(Prefixo, N), append(Prefixo, _, R2.factos),
 	Prefixo == R1.factos.
 
 % AC10: o mesmo pedido da a mesma resposta (byte a byte).
 test(ac10_determinismo) :-
-	pedido([c7, c7b_sim], Texto), base(Pasta),
+	resposta_7(sim, Resp),
+	pedido([c7, Resp], Texto), base(Pasta),
 	corre_wrapper(Texto, Pasta, 0, Out1, _),
 	corre_wrapper(Texto, Pasta, 0, Out2, _),
 	Out1 == Out2.
@@ -158,7 +183,8 @@ test(ac3_stdout_so_json) :-
 
 % AC2: um facto com acentos vai e volta igual.
 test(ac2_acentos) :-
-	Texto = "{\"versaoKB\":\"6\",\"passos\":[{\"id\":\"p1\",\"factos\":[{\"predicado\":\"nota\",\"args\":[\"ação\",{\"f\":\"é\",\"args\":[\"Ç\"]}]}]}]}",
+	versao_base_json(Vs),
+	format(string(Texto), "{\"versaoKB\":\"~w\",\"passos\":[{\"id\":\"p1\",\"factos\":[{\"predicado\":\"nota\",\"args\":[\"ação\",{\"f\":\"é\",\"args\":[\"Ç\"]}]}]}]}", [Vs]),
 	base(Pasta),
 	corre_wrapper(Texto, Pasta, 0, Out, _),
 	atom_json_dict(Out, R, [value_string_as(atom)]),
@@ -174,12 +200,32 @@ test(m9_erros, [forall(erro_pedido(Texto, Pasta))]) :-
 	R.estado == erro,
 	atom(R.erro).
 
+% Os pedidos levam a versao da base (do cenarios.json), para cada um falhar so pela razao indicada.
 erro_pedido("{\"versaoKB\":\"5.1\",\"passos\":[{\"factos\":[]}]}", P) :- base(P).   % versao errada
-erro_pedido("{\"versaoKB\":\"6\",\"passos\":[]}", P) :- base(P).                 % sem passos
-erro_pedido("{\"versaoKB\":\"6\",\"passos\":[", P) :- base(P).                   % JSON partido
+erro_pedido(T, P) :- base(P), com_versao("{\"versaoKB\":\"~w\",\"passos\":[]}", T).                 % sem passos
+erro_pedido(T, P) :- base(P), com_versao("{\"versaoKB\":\"~w\",\"passos\":[", T).                   % JSON partido
 erro_pedido("", P) :- base(P).                                                     % stdin vazio
-erro_pedido("{\"versaoKB\":\"6\",\"passos\":[{\"factos\":[{\"args\":[]}]}]}", P) :- base(P).  % facto sem predicado
-erro_pedido("{\"versaoKB\":\"6\",\"passos\":[{\"factos\":[]}]}", 'pasta_que_nao_existe').     % pasta errada
+erro_pedido(T, P) :- base(P), com_versao("{\"versaoKB\":\"~w\",\"passos\":[{\"factos\":[{\"args\":[]}]}]}", T).  % facto sem predicado
+erro_pedido(T, 'pasta_que_nao_existe') :- com_versao("{\"versaoKB\":\"~w\",\"passos\":[{\"factos\":[]}]}", T).     % pasta errada
+
+com_versao(Modelo, Texto) :- versao_base_json(V), format(string(Texto), Modelo, [V]).
+
+% A versao da resposta e a do cabecalho do soc_factos.txt (a mesma dos JSON gerados), sem estar escrita no wrapper.
+test(versao_do_cabecalho) :-
+	resposta([c7], R, 0),
+	versao_base_json(V),
+	R.versaoKB == V,
+	base(Pasta), directory_file_path(Pasta, 'soc_factos.txt', F),
+	setup_call_cleanup(open(F, read, S, [encoding(utf8)]), read_line_to_string(S, L), close(S)),
+	atom_string(V, Vs), string_concat(_, Vs, L).
+
+% Sem base carregada (pasta errada) nao ha versao: o erro leva versaoKB null.
+test(versao_sem_base) :-
+	com_versao("{\"versaoKB\":\"~w\",\"passos\":[{\"factos\":[]}]}", Texto),
+	corre_wrapper(Texto, 'pasta_que_nao_existe', Codigo, Out, _),
+	Codigo \== 0,
+	atom_json_dict(Out, R, [value_string_as(atom)]),
+	R.versaoKB == null.
 
 :- end_tests(wrapper).
 

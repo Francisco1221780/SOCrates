@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import socrates.backend.application.BaseCarregada;
 import socrates.backend.config.PrologProperties;
 import socrates.backend.domain.Metaconhecimento;
 import socrates.backend.domain.SaudeMotor;
@@ -34,11 +35,14 @@ import tools.jackson.databind.node.ObjectNode;
  */
 class PrologAdapterTest {
 
+    /** A versao da base do repositorio, do cenarios.json gerado (que a tira do cabecalho do soc_factos.txt). */
+    private static final String VERSAO = new BaseCarregada(JsonMapper.builder().build()).versaoKB();
+
     private static final Path RAIZ = Path.of("../..");
     private static final String PEDIDO = """
-            {"versaoKB":"6","passos":[{"id":"cenario_06","factos":[
+            {"versaoKB":"%s","passos":[{"id":"cenario_06","factos":[
               {"predicado":"vetor_aberto","args":["ev_f1","web_srv_05","web_srv_05_apache","cve_2021_41773"]}]}]}
-            """;
+            """.formatted(VERSAO);
 
     private final JsonMapper json = JsonMapper.builder().build();
     private final List<PrologInstaller> installers = new ArrayList<>();
@@ -118,7 +122,8 @@ class PrologAdapterTest {
     @Test
     void semHomeUsaACopiaDoClasspath() {
         JsonNode r = le(adapter("swipl", null).infere(PEDIDO));
-        assertEquals("concluido", r.path("estado").asString(), r.toString());
+        // v6.1: o ticket da versao por confirmar do c6 tem a sua pergunta de fecho, por isso o pedido fica a aguardar
+        assertEquals("aguarda_resposta", r.path("estado").asString(), r.toString());
         assertTrue(r.toString().contains("\"regra\":7"), r.toString());
     }
 
@@ -217,14 +222,15 @@ class PrologAdapterTest {
     }
 
     /**
-     * Verifica que o wrapper.pl é chamado com sucesso e devolve uma resposta JSON com estado "concluido", motor "prolog", versaoKB "6" e regra 7.
+     * Verifica que o wrapper.pl é chamado com sucesso e devolve uma resposta JSON com estado "aguarda_resposta" (a pergunta de fecho do c6), motor "prolog", versaoKB da base e regra 7.
      */
     @Test
     void respostaNormalDoWrapper() {
         JsonNode r = le(adapter("swipl", RAIZ).infere(PEDIDO));
-        assertEquals("concluido", r.path("estado").asString(), r.toString());
+        // v6.1: o ticket da versao por confirmar do c6 tem a sua pergunta de fecho, por isso o pedido fica a aguardar
+        assertEquals("aguarda_resposta", r.path("estado").asString(), r.toString());
         assertEquals("prolog", r.path("motor").asString());
-        assertEquals("6", r.path("versaoKB").asString());
+        assertEquals(VERSAO, r.path("versaoKB").asString());
         assertTrue(r.toString().contains("\"regra\":7"), r.toString());
     }
 
@@ -359,7 +365,7 @@ class PrologAdapterTest {
         try (InputStream in = getClass().getResourceAsStream("/generated/cenarios.json")) {
             catalogo = json.readTree(in);
         }
-        ObjectNode pedido = json.createObjectNode().put("versaoKB", "6");
+        ObjectNode pedido = json.createObjectNode().put("versaoKB", VERSAO);
         ArrayNode passos = pedido.putArray("passos");
         for (JsonNode id : catalogo.path("sequencias").path("base")) {
             for (JsonNode c : catalogo.path("cenarios")) {
@@ -383,8 +389,8 @@ class PrologAdapterTest {
     @Test
     void acentosVaoEVoltam() {
         String pedido = """
-                {"versaoKB":"6","passos":[{"id":"p1","factos":[{"predicado":"nota","args":["ação ü €"]}]}]}
-                """;
+                {"versaoKB":"%s","passos":[{"id":"p1","factos":[{"predicado":"nota","args":["ação ü €"]}]}]}
+                """.formatted(VERSAO);
         JsonNode r = le(adapter("swipl", RAIZ).infere(pedido));
         assertEquals("concluido", r.path("estado").asString(), r.toString());
         boolean encontrado = false;
@@ -398,7 +404,7 @@ class PrologAdapterTest {
     }
 
     /**
-     * Verifica que com a base do repositorio o estado e pronto: a base carregou, o wrapper tem a versao 6 e o
+     * Verifica que com a base do repositorio o estado e pronto: a base carregou, o wrapper tem a versao da base e o
      * metaconhecimento esta em dia (AC13).
      */
     @Test
@@ -406,7 +412,7 @@ class PrologAdapterTest {
         SaudeMotor e = adapter("swipl", RAIZ).estado();
         assertEquals("prolog", e.motor());
         assertTrue(e.pronto(), e.toString());
-        assertEquals("6", e.versaoKB());
+        assertEquals(VERSAO, e.versaoKB());
         assertTrue(e.baseCarregada(), e.toString());
         assertEquals(Metaconhecimento.EM_DIA, e.metaconhecimento());
         assertTrue(e.erros().isEmpty(), e.toString());
@@ -491,10 +497,11 @@ class PrologAdapterTest {
         SaudeMotor e = adapter("swipl", home).estado();
         assertFalse(e.pronto(), e.toString());
         assertTrue(e.baseCarregada(), e.toString());
-        assertEquals("6", e.versaoKB());
+        assertEquals(VERSAO, e.versaoKB());
         assertEquals(Metaconhecimento.DESATUALIZADO, e.metaconhecimento());
         assertTrue(e.erros().stream().anyMatch(l -> l.contains("Desatualizado: acesso_suspeito")), e.toString());
-        assertTrue(e.erros().getLast().contains("gera_meta.pl"), e.toString());
+        // o caminho vem com o separador do sistema (\ no Windows)
+        assertTrue(e.erros().getLast().replace('\\', '/').contains("ferramentas/gera_meta.pl"), e.toString());
     }
 
     /**
@@ -508,9 +515,10 @@ class PrologAdapterTest {
         SaudeMotor e = adapter("swipl", copiaDoMotor(tmp, false)).estado();
         assertFalse(e.pronto(), e.toString());
         assertTrue(e.baseCarregada(), e.toString());
-        assertEquals("6", e.versaoKB());
+        assertEquals(VERSAO, e.versaoKB());
         assertEquals(Metaconhecimento.DESCONHECIDO, e.metaconhecimento());
-        assertTrue(e.erros().getFirst().contains("gera_meta.pl"), e.toString());
+        // o caminho vem com o separador do sistema (\ no Windows)
+        assertTrue(e.erros().getFirst().replace('\\', '/').contains("ferramentas/gera_meta.pl"), e.toString());
     }
 
     /**
@@ -593,7 +601,7 @@ class PrologAdapterTest {
         JsonNode r = le(adapter("swipl", RAIZ).porqueNao(PEDIDO, EXPLORACAO, 4));
         assertEquals("concluido", r.path("estado").asString(), r.toString());
         assertEquals("prolog", r.path("motor").asString());
-        assertEquals("6", r.path("versaoKB").asString());
+        assertEquals(VERSAO, r.path("versaoKB").asString());
         assertEquals(json.readTree(EXPLORACAO), r.path("facto"));
         JsonNode regra6 = null;
         for (JsonNode linha : r.path("explicacao")) {

@@ -1,0 +1,239 @@
+package regras;
+
+// O. FECHAR OS TICKETS (soc_regras.txt, base v6.1, R93-R107)
+//
+// R93: incidente em aberto com pergunta de fecho e ainda sem resposta -> pergunta ao analista
+// R94: analista diz que a acao do ticket esta feita (tipos com fecho_por_acao) -> incidente resolvido
+// R95: analista diz que a maquina comprometida foi recuperada -> recuperado
+// R96: analista diz que as duas maquinas de uma propagacao foram recuperadas -> recuperado (as duas) e propagacao resolvida
+// R97, R98: analista diz que o inventario de rede / de software esta completo -> cobertura completa
+// R99, R100: analista diz que o acesso por confirmar esta / nao esta autorizado -> permitido / politica completa
+// R101, R102: analista diz que a configuracao em falta esta / nao esta ativa -> configuracao sim / nao
+// R103: o ticket fechou -> a pergunta de fecho e retirada
+// R104, R105: versao por confirmar, analista diz que a versao instalada esta / nao esta afetada -> vulneravel / nao_afetado
+// R106, R107: catalogo incompleto, analista diz que a versao instalada esta / nao esta afetada -> vulneravel / nao_afetado
+
+import socrates.motores.drools.modelo.Facto;
+import socrates.motores.drools.modelo.Premissa;
+import socrates.motores.drools.modelo.Termo;
+import socrates.motores.drools.modelo.Variavel;
+import socrates.motores.drools.sessao.CondicoesCalculadas;
+import java.util.List;
+
+global socrates.motores.drools.sessao.BaseFactos base;
+
+// R93: incidente(inc(Tipo,Ev),Tipo,Alvo,_) e pergunta_fecho(Tipo,Pergunta)
+//      e nao resposta_analista(Alvo,Ev,Pergunta,_) e em_aberto(inc(Tipo,Ev))
+//      -> pergunta_analista(Alvo,Ev,Pergunta)
+rule "R93"
+when
+    $inc : Facto(functor == "incidente/4", $incId : arg(0), $tipo : arg(1), $alvo : arg(2))
+    eval($incId instanceof Termo && "inc".equals(((Termo)$incId).f()) && ((Termo)$incId).args().size() >= 2)
+    $pf  : Facto(functor == "pergunta_fecho/2", arg(0) == $tipo, $pergunta : arg(1))
+    eval(CondicoesCalculadas.emAberto($incId, base))
+    eval(!base.existe(Facto.de("resposta_analista", $alvo, ((Termo)$incId).args().get(1), $pergunta, "sim"))
+      && !base.existe(Facto.de("resposta_analista", $alvo, ((Termo)$incId).args().get(1), $pergunta, "nao"))
+      && !base.existe(Facto.de("resposta_analista", $alvo, ((Termo)$incId).args().get(1), $pergunta, "nao_sei")))
+then
+    Object $ev = ((Termo)$incId).args().get(1);
+    List<Premissa> p = List.of(
+        Premissa.de($inc), Premissa.de($pf),
+        Premissa.nao("resposta_analista", $alvo, $ev, $pergunta, Variavel.nova()),
+        Premissa.calculada("em_aberto", $incId)
+    );
+    base.cria(kcontext, 93, p, Facto.de("pergunta_analista", $alvo, $ev, $pergunta));
+end
+
+// R94: resposta_analista(Alvo,Ev,Pergunta,sim) e pergunta_fecho(Tipo,Pergunta) e fecho_por_acao(Tipo)
+//      e incidente(inc(Tipo,Ev),Tipo,Alvo,_) -> resolvido(inc(Tipo,Ev),acao_concluida_pelo_analista)
+rule "R94"
+when
+    $ra  : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), $pergunta : arg(2), arg(3) == "sim")
+    $pf  : Facto(functor == "pergunta_fecho/2", $tipo : arg(0), arg(1) == $pergunta)
+    $fa  : Facto(functor == "fecho_por_acao/1", arg(0) == $tipo)
+    $inc : Facto(functor == "incidente/4", arg(0) == Termo.de("inc", $tipo, $ev), arg(1) == $tipo, arg(2) == $alvo)
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($pf), Premissa.de($fa), Premissa.de($inc));
+    base.cria(kcontext, 94, p, Facto.de("resolvido", Termo.de("inc", $tipo, $ev), "acao_concluida_pelo_analista"));
+end
+
+// R95: resposta_analista(Alvo,Ev,maquina_recuperada,sim) e compromisso_confirmado(Alvo,Ev) -> recuperado(Alvo,Ev)
+rule "R95"
+when
+    $ra : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), arg(2) == "maquina_recuperada", arg(3) == "sim")
+    $cc : Facto(functor == "compromisso_confirmado/2", arg(0) == $alvo, arg(1) == $ev)
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($cc));
+    base.cria(kcontext, 95, p, Facto.de("recuperado", $alvo, $ev));
+end
+
+// R96: resposta_analista(Destino,Ev,maquinas_recuperadas,sim) e incidente(inc(propagacao,Ev),propagacao,Destino,[Destino,Origem])
+//      e motivo(inc(compromisso_provavel,Ev),login_a_partir_de_ativo_comprometido(Origem,EvOrigem))
+//      -> recuperado(Destino,Ev), recuperado(Origem,EvOrigem), resolvido(inc(propagacao,Ev),maquinas_recuperadas)
+rule "R96"
+when
+    $ra  : Facto(functor == "resposta_analista/4", $destino : arg(0), $ev : arg(1), arg(2) == "maquinas_recuperadas", arg(3) == "sim")
+    $inc : Facto(functor == "incidente/4", arg(0) == Termo.de("inc", "propagacao", $ev), arg(1) == "propagacao", arg(2) == $destino, $imp : arg(3))
+    eval($imp instanceof java.util.List && ((java.util.List<?>)$imp).size() == 2 && ((java.util.List<?>)$imp).get(0).equals($destino))
+    $m   : Facto(functor == "motivo/2", arg(0) == Termo.de("inc", "compromisso_provavel", $ev), $mot : arg(1))
+    eval($mot instanceof Termo && "login_a_partir_de_ativo_comprometido".equals(((Termo)$mot).f())
+        && ((Termo)$mot).args().get(0).equals(((java.util.List<?>)$imp).get(1)))
+then
+    Object $origem = ((Termo)$mot).args().get(0);
+    Object $evOrigem = ((Termo)$mot).args().get(1);
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($inc), Premissa.de($m));
+    base.cria(kcontext, 96, p, Facto.de("recuperado", $destino, $ev));
+    base.cria(kcontext, 96, p, Facto.de("recuperado", $origem, $evOrigem));
+    base.cria(kcontext, 96, p, Facto.de("resolvido", Termo.de("inc", "propagacao", $ev), "maquinas_recuperadas"));
+end
+
+// R97: resposta_analista(Alvo,Ev,inventario_rede_completo,sim)
+//      e incidente(inc(inventario_rede_incompleto,Ev),inventario_rede_incompleto,Alvo,_) -> cobertura(Alvo,rede,completa)
+rule "R97"
+when
+    $ra  : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), arg(2) == "inventario_rede_completo", arg(3) == "sim")
+    $inc : Facto(functor == "incidente/4", arg(0) == Termo.de("inc", "inventario_rede_incompleto", $ev), arg(1) == "inventario_rede_incompleto", arg(2) == $alvo)
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($inc));
+    base.cria(kcontext, 97, p, Facto.de("cobertura", $alvo, "rede", "completa"));
+end
+
+// R98: resposta_analista(Alvo,Ev,sbom_completo,sim)
+//      e incidente(inc(sbom_incompleto,Ev),sbom_incompleto,Alvo,_) -> cobertura(Alvo,sbom,completa)
+rule "R98"
+when
+    $ra  : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), arg(2) == "sbom_completo", arg(3) == "sim")
+    $inc : Facto(functor == "incidente/4", arg(0) == Termo.de("inc", "sbom_incompleto", $ev), arg(1) == "sbom_incompleto", arg(2) == $alvo)
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($inc));
+    base.cria(kcontext, 98, p, Facto.de("cobertura", $alvo, "sbom", "completa"));
+end
+
+// R99: resposta_analista(Destino,Ev,acesso_autorizado,sim)
+//      e incidente(inc(politica_por_confirmar,Ev),politica_por_confirmar,Destino,_) e login_ok(Ev,Destino,Origem,Servico)
+//      -> permitido(Destino,Servico,Origem)
+rule "R99"
+when
+    $ra  : Facto(functor == "resposta_analista/4", $destino : arg(0), $ev : arg(1), arg(2) == "acesso_autorizado", arg(3) == "sim")
+    $inc : Facto(functor == "incidente/4", arg(0) == Termo.de("inc", "politica_por_confirmar", $ev), arg(1) == "politica_por_confirmar", arg(2) == $destino)
+    $lo  : Facto(functor == "login_ok/4", arg(0) == $ev, arg(1) == $destino, $origem : arg(2), $servico : arg(3))
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($inc), Premissa.de($lo));
+    base.cria(kcontext, 99, p, Facto.de("permitido", $destino, $servico, $origem));
+end
+
+// R100: resposta_analista(Destino,Ev,acesso_autorizado,nao)
+//       e incidente(inc(politica_por_confirmar,Ev),politica_por_confirmar,Destino,_) e login_ok(Ev,Destino,_,Servico)
+//       -> cobertura_politica(Destino,Servico,completa)
+rule "R100"
+when
+    $ra  : Facto(functor == "resposta_analista/4", $destino : arg(0), $ev : arg(1), arg(2) == "acesso_autorizado", arg(3) == "nao")
+    $inc : Facto(functor == "incidente/4", arg(0) == Termo.de("inc", "politica_por_confirmar", $ev), arg(1) == "politica_por_confirmar", arg(2) == $destino)
+    $lo  : Facto(functor == "login_ok/4", arg(0) == $ev, arg(1) == $destino, $servico : arg(3))
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($inc), Premissa.de($lo));
+    base.cria(kcontext, 100, p, Facto.de("cobertura_politica", $destino, $servico, "completa"));
+end
+
+// R101: resposta_analista(Alvo,Ev,configuracao_ativa,sim)
+//       e incidente(inc(configuracao_por_confirmar,Ev),configuracao_por_confirmar,Alvo,_)
+//       e motivo(inc(configuracao_por_confirmar,Ev),condicao_desconhecida(Inst,Cond)) -> configuracao(Inst,Cond,sim)
+rule "R101"
+when
+    $ra  : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), arg(2) == "configuracao_ativa", arg(3) == "sim")
+    $inc : Facto(functor == "incidente/4", arg(0) == Termo.de("inc", "configuracao_por_confirmar", $ev), arg(1) == "configuracao_por_confirmar", arg(2) == $alvo)
+    $m   : Facto(functor == "motivo/2", arg(0) == Termo.de("inc", "configuracao_por_confirmar", $ev), $mot : arg(1))
+    eval($mot instanceof Termo && "condicao_desconhecida".equals(((Termo)$mot).f()))
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($inc), Premissa.de($m));
+    base.cria(kcontext, 101, p, Facto.de("configuracao", ((Termo)$mot).args().get(0), ((Termo)$mot).args().get(1), "sim"));
+end
+
+// R102: o mesmo com a resposta nao -> configuracao(Inst,Cond,nao)
+rule "R102"
+when
+    $ra  : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), arg(2) == "configuracao_ativa", arg(3) == "nao")
+    $inc : Facto(functor == "incidente/4", arg(0) == Termo.de("inc", "configuracao_por_confirmar", $ev), arg(1) == "configuracao_por_confirmar", arg(2) == $alvo)
+    $m   : Facto(functor == "motivo/2", arg(0) == Termo.de("inc", "configuracao_por_confirmar", $ev), $mot : arg(1))
+    eval($mot instanceof Termo && "condicao_desconhecida".equals(((Termo)$mot).f()))
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($inc), Premissa.de($m));
+    base.cria(kcontext, 102, p, Facto.de("configuracao", ((Termo)$mot).args().get(0), ((Termo)$mot).args().get(1), "nao"));
+end
+
+// R103: pergunta_analista(Alvo,Ev,Pergunta) e pergunta_fecho(Tipo,Pergunta)
+//       e ticket_fechado(inc(Tipo,Ev),_) -> pergunta_retirada(Alvo,Ev,Pergunta)
+rule "R103"
+when
+    $pa : Facto(functor == "pergunta_analista/3", $alvo : arg(0), $ev : arg(1), $pergunta : arg(2))
+    $pf : Facto(functor == "pergunta_fecho/2", $tipo : arg(0), arg(1) == $pergunta)
+    $tf : Facto(functor == "ticket_fechado/2", $tfIncId : arg(0))
+    eval($tfIncId instanceof Termo
+        && "inc".equals(((Termo)$tfIncId).f())
+        && ((Termo)$tfIncId).args().get(0).equals($tipo)
+        && ((Termo)$tfIncId).args().get(1).equals($ev))
+then
+    List<Premissa> p = List.of(Premissa.de($pa), Premissa.de($pf), Premissa.de($tf));
+    base.cria(kcontext, 103, p, Facto.de("pergunta_retirada", $alvo, $ev, $pergunta));
+end
+
+// R104: resposta_analista(Alvo,Ev,versao_afetada,sim)
+//       e motivo(inc(versao_por_confirmar,Ev),instalacao_sem_versao_valida(Inst)) e vetor_aberto(Ev,Alvo,Inst,Vuln)
+//       -> vulneravel(Inst,Vuln), resolvido(inc(versao_por_confirmar,Ev),afetacao_indicada_pelo_analista)
+rule "R104"
+when
+    $ra : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), arg(2) == "versao_afetada", arg(3) == "sim")
+    $m  : Facto(functor == "motivo/2", arg(0) == Termo.de("inc", "versao_por_confirmar", $ev), $mot : arg(1))
+    eval($mot instanceof Termo && "instalacao_sem_versao_valida".equals(((Termo)$mot).f()))
+    $va : Facto(functor == "vetor_aberto/4", arg(0) == $ev, arg(1) == $alvo, arg(2) == ((Termo)$mot).args().get(0), $vuln : arg(3))
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($m), Premissa.de($va));
+    base.cria(kcontext, 104, p, Facto.de("vulneravel", $va.arg(2), $vuln));
+    base.cria(kcontext, 104, p, Facto.de("resolvido", Termo.de("inc", "versao_por_confirmar", $ev), "afetacao_indicada_pelo_analista"));
+end
+
+// R105: o mesmo com a resposta nao -> nao_afetado(Inst,Vuln), resolvido(...)
+rule "R105"
+when
+    $ra : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), arg(2) == "versao_afetada", arg(3) == "nao")
+    $m  : Facto(functor == "motivo/2", arg(0) == Termo.de("inc", "versao_por_confirmar", $ev), $mot : arg(1))
+    eval($mot instanceof Termo && "instalacao_sem_versao_valida".equals(((Termo)$mot).f()))
+    $va : Facto(functor == "vetor_aberto/4", arg(0) == $ev, arg(1) == $alvo, arg(2) == ((Termo)$mot).args().get(0), $vuln : arg(3))
+then
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($m), Premissa.de($va));
+    base.cria(kcontext, 105, p, Facto.de("nao_afetado", $va.arg(2), $vuln));
+    base.cria(kcontext, 105, p, Facto.de("resolvido", Termo.de("inc", "versao_por_confirmar", $ev), "afetacao_indicada_pelo_analista"));
+end
+
+// R106: resposta_analista(Alvo,Ev,catalogo_afetado,sim)
+//       e motivo(inc(catalogo_incompleto,Ev),sem_intervalos(Vuln)) e vetor_aberto(Ev,Alvo,Inst,Vuln)
+//       e nao corrigido_backport(Inst,Vuln)
+//       -> vulneravel(Inst,Vuln), resolvido(inc(catalogo_incompleto,Ev),afetacao_indicada_pelo_analista)
+rule "R106"
+when
+    $ra : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), arg(2) == "catalogo_afetado", arg(3) == "sim")
+    $m  : Facto(functor == "motivo/2", arg(0) == Termo.de("inc", "catalogo_incompleto", $ev), $mot : arg(1))
+    eval($mot instanceof Termo && "sem_intervalos".equals(((Termo)$mot).f()))
+    $va : Facto(functor == "vetor_aberto/4", arg(0) == $ev, arg(1) == $alvo, $inst : arg(2), arg(3) == ((Termo)$mot).args().get(0))
+    not Facto(functor == "corrigido_backport/2", arg(0) == $inst, arg(1) == ((Termo)$mot).args().get(0))
+then
+    Object $vuln = ((Termo)$mot).args().get(0);
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($m), Premissa.de($va),
+        Premissa.nao("corrigido_backport", $inst, $vuln));
+    base.cria(kcontext, 106, p, Facto.de("vulneravel", $inst, $vuln));
+    base.cria(kcontext, 106, p, Facto.de("resolvido", Termo.de("inc", "catalogo_incompleto", $ev), "afetacao_indicada_pelo_analista"));
+end
+
+// R107: o mesmo com a resposta nao (sem a condicao do backport) -> nao_afetado(Inst,Vuln), resolvido(...)
+rule "R107"
+when
+    $ra : Facto(functor == "resposta_analista/4", $alvo : arg(0), $ev : arg(1), arg(2) == "catalogo_afetado", arg(3) == "nao")
+    $m  : Facto(functor == "motivo/2", arg(0) == Termo.de("inc", "catalogo_incompleto", $ev), $mot : arg(1))
+    eval($mot instanceof Termo && "sem_intervalos".equals(((Termo)$mot).f()))
+    $va : Facto(functor == "vetor_aberto/4", arg(0) == $ev, arg(1) == $alvo, $inst : arg(2), arg(3) == ((Termo)$mot).args().get(0))
+then
+    Object $vuln = ((Termo)$mot).args().get(0);
+    List<Premissa> p = List.of(Premissa.de($ra), Premissa.de($m), Premissa.de($va));
+    base.cria(kcontext, 107, p, Facto.de("nao_afetado", $inst, $vuln));
+    base.cria(kcontext, 107, p, Facto.de("resolvido", Termo.de("inc", "catalogo_incompleto", $ev), "afetacao_indicada_pelo_analista"));
+end

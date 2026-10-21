@@ -1,10 +1,10 @@
-% REGRAS - Analista virtual de SOC (SOCrates), versao 6
+% REGRAS - Analista virtual de SOC (SOCrates), versao 6.1
 % Cada regra le-se "SE todas as condicoes forem verdadeiras ENTAO conclui-se ...".
 % Os nomes com maiuscula (Alvo, Ev, Vuln...) sao variaveis: a regra vale para qualquer ativo, evento ou vulnerabilidade.
 % "nao X" quer dizer que X nao esta registado.
 % As regras de detecao abrem incidentes; a gravidade, a prioridade e o ticket de cada incidente sao decididos num so sitio (grupo M).
 % As janelas de tempo estao nos factos (janela), para o perito as poder afinar.
-% As regras estao numeradas seguidas (R1 a R92), pela ordem em que aparecem.
+% As regras estao numeradas seguidas (R1 a R107), pela ordem em que aparecem.
 %
 % CONCLUSOES EM VIGOR E CONCLUSOES HISTORICAS
 % As conclusoes nunca se apagam: o que o sistema concluiu num momento fica registado, para se poder explicar mais tarde.
@@ -718,3 +718,109 @@ regra 91
 regra 92
 	se [vuln_impacto(Vuln,Impacto) e classe_impacto(Impacto,Classe) e nao tipo_provavel(Classe,_)]
 	entao [cria_facto(falha_catalogo(Vuln,classe_sem_tipo_provavel(Classe)))].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% O. FECHAR OS TICKETS (respostas: sim / nao / nao_sei)
+% Um ticket aberto pede uma acao (isolar, corrigir, recolher o inventario...). Para o analista o poder fechar, cada tipo de
+% incidente tem uma pergunta de fecho (pergunta_fecho, nos factos): enquanto o incidente estiver em aberto, o sistema
+% pergunta se o que o ticket pede ja foi feito. Ja tinham pergunta o compromisso provavel, a exposicao provavel e a
+% inspecao manual (grupos G e K).
+% Ha tres familias de resposta:
+%   - recuperacao (compromisso, propagacao): o "sim" regista que a maquina foi recuperada, e o ticket fecha pela R63;
+%   - dados (inventarios, politica, configuracao): o "sim" ou o "nao" regista o dado que faltava, e o ticket fecha pelas
+%     regras do grupo L (R57, R60, R61, R62). Na versao por confirmar e no catalogo incompleto o que falta e um valor (a
+%     versao, os intervalos afetados), que nao cabe num sim ou num nao. Mas o que decide o caso e outra coisa: se a
+%     instalacao esta ou nao afetada. Pergunta-se isso (R104 a R107); a versao e os intervalos podem chegar depois;
+%   - acao (os restantes tipos, marcados com fecho_por_acao): o "sim" diz que a acao pedida ja foi feita e o incidente
+%     fica resolvido. O sistema nao verifica nada: regista a palavra do analista.
+% Quando o analista responde "nao sei" (nas perguntas de acao, de recuperacao e de inventario, "ainda nao") nada muda: o
+% ticket continua aberto. Quando o ticket fecha por outra via, a pergunta e retirada (R103).
+
+% R93: incidente em aberto com pergunta de fecho, e o analista ainda nao respondeu -> pergunta ao analista se o ticket ja
+%      se pode fechar
+regra 93
+	se [incidente(inc(Tipo,Ev),Tipo,Alvo,_) e pergunta_fecho(Tipo,Pergunta) e nao resposta_analista(Alvo,Ev,Pergunta,_) e em_aberto(inc(Tipo,Ev))]
+	entao [cria_facto(pergunta_analista(Alvo,Ev,Pergunta))].
+
+% R94: o analista diz que a acao pedida pelo ticket ja foi feita -> o incidente fica resolvido (e o ticket fecha, R86)
+regra 94
+	se [resposta_analista(Alvo,Ev,Pergunta,sim) e pergunta_fecho(Tipo,Pergunta) e fecho_por_acao(Tipo) e incidente(inc(Tipo,Ev),Tipo,Alvo,_)]
+	entao [cria_facto(resolvido(inc(Tipo,Ev),acao_concluida_pelo_analista))].
+
+% R95: o analista diz que a maquina comprometida foi recuperada -> regista-se a recuperacao (a R63 resolve o compromisso)
+regra 95
+	se [resposta_analista(Alvo,Ev,maquina_recuperada,sim) e compromisso_confirmado(Alvo,Ev)]
+	entao [cria_facto(recuperado(Alvo,Ev))].
+
+% R96: o analista diz que as duas maquinas de uma propagacao foram recuperadas -> regista-se a recuperacao de cada uma
+%      (o destino pelo evento da propagacao, a origem pelo evento do compromisso dela) e a propagacao fica resolvida
+regra 96
+	se [resposta_analista(Destino,Ev,maquinas_recuperadas,sim) e incidente(inc(propagacao,Ev),propagacao,Destino,[Destino,Origem]) e motivo(inc(compromisso_provavel,Ev),login_a_partir_de_ativo_comprometido(Origem,EvOrigem))]
+	entao [cria_facto(recuperado(Destino,Ev)),
+	       cria_facto(recuperado(Origem,EvOrigem)),
+	       cria_facto(resolvido(inc(propagacao,Ev),maquinas_recuperadas))].
+
+% R97: o analista diz que o inventario de rede do ativo ja esta completo -> cobertura de rede completa (a R60 resolve o incidente)
+regra 97
+	se [resposta_analista(Alvo,Ev,inventario_rede_completo,sim) e incidente(inc(inventario_rede_incompleto,Ev),inventario_rede_incompleto,Alvo,_)]
+	entao [cria_facto(cobertura(Alvo,rede,completa))].
+
+% R98: o analista diz que o inventario de software do ativo ja esta completo -> cobertura de software completa (a R61 resolve o incidente)
+regra 98
+	se [resposta_analista(Alvo,Ev,sbom_completo,sim) e incidente(inc(sbom_incompleto,Ev),sbom_incompleto,Alvo,_)]
+	entao [cria_facto(cobertura(Alvo,sbom,completa))].
+
+% R99: o analista diz que o acesso por confirmar esta autorizado -> a politica passa a autoriza-lo (a R62 resolve o incidente)
+regra 99
+	se [resposta_analista(Destino,Ev,acesso_autorizado,sim) e incidente(inc(politica_por_confirmar,Ev),politica_por_confirmar,Destino,_) e login_ok(Ev,Destino,Origem,Servico)]
+	entao [cria_facto(permitido(Destino,Servico,Origem))].
+
+% R100: o analista diz que o acesso por confirmar nao esta autorizado -> a politica desse servico passa a estar completa,
+%       sem o autorizar: e violacao de politica (R38), e o movimento lateral (R40) substitui este incidente (R53)
+regra 100
+	se [resposta_analista(Destino,Ev,acesso_autorizado,nao) e incidente(inc(politica_por_confirmar,Ev),politica_por_confirmar,Destino,_) e login_ok(Ev,Destino,_,Servico)]
+	entao [cria_facto(cobertura_politica(Destino,Servico,completa))].
+
+% R101: o analista diz que a configuracao em falta esta ativa -> regista-se a configuracao (a R57 resolve o incidente)
+regra 101
+	se [resposta_analista(Alvo,Ev,configuracao_ativa,sim) e incidente(inc(configuracao_por_confirmar,Ev),configuracao_por_confirmar,Alvo,_) e motivo(inc(configuracao_por_confirmar,Ev),condicao_desconhecida(Inst,Cond))]
+	entao [cria_facto(configuracao(Inst,Cond,sim))].
+
+% R102: o analista diz que a configuracao em falta nao esta ativa -> regista-se a configuracao (a R57 resolve o incidente)
+regra 102
+	se [resposta_analista(Alvo,Ev,configuracao_ativa,nao) e incidente(inc(configuracao_por_confirmar,Ev),configuracao_por_confirmar,Alvo,_) e motivo(inc(configuracao_por_confirmar,Ev),condicao_desconhecida(Inst,Cond))]
+	entao [cria_facto(configuracao(Inst,Cond,nao))].
+
+% R103: o ticket do incidente fechou (por qualquer via) -> a pergunta de fecho deixa de fazer sentido e e retirada
+regra 103
+	se [pergunta_analista(Alvo,Ev,Pergunta) e pergunta_fecho(Tipo,Pergunta) e ticket_fechado(inc(Tipo,Ev),_)]
+	entao [cria_facto(pergunta_retirada(Alvo,Ev,Pergunta))].
+
+% R104: nao se sabia a versao da instalacao e o analista diz que a versao instalada esta afetada -> instalacao vulneravel
+%       (a R6 da a exploracao possivel e a R64 faz passar a historica a exploracao incerta) e o incidente fica resolvido
+regra 104
+	se [resposta_analista(Alvo,Ev,versao_afetada,sim) e motivo(inc(versao_por_confirmar,Ev),instalacao_sem_versao_valida(Inst)) e vetor_aberto(Ev,Alvo,Inst,Vuln)]
+	entao [cria_facto(vulneravel(Inst,Vuln)),
+	       cria_facto(resolvido(inc(versao_por_confirmar,Ev),afetacao_indicada_pelo_analista))].
+
+% R105: nao se sabia a versao da instalacao e o analista diz que a versao instalada nao esta afetada -> instalacao nao
+%       afetada (a R10 pode dar tentativa sem impacto e a R65 faz passar a historica a exploracao incerta) e o incidente
+%       fica resolvido
+regra 105
+	se [resposta_analista(Alvo,Ev,versao_afetada,nao) e motivo(inc(versao_por_confirmar,Ev),instalacao_sem_versao_valida(Inst)) e vetor_aberto(Ev,Alvo,Inst,Vuln)]
+	entao [cria_facto(nao_afetado(Inst,Vuln)),
+	       cria_facto(resolvido(inc(versao_por_confirmar,Ev),afetacao_indicada_pelo_analista))].
+
+% R106: o catalogo nao tinha intervalos para a vulnerabilidade e o analista diz que a versao instalada esta afetada
+%       -> instalacao vulneravel e o incidente fica resolvido
+regra 106
+	se [resposta_analista(Alvo,Ev,catalogo_afetado,sim) e motivo(inc(catalogo_incompleto,Ev),sem_intervalos(Vuln)) e vetor_aberto(Ev,Alvo,Inst,Vuln) e nao corrigido_backport(Inst,Vuln)]
+	entao [cria_facto(vulneravel(Inst,Vuln)),
+	       cria_facto(resolvido(inc(catalogo_incompleto,Ev),afetacao_indicada_pelo_analista))].
+
+% R107: o catalogo nao tinha intervalos para a vulnerabilidade e o analista diz que a versao instalada nao esta afetada
+%       -> instalacao nao afetada e o incidente fica resolvido
+regra 107
+	se [resposta_analista(Alvo,Ev,catalogo_afetado,nao) e motivo(inc(catalogo_incompleto,Ev),sem_intervalos(Vuln)) e vetor_aberto(Ev,Alvo,Inst,Vuln)]
+	entao [cria_facto(nao_afetado(Inst,Vuln)),
+	       cria_facto(resolvido(inc(catalogo_incompleto,Ev),afetacao_indicada_pelo_analista))].
