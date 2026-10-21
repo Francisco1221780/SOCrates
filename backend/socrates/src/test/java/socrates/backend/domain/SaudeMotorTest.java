@@ -15,7 +15,7 @@ class SaudeMotorTest {
      */
     @Test
     void errosNullFicaListaVazia() {
-        assertTrue(new SaudeMotor("x", true, null, false, Metaconhecimento.DESCONHECIDO, null).erros().isEmpty());
+        assertTrue(new SaudeMotor("x", true, null, false, null).erros().isEmpty());
     }
 
     /**
@@ -25,7 +25,7 @@ class SaudeMotorTest {
     @Test
     void errosSaoUmaCopiaImutavel() {
         List<String> original = new ArrayList<>(List.of("a"));
-        SaudeMotor e = new SaudeMotor("x", false, null, false, Metaconhecimento.DESCONHECIDO, original);
+        SaudeMotor e = new SaudeMotor("x", false, null, false, original);
         original.add("b");
         assertEquals(List.of("a"), e.erros());
         assertThrows(UnsupportedOperationException.class, () -> e.erros().add("c"));
@@ -36,9 +36,9 @@ class SaudeMotorTest {
      */
     @Test
     void naoProntoAcrescentaOErro() {
-        SaudeMotor e = new SaudeMotor("x", true, "5", true, Metaconhecimento.EM_DIA, List.of("a"));
+        SaudeMotor e = new SaudeMotor("x", true, "5", true, List.of("a"));
         SaudeMotor n = e.naoPronto("b");
-        assertEquals(new SaudeMotor("x", false, "5", true, Metaconhecimento.EM_DIA, List.of("a", "b")), n);
+        assertEquals(new SaudeMotor("x", false, "5", true, List.of("a", "b")), n);
         assertTrue(e.pronto());
         assertEquals(List.of("a"), e.erros());
     }

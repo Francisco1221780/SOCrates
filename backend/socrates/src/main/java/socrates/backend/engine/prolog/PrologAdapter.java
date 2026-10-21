@@ -2,7 +2,6 @@ package socrates.backend.engine.prolog;
 
 import socrates.backend.application.MotorInferencia;
 import socrates.backend.config.PrologProperties;
-import socrates.backend.domain.Metaconhecimento;
 import socrates.backend.domain.SaudeMotor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,9 +38,6 @@ public class PrologAdapter implements MotorInferencia {
      * que tem carregada. Assim a verificacao usa o wrapper tal como os pedidos o usam.
      */
     private static final String SONDA = "{\"versaoKB\":\"\",\"passos\":[]}";
-    private static final String GERA_META = "motores/prolog/ferramentas/gera_meta.pl";
-    /** Inicio das linhas do gera_meta.pl --verificar que descrevem uma diferenca. */
-    private static final List<String> DIFERENCAS_META = List.of("Falta:", "Repetido:", "A mais:", "Desatualizado:");
     private static final int MAX_LINHAS = 10;
 
     private final PrologProperties prologProperties;
@@ -131,16 +127,15 @@ public class PrologAdapter implements MotorInferencia {
     public void verificaNoArranque() {
         SaudeMotor e = estado();
         if (e.pronto()) {
-            log.info("Motor prolog pronto: base {} carregada, metaconhecimento em dia", e.versaoKB());
+            log.info("Motor prolog pronto: base {} carregada", e.versaoKB());
         } else {
             log.warn("Motor prolog nao esta pronto: {}", String.join("; ", e.erros()));
         }
     }
 
     /**
-     * O estado do motor (AC13): se a base carrega sem erros, a versao que o wrapper tem carregada e se o
-     * metaconhecimento esta de acordo com as regras. A verificacao lanca dois processos swipl, por isso corre uma vez
-     * e fica guardada: a base nao muda com a aplicacao a correr (para ver uma alteracao na pasta de socrates.prolog.home,
+     * O estado do motor (AC13): se a base carrega sem erros e a versao que o wrapper tem carregada. A verificacao lanca
+     * um processo swipl, por isso corre uma vez e fica guardada: a base nao muda com a aplicacao a correr (para ver uma alteracao na pasta de socrates.prolog.home,
      * reinicia-se a aplicacao).
      * @return
      */
@@ -157,8 +152,7 @@ public class PrologAdapter implements MotorInferencia {
                 } catch (InterruptedException ex) {
                     // nao fica guardado: a proxima chamada verifica outra vez
                     Thread.currentThread().interrupt();
-                    return new SaudeMotor(nome(), false, null, false, Metaconhecimento.DESCONHECIDO,
-                            List.of("interrompido"));
+                    return new SaudeMotor(nome(), false, null, false, List.of("interrompido"));
                 }
             }
             return estado;
@@ -166,22 +160,21 @@ public class PrologAdapter implements MotorInferencia {
     }
 
     /**
-     * Corre a sonda no wrapper.pl (base e versao) e o gera_meta.pl --verificar (metaconhecimento).
+     * Corre a sonda no wrapper.pl: a base carrega sem erros e qual e a versao.
      * @return
      * @throws InterruptedException
      */
     private SaudeMotor verifica() throws InterruptedException {
         String erroPastas = verificaPastas();
         if (erroPastas != null) {
-            return new SaudeMotor(nome(), false, null, false, Metaconhecimento.DESCONHECIDO, List.of(erroPastas));
+            return new SaudeMotor(nome(), false, null, false, List.of(erroPastas));
         }
         List<String> erros = new ArrayList<>();
         Saida sonda;
         try {
             sonda = executa(List.of(prologProperties.swipl(), wrapper().toString(), base().toString()), SONDA);
         } catch (IOException e) {
-            return new SaudeMotor(nome(), false, null, false, Metaconhecimento.DESCONHECIDO,
-                    List.of("swipl nao encontrado: " + e.getMessage()));
+            return new SaudeMotor(nome(), false, null, false, List.of("swipl nao encontrado: " + e.getMessage()));
         } catch (TimeoutException e) {
             erros.add("a base nao carregou dentro do timeout (" + prologProperties.timeout() + ")");
             sonda = null;
@@ -208,51 +201,8 @@ public class PrologAdapter implements MotorInferencia {
             erros.addAll(errosBase);
         }
 
-        Metaconhecimento meta = verificaMetaconhecimento(erros);
-        boolean pronto = carregada && meta == Metaconhecimento.EM_DIA && erros.isEmpty();
-        return new SaudeMotor(nome(), pronto, versao, carregada, meta, erros);
-    }
-
-    /**
-     * Corre o gera_meta.pl --verificar: codigo 0 se o facto_dispara_regras/2 do soc_suporte.txt for o que as regras
-     * dao; senao, as diferencas vao para os erros.
-     * @param erros
-     * @return
-     * @throws InterruptedException
-     */
-    private Metaconhecimento verificaMetaconhecimento(List<String> erros) throws InterruptedException {
-        Path script = raiz().resolve(GERA_META);
-        if (!Files.isRegularFile(script)) {
-            erros.add("nao se pode verificar o metaconhecimento: falta " + script);
-            return Metaconhecimento.DESCONHECIDO;
-        }
-        Saida s;
-        try {
-            s = executa(List.of(prologProperties.swipl(), script.toString(), "--verificar"), "");
-        } catch (IOException e) {
-            erros.add("swipl nao encontrado: " + e.getMessage());
-            return Metaconhecimento.DESCONHECIDO;
-        } catch (TimeoutException e) {
-            erros.add("gera_meta.pl --verificar nao terminou dentro do timeout (" + prologProperties.timeout() + ")");
-            return Metaconhecimento.DESCONHECIDO;
-        } catch (ExecutionException e) {
-            erros.add("erro do adaptador ao ler o gera_meta.pl: " + e.getCause());
-            return Metaconhecimento.DESCONHECIDO;
-        }
-        if (s.codigo() == 0) {
-            return Metaconhecimento.EM_DIA;
-        }
-        List<String> diferencas = s.stderr().stream()
-                .filter(l -> DIFERENCAS_META.stream().anyMatch(l::startsWith))
-                .map(l -> "metaconhecimento: " + l).toList();
-        if (diferencas.isEmpty()) {
-            String ultima = s.stderr().isEmpty() ? "stderr vazio" : s.stderr().getLast();
-            erros.add("gera_meta.pl --verificar falhou (codigo " + s.codigo() + "): " + ultima);
-            return Metaconhecimento.DESCONHECIDO;
-        }
-        erros.addAll(limita(diferencas));
-        erros.add("metaconhecimento desatualizado: corra swipl " + GERA_META + " e cole as linhas em soc_suporte.txt");
-        return Metaconhecimento.DESATUALIZADO;
+        boolean pronto = carregada && erros.isEmpty();
+        return new SaudeMotor(nome(), pronto, versao, carregada, erros);
     }
 
     /**
