@@ -3188,13 +3188,13 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;color:#a9d6de;font-famil
   <div class="status" id="sb">
     <div class="api-status-pill sim" id="apiStatusPill" onclick="toggleCanvasEmptyOverlay(true)" title="Estado do Motor e Telemetria — Clique para abrir o painel de conexão e telemetria" style="cursor:pointer">
       <span class="s-dot" id="apiStatusDot"></span>
-      <span id="apiStatusText">Telemetria Local · KB v6.0</span>
+      <span id="apiStatusText">API: a verificar…</span>
       <span style="color:var(--cyan);font-weight:700">🔄</span>
     </div>
     <span class="status-sep" style="color:var(--line);opacity:0.6">|</span>
-    <span id="statusKbVer">KB <b id="sKbVer">v6.0</b></span>
-    <span id="statusRulesCount"><b id="sRules">92</b> regras</span>
-    <span id="statusNodesEdges"><b id="sN">49</b> nós · <b id="sE">75</b> arestas</span>
+    <span id="statusKbVer">KB <b id="sKbVer">—</b></span>
+    <span id="statusRulesCount"><b id="sRules">—</b> regras</span>
+    <span id="statusNodesEdges"><b id="sN">—</b> nós · <b id="sE">—</b> arestas</span>
     <span id="sSel"></span>
   </div>
 </div>
@@ -4751,14 +4751,12 @@ function updateStatusFooterUI() {
   const sN = $('sN');
   const sE = $('sE');
 
-  const kbVer = S.detectedKbVersion || (S.apiOnline ? (S.backendHealth?.versaoKB || '6.0') : '6.0');
-  if (sKbVer) sKbVer.textContent = `v${kbVer}`;
-
-  const rulesCount = S.detectedRulesCount || (kbVer.startsWith('5') ? 31 : 92);
-  if (sRules) sRules.textContent = rulesCount;
-
-  if (sN) sN.textContent = NODES.length || (S.apiLoaded ? 49 : 0);
-  if (sE) sE.textContent = EDGES.length || (S.apiLoaded ? 75 : 0);
+  // v118: sem valores por omissão; esta função é substituída pela v82Rodape (só dados da API)
+  const kbVer = S.detectedKbVersion || S.backendHealth?.versaoKB || '';
+  if (sKbVer) sKbVer.textContent = kbVer ? `v${kbVer}` : '—';
+  if (sRules) sRules.textContent = '—';
+  if (sN) sN.textContent = NODES.length;
+  if (sE) sE.textContent = EDGES.length;
 }
 
 function toggleCanvasEmptyOverlay(force) {
@@ -5064,120 +5062,8 @@ function setC7PendingGraphState() {}
 /* =====================================================================
    GERADOR & VISUALIZADOR DO CONTRATO JSON OFICIAL (SECÇÃO 5 DO ENUNCIADO)
    ===================================================================== */
-function buildContractPayloadAndResponse(scenKey) {
-  const motor = S.engine === 'drools' ? 'drools' : 'prolog';
-  const isC7 = scenKey === 'c7';
-  const ans = S.c7Answer;
-
-  const passos = [];
-  if (isC7) {
-    passos.push({
-      id: "cenario_07",
-      factos: [
-        { predicado: "estado_sensor", args: ["web_srv_04", "agente_host", "offline"] },
-        { predicado: "alerta_ids", args: ["ev_e1", "web_srv_04", "sig_apache_path_traversal"] },
-        { predicado: "origem", args: ["ev_e1", "ip_198_51_100_23"] },
-        { predicado: "origem_zona", args: ["ev_e1", "internet"] },
-        { predicado: "tempo", args: ["ev_e1", 3000] }
-      ]
-    });
-    if (ans) {
-      passos.push({
-        id: "resposta_1",
-        factos: [
-          { predicado: "resposta_analista", args: ["web_srv_04", "ev_e1", "shell_servico", ans] }
-        ]
-      });
-    }
-  } else {
-    passos.push({
-      id: "cenario_" + (scenKey || '02').replace('c', '').padStart(2, '0'),
-      factos: [
-        { predicado: "alerta_ids", args: ["ev_a1", "web_srv_01", "sig_apache_path_traversal"] },
-        { predicado: "origem", args: ["ev_a1", "ip_203_0_113_50"] },
-        { predicado: "origem_zona", args: ["ev_a1", "internet"] },
-        { predicado: "tempo", args: ["ev_a1", 1000] }
-      ]
-    });
-  }
-
-  const requestJson = {
-    versaoKB: "5.1",
-    passos
-  };
-
-  let responseJson;
-  if (isC7 && !ans) {
-    responseJson = {
-      estado: "aguarda_resposta",
-      motor,
-      versaoKB: "5.1",
-      perguntas: [
-        {
-          ativo: "web_srv_04",
-          evento: "ev_e1",
-          pergunta: "shell_servico",
-          texto: "O sensor EDR está offline em web_srv_04. Observa alguma shell ativa lançada pelo serviço httpd?",
-          opcoes: ["sim", "nao", "nao_sei"]
-        }
-      ],
-      incidentes: [],
-      tickets: [
-        { predicado: "ticket", args: [{"f": "tkt", "args": ["r17", "ev_e1"]}, "web_srv_04", "inspecao_manual_do_host", "media", "p3", ["web_srv_04"]], fechado: false }
-      ],
-      factos: [
-        { n: 273, predicado: "estado_sensor", args: ["web_srv_04", "agente_host", "offline"], origem: "entrada", passo: "cenario_07" },
-        { n: 280, predicado: "exploracao_possivel", args: ["ev_e1", "web_srv_04", "cve_2021_41773"], origem: "regra", regra: 7, premissas: [278, 279] },
-        { n: 291, predicado: "pergunta_analista", args: ["web_srv_04", "ev_e1", "shell_servico"], origem: "regra", regra: 29, premissas: [280, 4, 273] }
-      ],
-      erro: null
-    };
-  } else if (isC7 && ans) {
-    const conclPred = ans === 'sim' ? 'compromisso_confirmado' : (ans === 'nao' ? 'tentativa_sem_impacto' : 'suspeita');
-    const ruleFired = ans === 'sim' ? 30 : (ans === 'nao' ? 31 : 32);
-    responseJson = {
-      estado: "concluido",
-      motor,
-      versaoKB: "5.1",
-      perguntas: [],
-      incidentes: [
-        { predicado: conclPred, args: ["web_srv_04", "ev_e1"] }
-      ],
-      tickets: [
-        { predicado: "ticket", args: [{"f": "tkt", "args": ["r17", "ev_e1"]}, "web_srv_04", "inspecao_manual_do_host", "media", "p3", ["web_srv_04"]], fechado: true },
-        { predicado: "ticket", args: [{"f": "tkt", "args": ["r" + ruleFired, "ev_e1"]}, "web_srv_04", ans === 'sim' ? "isolar_maquina" : "vigilancia", ans === 'sim' ? "critica" : "baixa", ans === 'sim' ? "p1" : "p4", ["web_srv_04"]], fechado: false }
-      ],
-      factos: [
-        { n: 273, predicado: "estado_sensor", args: ["web_srv_04", "agente_host", "offline"], origem: "entrada", passo: "cenario_07" },
-        { n: 292, predicado: "resposta_analista", args: ["web_srv_04", "ev_e1", "shell_servico", ans], origem: "entrada", passo: "resposta_1" },
-        { n: 295, predicado: conclPred, args: ["web_srv_04", "ev_e1"], origem: "regra", regra: ruleFired, premissas: [280, 292] }
-      ],
-      erro: null
-    };
-  } else {
-    const tkt = TICKETS.find(t => t.scen === scenKey) || TICKETS[0];
-    responseJson = {
-      estado: "concluido",
-      motor,
-      versaoKB: "5.1",
-      perguntas: [],
-      incidentes: [
-        { predicado: "compromisso_confirmado", args: [tkt?.alvo || "web_srv_01", "ev_a1"] }
-      ],
-      tickets: [
-        { predicado: "ticket", args: [tkt?.id || "TKT-R15-01", tkt?.alvo || "web_srv_01", tkt?.acao || "isolar_maquina", tkt?.sev || "critica", (tkt?.prio || "P1").toLowerCase(), [tkt?.alvo || "web_srv_01"]], fechado: false }
-      ],
-      factos: [
-        { n: 11, predicado: "criticidade", args: [tkt?.alvo || "web_srv_01", tkt?.criticidade || 8], origem: "inicial" },
-        { n: 98, predicado: "alerta_ids", args: ["ev_a1", tkt?.alvo || "web_srv_01", "sig_apache_path_traversal"], origem: "entrada", passo: passos[0].id },
-        { n: 210, predicado: "compromisso_confirmado", args: [tkt?.alvo || "web_srv_01", "ev_a1"], origem: "regra", regra: 13, premissas: [205, 89, 102, 103] }
-      ],
-      erro: null
-    };
-  }
-
-  return { endpoint: `POST /api/${motor}/infer`, requestJson, responseJson };
-}
+// v117: a resposta de exemplo escrita à mão foi removida; este nome só existe por compatibilidade e nunca é chamado.
+function buildContractPayloadAndResponse() { return { requestJson: { versaoKB: '6', passos: [] }, responseJson: null }; }
 
 // Injetar Cartão Interativo do Contrato JSON v5.1 e Botão de Teste de Perguntas no Painel Inspetor
 
@@ -6208,677 +6094,7 @@ function toggleInspectorWide() {
 // ---------------------------------------------------------------------
 // 2. CATÁLOGO FORENSE COMPLETO (WHO · HOW · WHY-NOT) PARA C1–C13 E ALL
 // ---------------------------------------------------------------------
-const FORENSIC_EXPLANATIONS_V53 = {
-  all: {
-    title: 'Lote Global (C1 a C13) · Auditoria Consolidada de Todos os Cenários',
-    context: {
-      atacante: 'Múltiplas origens externas (ip_203_0_113_50 reincidente, ip_198_51_100_20..31, c2_203_0_113_9) + pivô interno DMZ (web_srv_01).',
-      alvo: '10 ativos monitorizados na DMZ e Rede Interna (criticidades entre 3/10 e 9/10; cobertura completa em 8 hosts, parcial em web_srv_05, ausente em web_srv_07).',
-      ameaca: '3 vetores no catálogo: CVE-2021-41773 (Apache 2.4.49 RCE), CVE-2021-44228 (Log4Shell 2.0.0–2.14.1), vuln_interna_sqli_loja (1.0.0–1.2.0) + Recon/Lateral/IoC.',
-      cronologia: 'Janela global t = 900 s (C1) até t = 11200 s (C8). Correlações temporais avaliadas a 60 s (RCE), 120 s (SQLi), 900 s (Recon→Login) e 3600 s (Movimento Lateral).'
-    },
-    how: [
-      {
-        rule: 'R1 + R5 → R7',
-        goal: 'exploracao_possivel(Ev, Alvo, Vuln) [C2, C7, C8, C9, C12]',
-        note: 'Valida em simultâneo exposição perimetral do porto na firewall (R5) e versão SemVer dentro do intervalo vulnerável sem backport (R1).',
-        premises: [
-          { kind: 'kb', text: 'facto(21..28, exposto(Alvo, Porto, internet)) ∧ facto(49..63, componente/versao SemVer)' },
-          { kind: 'calc', text: 'versao_cmp(V, >=, Min) ∧ versao_cmp(V, =<, Max) → TRUE' },
-          { kind: 'naf', text: '\\+ corrigido_backport(Inst, Vuln) → TRUE (exceto web_srv_03 no C4)' }
-        ]
-      },
-      {
-        rule: 'R13 + R14/R15/R16',
-        goal: 'compromisso_confirmado(Alvo, Ev) → isolar_maquina [C2, C9]',
-        note: 'Confirma intrusão quando o evento de host esperado ocorre dentro da janela temporal máxima e é lançado pelo processo pai do serviço vulnerável.',
-        premises: [
-          { kind: 'ded', text: 'exploracao_possivel(ev_a1, web_srv_01, cve_2021_41773) ∧ exploracao_possivel(ev_h1, app_srv_01, vuln_interna_sqli_loja)' },
-          { kind: 'in', text: 'facto(102..104, shell_iniciada por httpd aos 1012s) ∧ facto(137..139, resposta_volumosa por java_loja aos 5030s)' },
-          { kind: 'calc', text: 'depois(ev_a2, ev_a1, 60) [Δt=12s ≤ 60s] ∧ depois(ev_h2, ev_h1, 120) [Δt=30s ≤ 120s]' }
-        ]
-      },
-      {
-        rule: 'R17 / R29 (C7)',
-        goal: 'pergunta_analista(web_srv_04, ev_e1, shell_servico)',
-        note: 'Degradação graciosa perante sensor EDR offline: abre ticket P3 preliminar e aguarda input humano (SIM → R18 P1; NÃO → R19 P4; NÃO SEI → R20 P3).',
-        premises: [
-          { kind: 'ded', text: 'exploracao_possivel(ev_e1, web_srv_04, cve_2021_41773) (via R1 + R5 → R7)' },
-          { kind: 'in', text: 'facto(121, estado_sensor(web_srv_04, agente_host, offline))' },
-          { kind: 'naf', text: '\\+ resposta_analista(web_srv_04, ev_e1, _) (no 1º passo stateless)' }
-        ]
-      },
-      {
-        rule: 'R23 + R25/R26 + R27',
-        goal: 'Contenção de Identidade (C10), Propagação Lateral (C3) e C2 (C11)',
-        note: 'Revoga credenciais sem isolar host em C10 (R23), propaga compromisso DMZ→BD em C3 (R26) e bloqueia C2 determinístico em C11 (R27).',
-        premises: [
-          { kind: 'in', text: 'facto(105, login_ok(ev_i1, db_srv_01, web_srv_01, ssh)) ∧ facto(148, trafego_saida(ev_k1, app_srv_01, c2_203_0_113_9))' },
-          { kind: 'kb', text: 'facto(91, permitido(db_srv_01, ssh, jumpbox_admin)) ∧ facto(92, ioc(c2_203_0_113_9, c2))' },
-          { kind: 'calc', text: 'depois(ev_i1, ev_a1, 3600) [Δt=100s ≤ 3600s] ∧ depois(ev_j2, ev_j1, 900) [Δt=300s ≤ 900s]' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'compromisso_confirmado(app_srv_01, ev_g1) [Cenário 8]',
-        rule: 'R13 (Confirmação Temporal)',
-        verified: ['✓ TRUE: exploracao_possivel(ev_g1, app_srv_01, cve_2021_44228)', '✓ TRUE: evento_processo(ev_g2, java_loja)'],
-        failed: '✕ FALSE: depois(ev_g2, ev_g1, 60) — T2(11200s) - T1(4000s) = 7200s (> janela máxima de 60s).'
-      },
-      {
-        goal: 'compromisso_confirmado(web_srv_06, ev_l1) [Cenário 12]',
-        rule: 'R13 (Validação de Processo Pai)',
-        verified: ['✓ TRUE: exploracao_possivel(ev_l1, web_srv_06, cve_2021_41773)', '✓ TRUE: depois(ev_l2, ev_l1, 60) [Δt = 20s ≤ 60s]'],
-        failed: '✕ FALSE: evento_processo(ev_l2, httpd) — Na base consta facto(155, evento_processo(ev_l2, sshd)), disparando R31 (impacto_ambiguo) em vez de R13.'
-      },
-      {
-        goal: 'tentativa_sem_impacto(ev_m1, web_srv_07, _) [Cenário 13]',
-        rule: 'R6 / R10 (Exclusão sob Mundo Fechado)',
-        verified: ['✓ TRUE: \\+ exposto(web_srv_07, 80, internet) ∧ \\+ componente(_, web_srv_07, apache_httpd)'],
-        failed: '✕ BLOQUEADA: cobertura(web_srv_07, rede/sbom, completa) — Ativo recém-descoberto sem cobertura auditada; dispara R29/R30 (exploracao_incerta).'
-      }
-    ]
-  },
-  c1: {
-    title: 'Cenário 1 · Exploit contra Servidor já Corrigido (Apache 2.4.52)',
-    context: {
-      atacante: 'IP ip_203_0_113_50 (#95) · Zona: internet (#96) · Estado inicial: não catalogado (passa a origem_hostil via R11).',
-      alvo: 'Host: web_srv_02 · Zona: dmz (#2) · Criticidade: 3/10 (#12) · Cobertura: rede=completa (#33), sbom=completa (#34).',
-      ameaca: 'CVE: cve_2021_41773 (#86) · Componente: apache_httpd (#50) · Versão instalada: v(2,4,52) (#58) vs afetada [2.4.49, 2.4.49] (#69, #70).',
-      cronologia: 'Alerta IDS ev_b1 em t1 = 900 s (#97) · Sem evento subsequente no host · Avaliação estática imediata.'
-    },
-    how: [
-      {
-        rule: 'R3',
-        goal: 'nao_afetado(web_srv_02, cve_2021_41773)',
-        note: 'Versão instalada v(2,4,52) é estritamente superior à versão máxima vulnerável v(2,4,49).',
-        premises: [
-          { kind: 'kb', text: 'facto(50, componente(web_srv_02_apache, web_srv_02, apache_httpd))' },
-          { kind: 'kb', text: 'facto(68, vuln_afeta(cve_2021_41773, apache_httpd))' },
-          { kind: 'kb', text: 'facto(58, versao(web_srv_02_apache, v(2,4,52))) ∧ facto(70, versao_max(cve_2021_41773, v(2,4,49)))' },
-          { kind: 'calc', text: 'versao_cmp(v(2,4,52), >, v(2,4,49)) → TRUE (52 > 49)' }
-        ]
-      },
-      {
-        rule: 'R9',
-        goal: 'tentativa_sem_impacto(ev_b1, web_srv_02, versao_corrigida)',
-        note: 'Cruza o alerta real do IDS com a prova formal de imunidade do ativo.',
-        premises: [
-          { kind: 'in', text: 'facto(94, alerta_ids(ev_b1, web_srv_02, sig_apache_path_traversal))' },
-          { kind: 'kb', text: 'facto(86, assinatura_vuln(sig_apache_path_traversal, cve_2021_41773))' },
-          { kind: 'ded', text: 'nao_afetado(web_srv_02, cve_2021_41773) (deduzido por R3)' }
-        ]
-      },
-      {
-        rule: 'R11',
-        goal: 'origem_hostil(ip_203_0_113_50) + ticket(tkt(r11,ev_b1), p4)',
-        note: 'Cataloga o IP atacante para deteção futura de reincidência (usado no C2) e abre ticket informativo P4.',
-        premises: [
-          { kind: 'ded', text: 'tentativa_sem_impacto(ev_b1, web_srv_02, versao_corrigida) (deduzido por R9)' },
-          { kind: 'in', text: 'facto(95, origem(ev_b1, ip_203_0_113_50))' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'vulneravel(web_srv_02, cve_2021_41773)',
-        rule: 'R1 (Ativo Vulnerável no Intervalo)',
-        verified: ['✓ TRUE: componente(web_srv_02_apache, web_srv_02, apache_httpd) (#50)', '✓ TRUE: versao_cmp(v(2,4,52), >=, v(2,4,49))'],
-        failed: '✕ FALSE: versao_cmp(v(2,4,52), =<, v(2,4,49)) — A versão instalada v(2,4,52) excede o limite superior v(2,4,49) (#70).'
-      },
-      {
-        goal: 'exploracao_possivel(ev_b1, web_srv_02, cve_2021_41773)',
-        rule: 'R7 (Conjunção Vetor Aberto ∧ Vulnerável)',
-        verified: ['✓ TRUE: vetor_aberto(ev_b1, web_srv_02, cve_2021_41773) (porto 80 exposto #23)'],
-        failed: '✕ FALSE: vulneravel(web_srv_02, cve_2021_41773) — Não derivada porque o ativo foi provado nao_afetado por R3.'
-      }
-    ]
-  },
-  c2: {
-    title: 'Cenário 2 · RCE Confirmado por Processo Pai (httpd → shell aos 12 s) & Reincidência',
-    context: {
-      atacante: 'IP ip_203_0_113_50 (#99) · Zona: internet (#100) · Reincidente: já catalogado como origem_hostil(ip_203_0_113_50) no C1.',
-      alvo: 'Host: web_srv_01 · Zona: dmz (#1) · Criticidade: 8/10 (#11, Crítico ≥ 8) · Cobertura: rede=completa (#31), sbom=completa (#32).',
-      ameaca: 'CVE: cve_2021_41773 (#68) · Software: apache_httpd v(2,4,49) (#49, #57) · Processo esperado: httpd (#65) · Impacto: execucao_remota (#73).',
-      cronologia: 'Alerta IDS ev_a1 em t1 = 1000 s (#101) · Evento Host ev_a2 (shell_iniciada) em t2 = 1012 s (#104) · Δt = 12 s ≤ janela máxima 60 s (#89).'
-    },
-    how: [
-      {
-        rule: 'R1',
-        goal: 'vulneravel(web_srv_01, cve_2021_41773)',
-        note: 'Apache v(2,4,49) está dentro do intervalo [2.4.49, 2.4.49] e não possui backport.',
-        premises: [
-          { kind: 'kb', text: 'facto(49, componente(web_srv_01_apache, web_srv_01, apache_httpd)) ∧ facto(57, versao(web_srv_01_apache, v(2,4,49)))' },
-          { kind: 'kb', text: 'facto(69, versao_min(cve_2021_41773, v(2,4,49))) ∧ facto(70, versao_max(cve_2021_41773, v(2,4,49)))' },
-          { kind: 'calc', text: 'versao_cmp(v(2,4,49), >=, v(2,4,49)) ∧ versao_cmp(v(2,4,49), =<, v(2,4,49)) → TRUE' },
-          { kind: 'naf', text: '\\+ corrigido_backport(web_srv_01_apache, cve_2021_41773) → TRUE' }
-        ]
-      },
-      {
-        rule: 'R5 → R7',
-        goal: 'exploracao_possivel(ev_a1, web_srv_01, cve_2021_41773)',
-        note: 'Porto 80 exposto à Internet (R5) combinado com ativo vulnerável (R1).',
-        premises: [
-          { kind: 'in', text: 'facto(98, alerta_ids(ev_a1, web_srv_01, sig_apache_path_traversal)) ∧ facto(100, origem_zona(ev_a1, internet))' },
-          { kind: 'kb', text: 'facto(21, exposto(web_srv_01, 80, internet)) ∧ facto(72, vuln_porto(cve_2021_41773, 80))' },
-          { kind: 'ded', text: 'vetor_aberto(ev_a1, web_srv_01, cve_2021_41773) ∧ vulneravel(web_srv_01, cve_2021_41773)' }
-        ]
-      },
-      {
-        rule: 'R12',
-        goal: 'ataque_dirigido(ev_a1, web_srv_01) + acao(web_srv_01, bloquear_ip(ip_203_0_113_50))',
-        note: 'Atacante já vigiado desde C1 ataca agora um ativo vulnerável → bloqueio perimetral imediato.',
-        premises: [
-          { kind: 'ded', text: 'exploracao_possivel(ev_a1, web_srv_01, cve_2021_41773) ∧ origem_hostil(ip_203_0_113_50)' },
-          { kind: 'in', text: 'facto(99, origem(ev_a1, ip_203_0_113_50))' }
-        ]
-      },
-      {
-        rule: 'R13 → R14 + R15',
-        goal: 'compromisso_confirmado(web_srv_01, ev_a1) → isolar_maquina + escalar_nivel2 + ticket(p1)',
-        note: 'Shell iniciada aos 12 s pelo processo httpd confirma RCE; criticidade 8 (≥ 8) dispara escalamento P1.',
-        premises: [
-          { kind: 'kb', text: 'facto(73, vuln_impacto(cve_2021_41773, execucao_remota)) ∧ facto(89, evidencia_impacto(execucao_remota, shell_iniciada, 60))' },
-          { kind: 'in', text: 'facto(102, evento_host(ev_a2, web_srv_01, shell_iniciada)) ∧ facto(103, evento_processo(ev_a2, httpd))' },
-          { kind: 'calc', text: 'depois(ev_a2, ev_a1, 60) → 1012 - 1000 = 12 s ≤ 60 s (TRUE)' },
-          { kind: 'kb', text: 'facto(65, processo_componente(apache_httpd, httpd)) ∧ facto(11, criticidade(web_srv_01, 8)) [8 >= 8]' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'impacto_ambiguo(web_srv_01, ev_a1)',
-        rule: 'R31 (Impacto Ambíguo por Processo Concorrente)',
-        verified: ['✓ TRUE: exploracao_possivel(ev_a1, web_srv_01, cve_2021_41773)', '✓ TRUE: depois(ev_a2, ev_a1, 60)'],
-        failed: '✕ FALSE: \\+ evento_processo(ev_a2, httpd) — Falha porque facto(103, evento_processo(ev_a2, httpd)) está presente (o processo pai é mesmo o httpd).'
-      },
-      {
-        goal: 'ticket(tkt(r16, ev_a1), web_srv_01, isolar_maquina, critica, p2, [web_srv_01])',
-        rule: 'R16 (Isolamento Standard P2 para Criticidade < 8)',
-        verified: ['✓ TRUE: compromisso_confirmado(web_srv_01, ev_a1)'],
-        failed: '✕ FALSE: avalia(criticidade(web_srv_01, <, 8)) — O facto #11 define criticidade 8 (≥ 8), ativando R15 (P1) em vez de R16 (P2).'
-      }
-    ]
-  },
-  c3: {
-    title: 'Cenário 3 · Movimento Lateral DMZ → Base de Dados (SSH 100 s após Compromisso)',
-    context: {
-      atacante: 'Origem interna comprometida: web_srv_01 (zona dmz #1) em ev_i1 (#105) · Controlo negativo: jumpbox_admin (rede_interna #10) em ev_i2 (#107).',
-      alvo: 'Host: db_srv_01 · Zona: rede_interna (#9) · Criticidade: 9/10 (#19, Crítico ≥ 8) · Portos expostos: 5432 e 22 na rede_interna (#29, #30).',
-      ameaca: 'Abuso de credenciais SSH entre zonas (DMZ → Rede Interna) violando a política de segregação (#91 apenas autoriza jumpbox_admin).',
-      cronologia: 'Compromisso de web_srv_01 em t1 = 1000 s (#101) · Login SSH ev_i1 em t2 = 1100 s (#106) · Δt = 100 s ≤ janela máxima de 3600 s (1 h).'
-    },
-    how: [
-      {
-        rule: 'R24',
-        goal: 'violacao_politica(ev_i1, db_srv_01, web_srv_01)',
-        note: 'Login SSH válido em db_srv_01 originado em web_srv_01, que não consta na lista permitido/3.',
-        premises: [
-          { kind: 'in', text: 'facto(105, login_ok(ev_i1, db_srv_01, web_srv_01, ssh))' },
-          { kind: 'naf', text: '\\+ permitido(db_srv_01, ssh, web_srv_01) → TRUE (facto #91 apenas permite jumpbox_admin)' }
-        ]
-      },
-      {
-        rule: 'R25',
-        goal: 'movimento_lateral(ev_i1, db_srv_01, web_srv_01) + revogar_credenciais + cortar_sessoes + ticket(p2)',
-        note: 'Transição não autorizada da zona DMZ para a zona protegida rede_interna.',
-        premises: [
-          { kind: 'ded', text: 'violacao_politica(ev_i1, db_srv_01, web_srv_01) (deduzido por R24)' },
-          { kind: 'kb', text: 'facto(1, zona(web_srv_01, dmz)) ∧ facto(9, zona(db_srv_01, rede_interna))' }
-        ]
-      },
-      {
-        rule: 'R26 → R14 + R15',
-        goal: 'compromisso_confirmado(db_srv_01, ev_i1) → isolar_maquina + escalar_nivel2 + ticket(p1)',
-        note: 'Como web_srv_01 foi comprometido há 100 s (≤ 3600 s), o compromisso propaga-se à Base de Dados (criticidade 9/10).',
-        premises: [
-          { kind: 'ded', text: 'movimento_lateral(ev_i1, db_srv_01, web_srv_01) ∧ compromisso_confirmado(web_srv_01, ev_a1)' },
-          { kind: 'calc', text: 'depois(ev_i1, ev_a1, 3600) → 1100 - 1000 = 100 s ≤ 3600 s (TRUE)' },
-          { kind: 'kb', text: 'facto(19, criticidade(db_srv_01, 9)) [9 >= 8 → Ticket P1 Crítico]' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'violacao_politica(ev_i2, db_srv_01, jumpbox_admin) [Controlo Negativo]',
-        rule: 'R24 (Violação de Política de Acesso)',
-        verified: ['✓ TRUE: facto(107, login_ok(ev_i2, db_srv_01, jumpbox_admin, ssh)) em t=1200s (#108)'],
-        failed: '✕ BLOQUEADA: \\+ permitido(db_srv_01, ssh, jumpbox_admin) — FALSA porque existe o facto(91, permitido(db_srv_01, ssh, jumpbox_admin)). Login legítimo ignorado!'
-      }
-    ]
-  },
-  c4: {
-    title: 'Cenário 4 · Versão 2.4.49 Protegida por Backport da Distribuição (R4)',
-    context: {
-      atacante: 'IP ip_198_51_100_20 (#110) · Zona: internet (#111) · Catalogado como origem_hostil após tentativa.',
-      alvo: 'Host: web_srv_03 · Zona: dmz (#3) · Criticidade: 5/10 (#13) · Cobertura: rede=completa (#35), sbom=completa (#36).',
-      ameaca: 'CVE: cve_2021_41773 (#86) · Componente: apache_httpd v(2,4,49) (#51, #59) COM patch de backport aplicado (#64).',
-      cronologia: 'Alerta IDS ev_c1 registado em t1 = 2000 s (#112) · Sem impacto no host.'
-    },
-    how: [
-      {
-        rule: 'R4',
-        goal: 'nao_afetado(web_srv_03, cve_2021_41773)',
-        note: 'Exceção de segurança por backport: apesar de manter o número v(2,4,49), o pacote da distribuição está corrigido.',
-        premises: [
-          { kind: 'kb', text: 'facto(51, componente(web_srv_03_apache, web_srv_03, apache_httpd))' },
-          { kind: 'kb', text: 'facto(68, vuln_afeta(cve_2021_41773, apache_httpd))' },
-          { kind: 'kb', text: 'facto(64, corrigido_backport(web_srv_03_apache, cve_2021_41773))' }
-        ]
-      },
-      {
-        rule: 'R9 → R11',
-        goal: 'tentativa_sem_impacto(ev_c1, web_srv_03, versao_corrigida) → origem_hostil + ticket(p4)',
-        note: 'Regista a tentativa real detetada pelo IDS e coloca ip_198_51_100_20 sob vigilância P4.',
-        premises: [
-          { kind: 'in', text: 'facto(109, alerta_ids(ev_c1, web_srv_03, sig_apache_path_traversal)) ∧ facto(110, origem(ev_c1, ip_198_51_100_20))' },
-          { kind: 'ded', text: 'nao_afetado(web_srv_03, cve_2021_41773) (deduzido por R4)' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'vulneravel(web_srv_03, cve_2021_41773)',
-        rule: 'R1 (Ativo Vulnerável no Intervalo)',
-        verified: ['✓ TRUE: versao(web_srv_03_apache, v(2,4,49)) (#59)', '✓ TRUE: versao_cmp(v(2,4,49), >=, v(2,4,49)) ∧ versao_cmp(v(2,4,49), =<, v(2,4,49))'],
-        failed: '✕ BLOQUEADA: \\+ corrigido_backport(web_srv_03_apache, cve_2021_41773) — FALSA porque o facto #64 atesta correção por backport.'
-      }
-    ]
-  },
-  c5: {
-    title: 'Cenário 5 · Ruído Descontextualizado: Exploit Apache contra Base de Dados (R6 & R10)',
-    context: {
-      atacante: 'IP ip_198_51_100_21 (#114) · Zona: internet (#115) · Catalogado como origem_hostil via R11.',
-      alvo: 'Host: db_srv_01 · Zona: rede_interna (#9) · Criticidade: 9/10 (#19) · Cobertura: rede=completa (#45), sbom=completa (#46).',
-      ameaca: 'Assinatura sig_apache_path_traversal (cve_2021_41773, porto 80, apache_httpd) disparada contra servidor de Base de Dados.',
-      cronologia: 'Alerta IDS ev_d1 em t1 = 2100 s (#116) · Bloqueado no perímetro e sem software alvo.'
-    },
-    how: [
-      {
-        rule: 'R6',
-        goal: 'tentativa_sem_impacto(ev_d1, db_srv_01, vetor_fechado)',
-        note: 'Porto 80 não está exposto à Internet em db_srv_01 e a auditoria de rede está confirmada como completa.',
-        premises: [
-          { kind: 'in', text: 'facto(113, alerta_ids(ev_d1, db_srv_01, sig_apache_path_traversal)) ∧ facto(115, origem_zona(ev_d1, internet))' },
-          { kind: 'naf', text: '\\+ exposto(db_srv_01, 80, internet) → TRUE (apenas expõe 5432 e 22 na rede_interna #29, #30)' },
-          { kind: 'kb', text: 'facto(45, cobertura(db_srv_01, rede, completa))' }
-        ]
-      },
-      {
-        rule: 'R10',
-        goal: 'tentativa_sem_impacto(ev_d1, db_srv_01, componente_ausente)',
-        note: 'A base de dados não tem apache_httpd instalado e o inventário SBOM está completo.',
-        premises: [
-          { kind: 'kb', text: 'facto(68, vuln_afeta(cve_2021_41773, apache_httpd)) ∧ facto(46, cobertura(db_srv_01, sbom, completa))' },
-          { kind: 'naf', text: '\\+ componente(_, db_srv_01, apache_httpd) → TRUE' }
-        ]
-      },
-      {
-        rule: 'R11',
-        goal: 'origem_hostil(ip_198_51_100_21) + ticket(tkt(r11,ev_d1), p4)',
-        note: 'Mesmo sendo inofensivo para a BD, o IP atacante fica registado sob vigilância P4.',
-        premises: [
-          { kind: 'ded', text: 'tentativa_sem_impacto(ev_d1, db_srv_01, _)' },
-          { kind: 'in', text: 'facto(114, origem(ev_d1, ip_198_51_100_21))' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'vetor_aberto(ev_d1, db_srv_01, cve_2021_41773)',
-        rule: 'R5 (Vetor de Rede Aberto)',
-        verified: ['✓ TRUE: alerta_ids(ev_d1, db_srv_01, sig_apache_path_traversal)', '✓ TRUE: vuln_porto(cve_2021_41773, 80)'],
-        failed: '✕ FALSE: exposto(db_srv_01, 80, internet) — A firewall bloqueia tráfego externo para db_srv_01.'
-      },
-      {
-        goal: 'exploracao_incerta(ev_d1, db_srv_01, cve_2021_41773)',
-        rule: 'R29 / R30 (Incerteza por Mundo Aberto)',
-        verified: ['✓ TRUE: \\+ exposto(db_srv_01, 80, internet) ∧ \\+ componente(_, db_srv_01, apache_httpd)'],
-        failed: '✕ FALSE: \\+ cobertura(db_srv_01, rede/sbom, completa) — Os factos #45 e #46 garantem cobertura completa, descartando incerteza.'
-      }
-    ]
-  },
-  c6: {
-    title: 'Cenário 6 · Versão Omitida no SBOM — Princípio Fail-Secure (R8)',
-    context: {
-      atacante: 'IP ip_198_51_100_22 (#118) · Zona: internet (#119).',
-      alvo: 'Host: web_srv_05 · Zona: dmz (#5) · Criticidade: 4/10 (#15) · Cobertura: rede=completa (#39), sbom=parcial (#40).',
-      ameaca: 'CVE: cve_2021_41773 (#86) · Componente: web_srv_05_apache (#53, apache_httpd) instalado, mas SEM facto versao/2 na KB.',
-      cronologia: 'Alerta IDS ev_f1 em t1 = 2200 s (#120) · Emissão imediata de ticket P3 de verificação de inventário.'
-    },
-    how: [
-      {
-        rule: 'R5',
-        goal: 'vetor_aberto(ev_f1, web_srv_05, cve_2021_41773)',
-        note: 'O porto 80 de web_srv_05 está exposto à Internet (#26), permitindo a chegada do payload.',
-        premises: [
-          { kind: 'in', text: 'facto(117, alerta_ids(ev_f1, web_srv_05, sig_apache_path_traversal)) ∧ facto(119, origem_zona(ev_f1, internet))' },
-          { kind: 'kb', text: 'facto(26, exposto(web_srv_05, 80, internet))' }
-        ]
-      },
-      {
-        rule: 'R8',
-        goal: 'exploracao_incerta(ev_f1, web_srv_05, cve_2021_41773) + ticket(tkt(r8,ev_f1), p3, verificar_inventario)',
-        note: 'Princípio Fail-Secure: o componente Apache existe e o porto está aberto, mas falta a versão no SBOM.',
-        premises: [
-          { kind: 'ded', text: 'vetor_aberto(ev_f1, web_srv_05, cve_2021_41773) (deduzido por R5)' },
-          { kind: 'kb', text: 'facto(53, componente(web_srv_05_apache, web_srv_05, apache_httpd))' },
-          { kind: 'naf', text: '\\+ versao(web_srv_05_apache, _) → TRUE (nenhum facto versao para web_srv_05_apache nos factos #57–#63)' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'vulneravel(web_srv_05, cve_2021_41773)',
-        rule: 'R1 (Ativo Vulnerável)',
-        verified: ['✓ TRUE: facto(53, componente(web_srv_05_apache, web_srv_05, apache_httpd))'],
-        failed: '✕ FALSE: versao(web_srv_05_apache, V) — Sem registo de versão não é possível avaliar versao_cmp.'
-      },
-      {
-        goal: 'tentativa_sem_impacto(ev_f1, web_srv_05, _)',
-        rule: 'R9 / R10 (Tentativa sem Impacto)',
-        verified: ['✓ TRUE: alerta_ids(ev_f1, web_srv_05, sig_apache_path_traversal)'],
-        failed: '✕ BLOQUEADA: O sistema recusa assumir segurança por omissão de dados (Fail-Secure).'
-      }
-    ]
-  },
-  c7: {
-    title: 'Cenário 7 · Sensor EDR Offline & Interrogação Human-in-the-Loop (R17–R20)',
-    context: {
-      atacante: 'IP ip_198_51_100_23 (#123) · Zona: internet (#124).',
-      alvo: 'Host: web_srv_04 · Zona: dmz (#4) · Criticidade: 5/10 (#14) · Sensor Host: estado_sensor(web_srv_04, agente_host, offline) (#121).',
-      ameaca: 'CVE: cve_2021_41773 (#68) contra apache_httpd v(2,4,49) (#52, #60) no porto 80 exposto (#25).',
-      cronologia: 'Passo 1 (t1 = 3000 s, #125): conclui pergunta_analista e abre Ticket P3 · Passo 2 (resposta_1): fecha Ticket P3 e conclui incidente conforme resposta.'
-    },
-    how: [
-      {
-        rule: 'R1 + R5 → R7',
-        goal: 'exploracao_possivel(ev_e1, web_srv_04, cve_2021_41773)',
-        note: 'Reúne todas as condições técnicas de exploração (porto 80 aberto e Apache 2.4.49 sem backport).',
-        premises: [
-          { kind: 'kb', text: 'facto(25, exposto(web_srv_04, 80, internet)) ∧ facto(52, componente(web_srv_04_apache, web_srv_04, apache_httpd))' },
-          { kind: 'kb', text: 'facto(60, versao(web_srv_04_apache, v(2,4,49)))' },
-          { kind: 'in', text: 'facto(122, alerta_ids(ev_e1, web_srv_04, sig_apache_path_traversal))' }
-        ]
-      },
-      {
-        rule: 'R17 / R29 (1ª Execução Stateless)',
-        goal: 'pergunta_analista(web_srv_04, ev_e1, shell_servico) + ticket(p3, inspecao_manual_do_host)',
-        note: 'Perante sensor EDR offline e ausência de resposta_analista, gera pergunta pendente e suspende decisão final.',
-        premises: [
-          { kind: 'ded', text: 'exploracao_possivel(ev_e1, web_srv_04, cve_2021_41773)' },
-          { kind: 'in', text: 'facto(121, estado_sensor(web_srv_04, agente_host, offline))' },
-          { kind: 'naf', text: '\\+ resposta_analista(web_srv_04, ev_e1, _) (verdadeiro na 1ª chamada stateless)' }
-        ]
-      },
-      {
-        rule: 'R18 / R19 / R20 (2ª Execução após Input do Analista)',
-        goal: 'Desfecho Pós-Resposta + ticket_fechado(tkt(r29,ev_e1))',
-        note: 'Com o Passo 2 (resposta_1), R17 deixa de disparar, o ticket P3 preliminar é fechado e dispara R18 (SIM → P1), R19 (NÃO → P4) ou R20 (NÃO SEI → P3).',
-        premises: [
-          { kind: 'in', text: 'facto(161, resposta_analista(web_srv_04, ev_e1, shell_servico, sim | nao | nao_sei))' },
-          { kind: 'ded', text: 'exploracao_possivel(ev_e1, web_srv_04, cve_2021_41773)' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'compromisso_confirmado(web_srv_04, ev_e1) [Via R13 Automática]',
-        rule: 'R13 (Correlação Automática por Telemetria EDR)',
-        verified: ['✓ TRUE: exploracao_possivel(ev_e1, web_srv_04, cve_2021_41773)'],
-        failed: '✕ BLOQUEADA: evento_host(EvH, web_srv_04, shell_iniciada) — O agente EDR está offline (#121), obrigando à transferência de controlo para R17.'
-      }
-    ]
-  },
-  c8: {
-    title: 'Cenário 8 · Log4Shell Fora da Janela Temporal (Shell 2 h Depois > 60 s)',
-    context: {
-      atacante: 'IP ip_203_0_113_77 (#127) · Zona: internet (#128).',
-      alvo: 'Host: app_srv_01 · Zona: dmz (#8) · Criticidade: 6/10 (#18) · Cobertura: rede=completa (#43), sbom=completa (#44).',
-      ameaca: 'CVE: cve_2021_44228 (Log4Shell #74) · Componente: log4j_core v(2,12,1) (#56, #63) no intervalo [2.0.0, 2.14.1] (#75, #76) · Porto: 8080 (#28).',
-      cronologia: 'Alerta IDS ev_g1 em t1 = 4000 s (#129) · Shell iniciada ev_g2 (java_loja #131) em t2 = 11200 s (#132) · Δt = 7200 s (2 h) > janela de 60 s (#89)!'
-    },
-    how: [
-      {
-        rule: 'R1',
-        goal: 'vulneravel(app_srv_01, cve_2021_44228)',
-        note: 'Versão v(2,12,1) do log4j_core está contida em [v(2,0,0), v(2,14,1)].',
-        premises: [
-          { kind: 'kb', text: 'facto(56, componente(app_srv_01_log4j, app_srv_01, log4j_core)) ∧ facto(63, versao(app_srv_01_log4j, v(2,12,1)))' },
-          { kind: 'calc', text: 'versao_cmp(v(2,12,1), >=, v(2,0,0)) ∧ versao_cmp(v(2,12,1), =<, v(2,14,1)) → TRUE' }
-        ]
-      },
-      {
-        rule: 'R5 → R7',
-        goal: 'exploracao_possivel(ev_g1, app_srv_01, cve_2021_44228)',
-        note: 'O exploit JNDI chegou ao porto 8080 aberto e o componente era vulnerável, ficando registado como exploração possível.',
-        premises: [
-          { kind: 'in', text: 'facto(126, alerta_ids(ev_g1, app_srv_01, sig_log4shell_jndi)) ∧ facto(128, origem_zona(ev_g1, internet))' },
-          { kind: 'kb', text: 'facto(28, exposto(app_srv_01, 8080, internet))' },
-          { kind: 'ded', text: 'vetor_aberto(ev_g1, app_srv_01, cve_2021_44228) ∧ vulneravel(app_srv_01, cve_2021_44228)' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'compromisso_confirmado(app_srv_01, ev_g1)',
-        rule: 'R13 (Confirmação Temporal Estrita)',
-        verified: [
-          '✓ TRUE: exploracao_possivel(ev_g1, app_srv_01, cve_2021_44228)',
-          '✓ TRUE: facto(130, evento_host(ev_g2, app_srv_01, shell_iniciada))',
-          '✓ TRUE: facto(131, evento_processo(ev_g2, java_loja)) == processo_componente(log4j_core, java_loja) (#66)'
-        ],
-        failed: '✕ BLOQUEADA: depois(ev_g2, ev_g1, 60) — T2 (11200 s) − T1 (4000 s) = 7200 s, violando a janela máxima de 60 s (#89).'
-      }
-    ]
-  },
-  c9: {
-    title: 'Cenário 9 · SQL Injection na Loja App com Resposta Volumosa aos 30 s (P2)',
-    context: {
-      atacante: 'IP ip_203_0_113_88 (#134) · Zona: internet (#135).',
-      alvo: 'Host: app_srv_01 · Zona: dmz (#8) · Criticidade: 6/10 (#18, < 8 Standard) · Porto exposto: 8080 (#28).',
-      ameaca: 'Vulnerabilidade: vuln_interna_sqli_loja (#80) · Software: loja_app v(1,2,0) (#55, #62) · Impacto: injecao_sql → resposta_volumosa (#85, #90).',
-      cronologia: 'Alerta IDS ev_h1 em t1 = 5000 s (#136) · Evento Host ev_h2 (resposta_volumosa) em t2 = 5030 s (#139) · Δt = 30 s ≤ janela de 120 s (#90).'
-    },
-    how: [
-      {
-        rule: 'R1 + R5 → R7',
-        goal: 'exploracao_possivel(ev_h1, app_srv_01, vuln_interna_sqli_loja)',
-        note: 'Demonstra extensibilidade declarativa: novo tipo de ataque avaliado pelas mesmas regras R1, R5 e R7.',
-        premises: [
-          { kind: 'kb', text: 'facto(55, componente(app_srv_01_loja, app_srv_01, loja_app)) ∧ facto(62, versao(app_srv_01_loja, v(1,2,0)))' },
-          { kind: 'kb', text: 'facto(81..84, intervalo [1.0.0, 1.2.0] no porto 8080)' },
-          { kind: 'in', text: 'facto(133, alerta_ids(ev_h1, app_srv_01, sig_sqli_union))' }
-        ]
-      },
-      {
-        rule: 'R13 → R14 + R16',
-        goal: 'compromisso_confirmado(app_srv_01, ev_h1) → isolar_maquina + ticket(p2)',
-        note: 'Resposta HTTP anormalmente volumosa originada por java_loja 30 s após SQLi confirma exfiltração; criticidade 6 (< 8) gera ticket P2.',
-        premises: [
-          { kind: 'kb', text: 'facto(85, vuln_impacto(vuln_interna_sqli_loja, injecao_sql)) ∧ facto(90, evidencia_impacto(injecao_sql, resposta_volumosa, 120))' },
-          { kind: 'in', text: 'facto(137, evento_host(ev_h2, app_srv_01, resposta_volumosa)) ∧ facto(138, evento_processo(ev_h2, java_loja))' },
-          { kind: 'calc', text: 'depois(ev_h2, ev_h1, 120) → 5030 - 5000 = 30 s ≤ 120 s (TRUE)' },
-          { kind: 'kb', text: 'facto(18, criticidade(app_srv_01, 6)) [6 < 8 → R16 Ticket P2]' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'acao(app_srv_01, escalar_nivel2) + ticket(p1)',
-        rule: 'R15 (Escalamento Crítico Nível 2)',
-        verified: ['✓ TRUE: compromisso_confirmado(app_srv_01, ev_h1)'],
-        failed: '✕ FALSE: avalia(criticidade(app_srv_01, >=, 8)) — A criticidade de app_srv_01 é 6 (#18), pelo que é contido via R16 (P2) sem escalar para P1.'
-      }
-    ]
-  },
-  c10: {
-    title: 'Cenário 10 / 10b · Reconhecimento Seguido de Login SSH (Resposta Proporcional R23)',
-    context: {
-      atacante: 'IP ip_192_0_2_77 (#140, #144) · Realiza varrimento de portos e força bruta seguidos de login válido.',
-      alvo: 'Host: web_srv_02 · Zona: dmz (#2) · Criticidade: 3/10 (#12).',
-      ameaca: 'Sondagem de 450 portos (≥ 100) + 12 falhas de login (≥ 5) em 180 s (≤ 300 s), seguida de login SSH bem-sucedido.',
-      cronologia: 'Reconhecimento ev_j1 em t1 = 6000 s (#145) · Login SSH ev_j2 em t2 = 6300 s (#147) · Δt = 300 s (5 min) ≤ janela de 900 s (15 min).'
-    },
-    how: [
-      {
-        rule: 'R21 → R22',
-        goal: 'suspeita(web_srv_02, ev_j1) + origem_hostil(ip_192_0_2_77) + escuta_ativa + ticket(p3)',
-        note: 'Deteta padrão comportamental de reconhecimento e ativa telemetria verbosa no host.',
-        premises: [
-          { kind: 'in', text: 'facto(140, reconhecimento(ev_j1, web_srv_02, ip_192_0_2_77))' },
-          { kind: 'calc', text: 'portos_sondados(450 >= 100) ∧ falhas_login(12 >= 5) ∧ falhas_janela(180 =< 300) (#141–#143)' }
-        ]
-      },
-      {
-        rule: 'R23',
-        goal: 'acesso_suspeito(web_srv_02, ev_j2) + revogar_credenciais + cortar_sessoes + ticket(p2)',
-        note: 'Resposta proporcional centrada na identidade: revoga credenciais e corta sessões sem isolar a máquina da rede.',
-        premises: [
-          { kind: 'ded', text: 'suspeita(web_srv_02, ev_j1) (deduzido por R21)' },
-          { kind: 'in', text: 'facto(144, origem(ev_j1, ip_192_0_2_77)) ∧ facto(146, login_ok(ev_j2, web_srv_02, ip_192_0_2_77, ssh))' },
-          { kind: 'calc', text: 'depois(ev_j2, ev_j1, 900) → 6300 - 6000 = 300 s ≤ 900 s (TRUE)' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'acao(web_srv_02, isolar_maquina)',
-        rule: 'R14 (Isolamento Total de Rede via EDR)',
-        verified: ['✓ TRUE: acesso_suspeito(web_srv_02, ev_j2)'],
-        failed: '✕ BLOQUEADA: compromisso_confirmado(web_srv_02, _) — Login após varrimento indica compromisso de conta (R23) e não execução de código malicioso no host.'
-      }
-    ]
-  },
-  c11: {
-    title: 'Cenário 11 · Comunicação Outbound com Servidor C2 (IoC Determinístico R27)',
-    context: {
-      atacante: 'Infraestrutura Command & Control externa: c2_203_0_113_9 catalogada em Threat Intelligence (#92).',
-      alvo: 'Host interno originador do beacon: app_srv_01 · Zona: dmz (#8) · Criticidade: 6/10 (#18).',
-      ameaca: 'Tráfego de saída direto para endereço IP de C2 confirmado (ioc(c2_203_0_113_9, c2)).',
-      cronologia: 'Evento outbound ev_k1 detetado em t1 = 7000 s (#149) · Contenção imediata sem aguardar janelas.'
-    },
-    how: [
-      {
-        rule: 'R27',
-        goal: 'comunicacao_c2(ev_k1, app_srv_01, c2_203_0_113_9) + bloquear_ip(c2_203_0_113_9) + ticket(p1)',
-        note: 'Prova determinística de alta fidelidade: tráfego para C2 conhecido dispara bloqueio na firewall e ticket P1.',
-        premises: [
-          { kind: 'in', text: 'facto(148, trafego_saida(ev_k1, app_srv_01, c2_203_0_113_9))' },
-          { kind: 'kb', text: 'facto(92, ioc(c2_203_0_113_9, c2))' }
-        ]
-      },
-      {
-        rule: 'R14 + R16',
-        goal: 'acao(app_srv_01, isolar_maquina)',
-        note: 'Isola o host interno que estabeleceu canal de comando e controlo com o exterior.',
-        premises: [
-          { kind: 'ded', text: 'comunicacao_c2 / compromisso em app_srv_01 (via R27)' },
-          { kind: 'kb', text: 'facto(18, criticidade(app_srv_01, 6))' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'tentativa_sem_impacto(ev_k1, app_srv_01, _)',
-        rule: 'R6 / R9 / R10 (Triagem de Ruído Inbound)',
-        verified: ['✓ TRUE: Evento de rede registado em app_srv_01'],
-        failed: '✕ FALSE: Tráfego outbound originado no próprio ativo interno para IP C2 (#92) comprova infeção ativa já instalada.'
-      }
-    ]
-  },
-  c12: {
-    title: 'Cenário 12 · Coincidência Temporal mas Processo Pai Concorrente (sshd ≠ httpd · R31)',
-    context: {
-      atacante: 'IP externo ip_198_51_100_30 (#151) na zona internet (#152) + Sessão SSH administrativa concorrente no host.',
-      alvo: 'Host: web_srv_06 · Zona: dmz (#6) · Criticidade: 5/10 (#16) · Cobertura: rede=completa (#41), sbom=completa (#42).',
-      ameaca: 'Exploit CVE-2021-41773 contra apache_httpd v(2,4,49) (#54, #61, processo esperado: httpd #65), mas shell aberta por sshd (#155)!',
-      cronologia: 'Alerta IDS ev_l1 em t1 = 8000 s (#153) · Shell iniciada ev_l2 em t2 = 8020 s (#156) · Δt = 20 s ≤ 60 s, mas processo pai = sshd.'
-    },
-    how: [
-      {
-        rule: 'R1 + R5 → R7',
-        goal: 'exploracao_possivel(ev_l1, web_srv_06, cve_2021_41773)',
-        note: 'O servidor web_srv_06 tem o porto 80 exposto (#27) e corre a versão vulnerável 2.4.49 (#61).',
-        premises: [
-          { kind: 'kb', text: 'facto(27, exposto(web_srv_06, 80, internet)) ∧ facto(54, componente(web_srv_06_apache, web_srv_06, apache_httpd))' },
-          { kind: 'kb', text: 'facto(61, versao(web_srv_06_apache, v(2,4,49)))' },
-          { kind: 'in', text: 'facto(150, alerta_ids(ev_l1, web_srv_06, sig_apache_path_traversal))' }
-        ]
-      },
-      {
-        rule: 'R31',
-        goal: 'impacto_ambiguo(web_srv_06, ev_l1) + ticket(tkt(r31,ev_l1), p3, inspecionar_processos)',
-        note: 'Evita falso positivo de isolamento: a shell surgiu dentro dos 60 s, mas foi criada pelo daemon sshd e não pelo httpd atacado!',
-        premises: [
-          { kind: 'ded', text: 'exploracao_possivel(ev_l1, web_srv_06, cve_2021_41773)' },
-          { kind: 'in', text: 'facto(154, evento_host(ev_l2, web_srv_06, shell_iniciada))' },
-          { kind: 'calc', text: 'depois(ev_l2, ev_l1, 60) → 8020 - 8000 = 20 s ≤ 60 s (TRUE)' },
-          { kind: 'kb', text: 'facto(65, processo_componente(apache_httpd, httpd))' },
-          { kind: 'naf', text: '\\+ evento_processo(ev_l2, httpd) → TRUE (o facto #155 regista sshd e não httpd!)' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'compromisso_confirmado(web_srv_06, ev_l1) + acao(web_srv_06, isolar_maquina)',
-        rule: 'R13 (Confirmação de Compromisso por Processo Pai)',
-        verified: [
-          '✓ TRUE: exploracao_possivel(ev_l1, web_srv_06, cve_2021_41773)',
-          '✓ TRUE: evento_host(ev_l2, web_srv_06, shell_iniciada) dentro da janela (Δt = 20 s ≤ 60 s)',
-          '✓ TRUE: processo_componente(apache_httpd, httpd) (#65)'
-        ],
-        failed: '✕ BLOQUEADA: evento_processo(ev_l2, httpd) — FALSA porque na telemetria consta facto(155, evento_processo(ev_l2, sshd)). O servidor NÃO é isolado!'
-      }
-    ]
-  },
-  c13: {
-    title: 'Cenário 13 · Ativo Recém-Descoberto sem Inventário — Hipótese de Mundo Aberto (R29/R30)',
-    context: {
-      atacante: 'IP externo ip_198_51_100_31 (#158) · Zona: internet (#159).',
-      alvo: 'Host: web_srv_07 · Zona: dmz (#7) · Criticidade: 6/10 (#17) · Cobertura: AUSENTE (sem factos cobertura/3 para web_srv_07 nos factos #31–#48).',
-      ameaca: 'Exploit CVE-2021-41773 (sig_apache_path_traversal #157) contra ativo cujo inventário de portos e software ainda não foi recolhido.',
-      cronologia: 'Alerta IDS ev_m1 em t1 = 9000 s (#160) · Disparo simultâneo de R29 (recolher rede) e R30 (recolher SBOM).'
-    },
-    how: [
-      {
-        rule: 'R29',
-        goal: 'exploracao_incerta(ev_m1, web_srv_07, cve_2021_41773) + ticket(p3, recolher_inventario(rede))',
-        note: 'Mundo Aberto (Rede): não há registo de porto 80 exposto, mas a cobertura de rede não é completa → proibido concluir vetor fechado.',
-        premises: [
-          { kind: 'in', text: 'facto(157, alerta_ids(ev_m1, web_srv_07, sig_apache_path_traversal)) ∧ facto(159, origem_zona(ev_m1, internet))' },
-          { kind: 'naf', text: '\\+ exposto(web_srv_07, 80, internet) → TRUE' },
-          { kind: 'naf', text: '\\+ cobertura(web_srv_07, rede, completa) → TRUE (ausente na base estática)' }
-        ]
-      },
-      {
-        rule: 'R30',
-        goal: 'exploracao_incerta(ev_m1, web_srv_07, cve_2021_41773) + ticket(p3, recolher_inventario(sbom))',
-        note: 'Mundo Aberto (SBOM): não há registo de Apache instalado, mas a cobertura SBOM não é completa → proibido concluir componente ausente.',
-        premises: [
-          { kind: 'kb', text: 'facto(68, vuln_afeta(cve_2021_41773, apache_httpd))' },
-          { kind: 'naf', text: '\\+ componente(_, web_srv_07, apache_httpd) → TRUE' },
-          { kind: 'naf', text: '\\+ cobertura(web_srv_07, sbom, completa) → TRUE (ausente na base estática)' }
-        ]
-      }
-    ],
-    whynot: [
-      {
-        goal: 'tentativa_sem_impacto(ev_m1, web_srv_07, vetor_fechado)',
-        rule: 'R6 (Vetor Fechado Confirmado)',
-        verified: ['✓ TRUE: \\+ exposto(web_srv_07, 80, internet)'],
-        failed: '✕ BLOQUEADA: cobertura(web_srv_07, rede, completa) — FALSA (ausência de evidência não é evidência de ausência sob Mundo Aberto).'
-      },
-      {
-        goal: 'tentativa_sem_impacto(ev_m1, web_srv_07, componente_ausente)',
-        rule: 'R10 (Componente Ausente Confirmado)',
-        verified: ['✓ TRUE: \\+ componente(_, web_srv_07, apache_httpd)'],
-        failed: '✕ BLOQUEADA: cobertura(web_srv_07, sbom, completa) — FALSA (inventário SBOM de web_srv_07 ainda não foi auditado).'
-      }
-    ]
-  }
-};
+// (removido na v117: explicações escritas à mão, nunca usadas; tudo vem da API)
 
 function toggleAllHowTreeDetails(openState) {
   const box = $('insp');
@@ -15314,6 +14530,10 @@ v94Etapa = function(i) {
   const nome = n => n.id === 'kb' ? 'base de conhecimento' : n.label;
   const regras = novos.filter(n => n.t === 'rule');
   const concl = [...new Map([...novos.filter(n => n.t !== 'rule'), ...regras.flatMap(r => saidas(r.id))].map(n => [n.id, n])).values()];
+  // etapa só com conclusões: a regra que as concluiu disparou na etapa anterior
+  const regrasOrig = regras.length ? regras : [...new Map(novos.filter(n => n.t !== 'rule').flatMap(n => entradas(n.id).filter(x => x.t === 'rule')).map(r => [r.id, r])).values()];
+  const etapaDe = id => { for (let k = 0; k < snaps.length; k++) if (snaps[k].lit.has(id)) return k + 1; return null; };
+  const pl = (n, a, b) => `${n} ${n === 1 ? a : b}`;
   const lit = [...s.lit].map(id => byId[id]).filter(Boolean);
   const cnt = id => (s.lit.has(id) && byId[id]) ? (byId[id].count || 0) : 0;
   const ded = lit.filter(n => n.id.startsWith('d_')).reduce((a, n) => a + (n.count || 0), 0);
@@ -15326,14 +14546,14 @@ v94Etapa = function(i) {
   const stat = (v, l, cls = '') => `<div class="v96-st ${cls}"><b>${v}</b><span>${l}</span></div>`;
   const colComo = i === 0
     ? concl.map(n => `<div class="v96-row"><span class="v96-tag e">◇</span><span><b>${esc(nome(n))}</b>${n.count ? ` <em>${n.count}</em>` : ''}</span></div>`).join('')
-    : regras.map(r => `<div class="v96-row"><span class="v96-tag r" title="${esc(r.codeFull || r.code || '')}">${v96Codigos(r.codeFull || r.code)}</span><span><b>${esc(saidas(r.id).map(nome).join(', ') || r.label)}</b> <em>${r.count || 0}×</em><small>porque ${entradas(r.id).map(p => esc(nome(p))).join(' · ') || '—'}</small></span></div>`).join('') || '<div class="v96-mu">nenhuma regra nova nesta etapa</div>';
+    : regrasOrig.map(r => `<div class="v96-row"><span class="v96-tag r" title="${esc(r.codeFull || r.code || '')}">${v96Codigos(r.codeFull || r.code)}</span><span><b>${esc(saidas(r.id).map(nome).join(', ') || r.label)}</b> <em>${r.count || 0}×</em><small>porque ${entradas(r.id).map(p => esc(nome(p))).join(' · ') || '—'}</small></span></div>`).join('') || '<div class="v96-mu">nenhuma regra nova nesta etapa</div>';
   const colConcl = i === 0 ? '<div class="v96-mu">dados de partida</div>' : (concl.map(n => `<div class="v96-row"><span class="v96-tag ${n.t === 'action' ? 'a' : 'd'}">${n.t === 'action' ? '▲' : '◆'}</span><span><b>${esc(nome(n))}</b> <em>${n.count || 0}</em></span></div>`).join('') || '<div class="v96-mu">—</div>');
   const colFalta = falta.length ? falta.slice(0, 6).map(x => `<div class="v96-row"><span class="v96-tag f">…</span><span><b>${esc(x.n.label)}</b><small>${x.miss.length ? `falta ${x.miss.map(m => esc(nome(m))).join(', ')}` : x.r ? `${v96Codigos(x.r.codeFull || x.r.code)} na etapa seguinte` : ''}</small></span></div>`).join('') + (falta.length > 6 ? `<div class="v96-mu">+ ${falta.length - 6} por concluir</div>` : '') : '<div class="v96-ok">✓ inferência completa</div>';
   return `<div class="v96-et">
-    <div class="v96-h"><span class="v96-badge">E${i + 1}<small>/${snaps.length}</small></span><b>${i === 0 ? 'Entradas: telemetria e base de conhecimento' : `${regras.length} grupo(s) de regras disparam · ${concl.length} conclusão(ões)`}</b>
+    <div class="v96-h"><span class="v96-badge">E${i + 1}<small>/${snaps.length}</small></span><b>${i === 0 ? 'Entradas: telemetria e base de conhecimento' : regras.length ? `${pl(regras.length, 'regra dispara', 'regras disparam')} · ${pl(concl.length, 'conclusão', 'conclusões')}` : `${pl(concl.length, 'conclusão', 'conclusões')}${regrasOrig.length ? ` · ${regrasOrig.length === 1 ? 'da regra' : 'das regras'} ${regrasOrig.map(r => esc(String(r.code || r.label).split(/,\s*/)[0])).join(', ')} (E${regrasOrig.map(r => etapaDe(r.id)).filter(Boolean).join(', E')})` : ''}`}</b>
       <div class="v96-sts">${stat(ded, 'deduções')}${stat(nReg, 'regras')}${stat(cnt('d_incidente'), 'incidentes')}${stat(cnt('d_ticket'), 'tickets', 'a')}${stat(cnt('d_pergunta_analista'), 'perguntas', 'q')}</div></div>
     <div class="v96-cols">
-      <section><h6>${i === 0 ? 'Entraram' : 'Como · regras que dispararam'}</h6>${colComo}</section>
+      <section><h6>${i === 0 ? 'Entraram' : regras.length ? (regras.length === 1 ? 'Como · regra que disparou' : 'Como · regras que dispararam') : (regrasOrig.length === 1 ? 'Como · regra que concluiu (etapa anterior)' : 'Como · regras que concluíram (etapa anterior)')}</h6>${colComo || '<div class="v96-mu">—</div>'}</section>
       <section><h6>Concluído nesta etapa</h6>${colConcl}</section>
       <section><h6>Ainda por concluir · porquê</h6>${colFalta}</section>
     </div>
@@ -16102,6 +15322,1000 @@ v104Direita = (function(prev) { return function() { prev(); $('v104Est')?.remove
 
 /* v106: o notch aberto alarga para caber os controlos todos */
 (function(){ const st=document.createElement('style'); st.textContent=`body.v101 #dynamicIsland.expanded{width:870px !important;max-width:calc(100vw - 24px)}`; document.head.appendChild(st); })();
+
+/* =====================================================================
+   v108: (1) sem salto do grafo quando chega a resposta da inferência;
+         (2) botão Consola desbloqueado depois de "Ficar no grafo".
+   ===================================================================== */
+// (1) quando o grafo muda de tamanho de uma vez (resposta da API), a câmara
+//     ajusta-se no mesmo frame, em vez de mostrar o grafo grande e depois encolher.
+let _v108N = 0;
+const _v108Render = render;
+render = function() {
+  const r = _v108Render.apply(this, arguments);
+  const n = (typeof NODES !== 'undefined' && NODES) ? NODES.length : 0;
+  if (_v108N && n && Math.abs(n - _v108N) > Math.max(20, _v108N * 0.5)) {
+    try { if (_camAnimFrame) cancelAnimationFrame(_camAnimFrame); v111Salto(); } catch (e) {}
+  }
+  _v108N = n;
+  return r;
+};
+// (2) o estado das vistas (Consola ativa/inativa) é recalculado no fim da inferência,
+//     e não só quando se passa à Consola.
+const _v108After = v62AfterRun;
+v62AfterRun = function() {
+  const r = _v108After.apply(this, arguments);
+  [300, 1400, 2600].forEach(ms => setTimeout(() => { try { v94Tabs(); } catch (e) {} }, ms));
+  return r;
+};
+document.addEventListener('click', e => {
+  if (e.target.closest && e.target.closest('#v102Cd [data-v102]')) setTimeout(() => { try { v94Tabs(); } catch (er) {} }, 50);
+}, true);
+
+// (3) "Prova destacada": o ✕ desliga o destaque e a etiqueta desaparece
+const _v108Foco = v84Foco;
+v84Foco = function() {
+  _v108Foco.apply(this, arguments);
+  if (S.v83 && S.v83.destaque === false) { $('v84Badge')?.remove(); $('v84Foco')?.remove(); }
+};
+document.addEventListener('click', e => {
+  if (e.target.closest && e.target.closest('#v84Badge [data-x]')) setTimeout(() => { try { v84Foco(); } catch (er) {} }, 0);
+  if (e.target.closest && e.target.closest('[data-v91foco]') && S.v83) S.v83.destaque = true;
+}, true);
+
+/* =====================================================================
+   v109: (1) acentos e ç nos textos que o motor escreve sem eles (só na
+             apresentação: identificadores com _ e termos como nao(...) ficam iguais);
+         (2) grafo: as setas que não estão em uso deixam de ser desenhadas;
+         (3) grafo mais leve: sem brilho nas setas, e sem brilho nos nós
+             enquanto a câmara se move.
+   ===================================================================== */
+const V109_PT = {
+  acao:'ação', acoes:'ações', acessivel:'acessível', ambiguo:'ambíguo', ambigua:'ambígua', analise:'análise', apos:'após', area:'área', ate:'até',
+  atualizacao:'atualização', atualizacoes:'atualizações', catalogo:'catálogo', cenario:'cenário', cenarios:'cenários', codigo:'código',
+  compativel:'compatível', comunicacao:'comunicação', conclusao:'conclusão', conclusoes:'conclusões', condicao:'condição', condicoes:'condições',
+  confianca:'confiança', configuracao:'configuração', confirmacao:'confirmação', contencao:'contenção', correcao:'correção',
+  critica:'crítica', criticas:'críticas', critico:'crítico', criticos:'críticos', decisao:'decisão', duvida:'dúvida', endereco:'endereço',
+  evidencia:'evidência', evidencias:'evidências', excluida:'excluída', execucao:'execução', exploracao:'exploração', exploravel:'explorável',
+  expoe:'expõe', expos:'expôs', exposicao:'exposição', ha:'há', historico:'histórico', informacao:'informação', injecao:'injeção', inspecao:'inspeção',
+  instalacao:'instalação', instalacoes:'instalações', instancia:'instância', intermedio:'intermédio', inventario:'inventário', ja:'já',
+  lancada:'lançada', ligacao:'ligação', ligacoes:'ligações', maquina:'máquina', maquinas:'máquinas', media:'média', nao:'não', nivel:'nível', numero:'número',
+  opcao:'opção', opcoes:'opções', pagina:'página', politica:'política', politicas:'políticas', possivel:'possível', propagacao:'propagação', proprio:'próprio',
+  provavel:'provável', provaveis:'prováveis', publico:'público', publica:'pública', relogios:'relógios', reversivel:'reversível', ruido:'ruído', saida:'saída',
+  servico:'serviço', servicos:'serviços', sessao:'sessão', sessoes:'sessões', so:'só', tambem:'também', tecnica:'técnica', tolerancia:'tolerância',
+  trafego:'tráfego', ultimo:'último', ultima:'última', unico:'único', unica:'única', versao:'versão', versoes:'versões', vigilancia:'vigilância',
+  violacao:'violação', violacoes:'violações', vulneravel:'vulnerável', vulneraveis:'vulneráveis', deducao:'dedução', deducoes:'deduções'
+};
+const V109_RE = new RegExp('(?<![A-Za-z0-9_\\u00C0-\\u00FF])(' + Object.keys(V109_PT).join('|') + ')(?![A-Za-z0-9_(/\\u00C0-\\u00FF])', 'gi');
+const _v109Cache = new Map();
+function v109Pt(s) {
+  if (!s || s.length < 2) return s;
+  let r = _v109Cache.get(s);
+  if (r !== undefined) return r;
+  r = s.replace(V109_RE, w => {
+    const a = V109_PT[w.toLowerCase()];
+    if (w === w.toUpperCase() && w.length > 1) return a.toUpperCase();
+    if (w[0] === w[0].toUpperCase()) return a[0].toUpperCase() + a.slice(1);
+    return a;
+  });
+  if (_v109Cache.size > 20000) _v109Cache.clear();
+  _v109Cache.set(s, r);
+  return r;
+}
+const V109_SKIP = 'code, pre, textarea, script, style, input, select, [contenteditable], .v109-raw';
+function v109Texto(n) {
+  const p = n.parentElement;
+  if (!p || p.closest(V109_SKIP)) return;
+  const t = n.data, r = v109Pt(t);
+  if (r !== t) n.data = r;
+}
+function v109Arvore(root) {
+  if (root.nodeType === 3) return v109Texto(root);
+  if (root.nodeType !== 1 || root.closest?.(V109_SKIP)) return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let n; while ((n = w.nextNode())) v109Texto(n);
+}
+const _v109Obs = new MutationObserver(ms => {
+  for (const m of ms) {
+    if (m.type === 'characterData') v109Texto(m.target);
+    else m.addedNodes.forEach(v109Arvore);
+  }
+});
+_v109Obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+v109Arvore(document.body);
+
+// (2) setas fora de uso: não desenhadas (e sem zona de tooltip invisível)
+const _v109Render = render;
+render = function() {
+  const r = _v109Render.apply(this, arguments);
+  try {
+    gE.querySelectorAll('path.edge.dim').forEach(e => { const h = e.nextElementSibling; if (h && h.classList.contains('hit')) h.classList.add('v109-off'); });
+  } catch (e) {}
+  return r;
+};
+// (3) sem brilho nos nós enquanto a câmara se move; volta quando pára
+let _v109Mov = null;
+const _v109Upd = updateTransform;
+updateTransform = function() {
+  const s = $('svg');
+  if (s) { s.classList.add('v109-mov'); clearTimeout(_v109Mov); _v109Mov = setTimeout(() => s.classList.remove('v109-mov'), 180); }
+  return _v109Upd.apply(this, arguments);
+};
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    #gE .edge.sg-hide, #gE .hit.sg-hide, #gE .edge.dim, #gE .hit.v109-off,
+    #gA .andarc.sg-hide, #gA .andtx.sg-hide, #gA .andarc.dim, #gA .andtx.dim{display:none !important}
+    #svg .edge.lit{filter:none !important;stroke:#3be3f7}
+    #svg .edge.flow{filter:none !important}
+    #svg.v109-mov .node .box{filter:none !important}
+  `;
+  document.head.appendChild(st);
+})();
+
+/* =====================================================================
+   v110: (1) faixa de indicadores como separadores (opção B);
+         (2) menu da direita com nomes completos (opção A): Conhecimento,
+             Arquitetura, API e motores, Ajuda; o notch não muda;
+         (3) página nova "Arquitetura", no tema da vista Conhecimento.
+   ===================================================================== */
+
+// (2) menu da direita ------------------------------------------------------
+const V110_IC = {
+  doc: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5c0-1 4-2 8-2s8 1 8 2v14c0 1-4 2-8 2s-8-1-8-2z"/><path d="M4 12c0 1 4 2 8 2s8-1 8-2"/></svg>',
+  arq: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="8.5" y="14" width="7" height="7" rx="1"/><path d="M6.5 10v2h11v-2M12 12v2"/></svg>',
+  api: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>'
+};
+function v110Menu() {
+  const sec = $('v101Sec'), doc = $('tabDoc'), back = $('tabBack');
+  if (!sec || !doc || !back) return;
+  if (!doc.dataset.v110) { doc.dataset.v110 = 1; doc.innerHTML = V110_IC.doc + '<span>Conhecimento</span>'; doc.title = 'Base de conhecimento: regras, factos, metaconhecimento, prioridades e cenários'; }
+  if (!back.dataset.v110) { back.dataset.v110 = 1; back.innerHTML = V110_IC.api + '<span>API e motores</span>'; back.title = 'Estado do backend e dos motores, endpoints, último pedido e resposta'; }
+  let arq = $('tabArq');
+  if (!arq) {
+    arq = document.createElement('button');
+    arq.type = 'button'; arq.id = 'tabArq'; arq.className = 'svtab vtab'; arq.dataset.view = 'arq';
+    arq.title = 'Como o sistema está montado: camadas, motores, pedidos e explicações';
+    arq.innerHTML = V110_IC.arq + '<span>Arquitetura</span>';
+    doc.insertAdjacentElement('afterend', arq);
+    arq.addEventListener('click', e => { e.stopPropagation(); switchView('arq'); });
+  }
+  const h = $('bHelp');
+  if (h && !h.dataset.v110) { h.dataset.v110 = 1; h.innerHTML = '<b>?</b><span>Ajuda</span>'; }
+  if (!$('arqView')) {
+    const p = document.createElement('div'); p.id = 'arqView'; p.className = 'pane-container';
+    ($('backendView') || $('dossierView')).insertAdjacentElement('afterend', p);
+  }
+}
+
+// a vista "arq" usa o mesmo modo da app que as outras páginas do sistema (view-backend),
+// por isso o notch e o resto da app tratam-na como "fora da Consola/Grafo"
+const _v110Switch = switchView;
+switchView = function(name, updateUrl = true, hash) {
+  const app = $('app');
+  if (name !== 'arq') { app?.classList.remove('view-arq'); return _v110Switch.apply(this, arguments); }
+  const r = _v110Switch.call(this, 'backend', false);
+  app?.classList.add('view-arq');
+  document.querySelectorAll('.vtab').forEach(b => b.classList.toggle('active', b.id === 'tabArq'));
+  if ($('sSel')) $('sSel').innerHTML = 'vista: <b>Arquitetura</b>';
+  try { localStorage.setItem('soc_active_view', 'arq'); } catch (e) {}
+  if (updateUrl !== false && location.hash !== '#arquitetura') { try { history.pushState({ view: 'arq' }, '', '#arquitetura'); } catch (e) {} }
+  v110Render();
+  setTimeout(() => { try { v94Tabs(); } catch (e) {} }, 0);
+  return r;
+};
+window.switchView = switchView;
+const _v110Restore = restoreInitialView;
+restoreInitialView = function() {
+  let salvo = ''; try { salvo = localStorage.getItem('soc_active_view') || ''; } catch (e) {}
+  if (location.hash.startsWith('#arquitetura') || (!location.hash && salvo === 'arq')) return switchView('arq', false);
+  return _v110Restore.apply(this, arguments);
+};
+window.addEventListener('popstate', () => { if (location.hash.startsWith('#arquitetura')) switchView('arq', false); });
+
+// (3) página Arquitetura ----------------------------------------------------
+S.v110 = { sel: 'prolog', d: null, aCarregar: false };
+const V110_CX = {
+  ui:     { t: 'UI web', k: 'ui', p: 'backend/socrates/src/main/resources/static/index.html',
+            o: 'Página única, servida pelo backend em /. Junta os passos do cenário e as respostas do analista, chama a API e mostra a Consola, o Grafo, o "Como?" e as perguntas. Não infere nada: organiza o que o motor devolve.',
+            v: 'Tudo o que vês: Consola, Grafo, Conhecimento, Arquitetura, API e motores.' },
+  api:    { t: 'api', k: 'ui', p: 'backend/socrates/src/main/java/socrates/backend/api/',
+            o: 'Controllers REST. O corpo do pedido e da resposta é o JSON do contrato, igual para os dois motores. Documentado em OpenAPI (Swagger UI).',
+            v: 'Página "API e motores": estado, endpoints, último pedido e resposta.' },
+  app:    { t: 'application', k: 'ui', p: 'backend/socrates/src/main/java/socrates/backend/application/',
+            o: 'Valida o pedido (versão da base, lista de passos) e escolhe o motor. Define as interfaces MotorInferencia e Explicador: o backend só conhece estas interfaces.',
+            v: 'Um pedido inválido (por exemplo, outra versão da base) volta com estado "erro" e aparece como erro na Consola.' },
+  dad:    { t: 'engine.drools', k: 'dr', p: 'backend/socrates/src/main/java/socrates/backend/engine/drools/',
+            o: 'DroolsAdapter: chama o MotorDrools dentro da JVM do backend, com o mesmo JSON de entrada e de saída.',
+            v: 'Botão "Drools" no topo; no "Comparar", o mesmo pedido vai aos dois motores.' },
+  pad:    { t: 'engine.prolog', k: 'pl', p: 'backend/socrates/src/main/java/socrates/backend/engine/prolog/',
+            o: 'PrologAdapter: lança o wrapper.pl num processo swipl novo por pedido, com tempo limite e limite de processos. O PrologInstaller copia para uma pasta temporária os ficheiros Prolog que vêm dentro do jar.',
+            v: 'Botão "Prolog" no topo. Cada ▶ envia POST /api/prolog/infer com os passos até à etapa atual.' },
+  drools: { t: 'motores/drools', k: 'dr', p: 'motores/drools/',
+            o: 'Módulo Maven sem Spring. Uma KieSession nova por pedido: insere os factos iniciais, depois os de cada passo, e corre as regras até não haver conclusões novas. Regras DRL de A_afetado.drl a N_catalogo.drl. Traz as explicações "como", "porque", "porque não" e "porque da pergunta".',
+            v: 'Tudo o que aparece com o motor Drools selecionado.' },
+  prolog: { t: 'motores/prolog', k: 'pl', p: 'motores/prolog/',
+            o: 'O soc_motor.pl faz encadeamento para a frente com metaconhecimento: em cada facto novo só reavalia as regras que ele pode disparar, até ao ponto fixo. O wrapper.pl lê o pedido no stdin e escreve um único JSON no stdout.',
+            v: 'Tudo o que aparece com o motor Prolog selecionado.' },
+  kb:     { t: 'base_conhecimento', k: 'kb', p: 'base_conhecimento/',
+            o: 'Fonte única do conhecimento: factos fixos, regras e cenários. Os factos e os cenários geram-se para JSON; as regras existem duas vezes, em Prolog e em DRL, escritas à mão, e o comparador garante que dizem o mesmo.',
+            v: 'Página "Conhecimento": regras, factos da base, metaconhecimento, prioridades e cenários.' }
+};
+async function v110Carregar() {
+  if (S.v110.aCarregar) return; S.v110.aCarregar = true;
+  const [health, docs] = await Promise.all([v73Get('/api/health'), v73Get('/v3/api-docs')]);
+  S.v110.d = { health, docs, quando: new Date() };
+  S.v110.aCarregar = false;
+  v110Render();
+}
+function v110Endpoints() {
+  const d = S.v110.d; if (!d || !d.docs.ok || !d.docs.data?.paths) return null;
+  const out = [];
+  Object.entries(d.docs.data.paths).forEach(([p, ops]) => Object.entries(ops).forEach(([m, o]) => {
+    if (['get', 'post', 'put', 'delete', 'patch'].includes(m)) out.push({ m: m.toUpperCase(), p, s: o.summary || o.description || '' });
+  }));
+  return out.sort((a, b) => a.p.localeCompare(b.p));
+}
+function v110Motor(nome) {
+  const ms = S.v110.d?.health?.data?.motores || [];
+  return ms.find(m => String(m.motor || '').toLowerCase().includes(nome));
+}
+function v110Vivo(id) {
+  const d = S.v110.d, res = v61Res && v61Res(), b = res ? (res._base || res) : null;
+  const chip = (t, c) => `<span class="v110-chip ${c || ''}">${t}</span>`;
+  if (!d) return chip('a pedir à API…');
+  if (id === 'pad' || id === 'prolog' || id === 'dad' || id === 'drools') {
+    if (!d.health.ok) return `<div class="v80b-err"><b>✖ O estado do motor não vem da API.</b> ${v73Estado(d.health, 'GET /api/health')}</div>`;
+    const m = v110Motor(id === 'pad' || id === 'prolog' ? 'prolog' : 'drools');
+    if (!m) return `<div class="v80b-err"><b>✖ O /api/health não traz este motor.</b></div>`;
+    return chip(m.pronto ? '● pronto' : '✖ indisponível', m.pronto ? 'ok' : 'bad') + (d.health.data?.versaoKB ? chip('KB v' + esc(d.health.data.versaoKB)) : '');
+  }
+  if (id === 'api') return d.health.ok ? chip('● backend online', 'ok') + chip(`/api/health · ${d.health.ms} ms`) : `<div class="v80b-err"><b>✖ Sem resposta do backend.</b> ${v73Estado(d.health, 'GET /api/health')}</div>`;
+  if (id === 'app' || id === 'ui') {
+    if (!b) return chip('ainda não correu nenhum pedido');
+    const ded = b.factos.filter(f => f.origem === 'regra').length;
+    return chip(`${(res._passos || []).length} passos`) + chip(`${ded} deduções`) + chip(`${b.tickets.length} tickets`) + chip(`${b.perguntas.length} perguntas`) + chip('estado ' + esc(b.estado), b.estado === 'erro' ? 'bad' : b.estado === 'aguarda_resposta' ? 'warn' : 'ok');
+  }
+  if (id === 'kb') {
+    const v = d.health.data?.versaoKB;
+    const ini = b ? b.factos.filter(f => f.origem === 'inicial').length : null;
+    return (v ? chip('versão ' + esc(v)) : '') + (ini != null ? chip(`${ini} factos iniciais`) : chip('factos: correr um pedido'));
+  }
+  return '';
+}
+function v110Caixa(id, extra) {
+  const c = V110_CX[id];
+  return `<button type="button" class="v110-bx k-${c.k} ${S.v110.sel === id ? 'on' : ''} ${extra || ''}" data-v110bx="${id}"><b>${esc(c.t)}</b><small>${esc(c.sub || V110_SUB[id] || '')}</small></button>`;
+}
+const V110_SUB = { ui: 'Consola · Grafo · Como? · perguntas', api: 'controllers REST', app: 'InferenceService · MotorInferencia', dad: 'DroolsAdapter', pad: 'PrologAdapter · PrologInstaller', drools: 'MotorDrools + regras DRL · na JVM', prolog: 'wrapper.pl + soc_motor.pl · processo swipl', kb: 'factos · regras · cenários' };
+function v110Html() {
+  const d = S.v110.d, sel = V110_CX[S.v110.sel] || V110_CX.ui;
+  const eps = v110Endpoints();
+  const tem = p => eps ? eps.some(e => e.p.replace(/\{[^}]+\}/g, '{m}') === p) : null;
+  const expl = [
+    ['Como?', 'como se chegou a uma conclusão, até aos dados de entrada', '/api/{m}/como', 'POST /api/{motor}/como', 'separador "Como?" de cada caso'],
+    ['Porquê?', 'porque é que o motor faz uma pergunta ao analista', '/api/{m}/porque-pergunta', 'POST /api/{motor}/porque-pergunta', 'em cada pergunta ao analista'],
+    ['Porque não?', 'porque é que uma conclusão não aconteceu', '/api/{m}/whynot', 'POST /api/{motor}/whynot', 'separador "Porque não?" de cada caso']
+  ];
+  const estadoEp = (p, lbl) => {
+    const t = tem(p);
+    if (t === null) return `<span class="v110-mu">${esc(lbl)} · lista de endpoints indisponível</span>`;
+    return t ? `<span class="v73-ok">✓ ${esc(lbl)}</span>` : `<span class="v73-bad">✖ ${esc(lbl)} · ainda não existe na API</span>`;
+  };
+  const navs = [['visao', 'Visão geral'], ['pedido', 'Como corre um pedido'], ['expl', 'Explicações'], ['principios', 'Princípios'], ['endpoints', 'Endpoints'], ['pecas', 'Onde está cada peça']];
+  return `<div class="v80b v110">
+    <nav class="v80b-nav"><div class="v80b-nt">Arquitetura</div>
+      ${navs.map(([k, t]) => `<button type="button" data-v110sec="${k}" class="${S.v110.sec === k ? 'on' : ''}">${t}</button>`).join('')}
+      <div class="v80b-nf">${d ? `lido da API às ${d.quando.toLocaleTimeString('pt-PT')}<br>` : ''}<a href="#" data-v110re="1">↻ atualizar</a></div>
+    </nav>
+    <main class="v80b-main">
+      <section class="v80b-sec" id="v110-visao" data-sec="visao">
+        <h2>Arquitetura do SOCrates</h2>
+        <p class="v80b-lead">Dois motores de inferência respondem ao mesmo pedido com o mesmo formato de resposta, e é isso que permite compará-los. O backend só conhece o contrato JSON; as regras e os factos vivem fora do Java. Clica numa caixa para ver o que faz, onde está e onde aparece na interface.</p>
+        <div class="v110-live">${!d ? '<span class="v110-chip">a pedir à API…</span>' : d.health.ok
+          ? `<span class="v110-chip ok">● backend online</span>${(d.health.data?.motores || []).map(m => `<span class="v110-chip ${m.pronto ? 'ok' : 'bad'}">${m.pronto ? '●' : '✖'} ${esc(m.motor)}${d.health.data?.versaoKB ? ' · KB v' + esc(d.health.data.versaoKB) : ''}</span>`).join('')}<span class="v110-mu">GET /api/health · ${d.health.ms} ms</span>`
+          : `<div class="v80b-err"><b>✖ O estado do sistema não vem da API.</b> ${v73Estado(d.health, 'GET /api/health')}</div>`}</div>
+        <div class="v110-grid">
+          <div class="v110-dg">
+            <div class="v110-lg"><span><i class="ln"></i>chamada / dependência</span><span><i class="ln dash"></i>ficheiros que o motor lê</span></div>
+            <div class="v110-row">${v110Caixa('ui')}</div>
+            <div class="v110-ar"><span>HTTP · JSON</span></div>
+            <div class="v110-row">${v110Caixa('api')}</div>
+            <div class="v110-ar"></div>
+            <div class="v110-row">${v110Caixa('app')}</div>
+            <div class="v110-split"></div>
+            <div class="v110-band"><span class="v110-bt">[ dois motores · um contrato ]</span>
+              <div class="v110-row two">${v110Caixa('dad')}${v110Caixa('pad')}</div>
+              <div class="v110-row two ars"><div class="v110-ar"></div><div class="v110-ar"></div></div>
+              <div class="v110-row two">${v110Caixa('drools')}${v110Caixa('prolog')}</div>
+            </div>
+            <div class="v110-row two ars"><div class="v110-ar up dash"></div><div class="v110-ar up dash"></div></div>
+            <div class="v110-join"></div>
+            <div class="v110-row">${v110Caixa('kb')}</div>
+          </div>
+          <aside class="v110-det k-${sel.k}">
+            <span class="v110-kick">[ caixa escolhida ]</span>
+            <h3>${esc(sel.t)}</h3>
+            <code class="v110-path">${esc(sel.p)}</code>
+            <div class="v110-h">O que faz</div><p>${esc(sel.o)}</p>
+            <div class="v110-h">Na interface</div><p>${esc(sel.v)}</p>
+            <div class="v110-h">Agora, da API</div><div class="v110-chips">${v110Vivo(S.v110.sel)}</div>
+          </aside>
+        </div>
+      </section>
+      <section class="v80b-sec" id="v110-pedido" data-sec="pedido">
+        <h2>Como corre um pedido</h2>
+        <p class="v80b-lead">O pedido é uma lista ordenada de passos: telemetria de um cenário ou respostas do analista. O motor injeta os factos de cada passo e corre até não haver conclusões novas, antes de passar ao seguinte.</p>
+        <ol class="v110-steps">
+          <li><b>1</b><span>A UI junta os <em>passos</em>, por ordem: telemetria e respostas do analista.</span></li>
+          <li><b>2</b><span><code>POST /api/{motor}/infer</code> com <code>versaoKB</code> e <code>passos</code>.</span></li>
+          <li><b>3</b><span>O motor injeta os factos de cada passo e corre até ao ponto fixo.</span></li>
+          <li><b>4</b><span>Resposta: <code>estado</code>, <code>perguntas</code>, <code>incidentes</code>, <code>tickets</code> e <code>factos</code>, cada facto com a regra e as premissas.</span></li>
+          <li><b>5</b><span>A UI mostra a Consola, o Grafo e o "Como?". Responder a uma pergunta é um passo novo.</span></li>
+        </ol>
+        <p class="v80b-mu">O servidor não guarda estado: recuar é enviar menos passos; mudar uma resposta é reenviar a lista com outro valor. Uma versão da base diferente da carregada devolve <code>estado: "erro"</code>.</p>
+        <div class="v110-h">Último pedido desta sessão</div><div class="v110-chips">${v110Vivo('app')}</div>
+      </section>
+      <section class="v80b-sec" id="v110-expl" data-sec="expl">
+        <h2>Explicações</h2>
+        <p class="v80b-lead">Cada tipo de explicação responde a uma pergunta diferente. É o que um perito pergunta a um sistema pericial: como chegou lá, porque precisa de um dado, porque não concluiu outra coisa.</p>
+        <div class="v80b-tw"><table class="v80b-t"><thead><tr><th>Pergunta</th><th>Responde a</th><th>Endpoint (verificado na API)</th><th>Na interface</th></tr></thead><tbody>
+          ${expl.map(([q, r, p, l, ui]) => `<tr><td><b>${q}</b></td><td>${r}</td><td>${estadoEp(p, l)}</td><td>${ui}</td></tr>`).join('')}
+        </tbody></table></div>
+      </section>
+      <section class="v80b-sec" id="v110-principios" data-sec="principios">
+        <h2>Princípios</h2>
+        <div class="v110-pr">
+          <div><b>Servidor sem estado</b><span>Cada pedido traz tudo o que aconteceu até ao momento; o motor infere de novo, numa sessão ou processo novos.</span></div>
+          <div><b>Dois motores, um contrato</b><span>O MotorDrools e o wrapper.pl recebem e devolvem o mesmo JSON; os adaptadores do backend ficam quase iguais.</span></div>
+          <div><b>Uma só fonte de conhecimento</b><span>Factos fixos e cenários escrevem-se em base_conhecimento/ e geram-se para os outros formatos.</span></div>
+          <div><b>Os motores só recomendam</b><span>Não executam contenção nem abrem tickets em sistemas externos: o analista decide.</span></div>
+        </div>
+      </section>
+      <section class="v80b-sec" id="v110-endpoints" data-sec="endpoints">
+        <h2>Endpoints</h2>
+        <p class="v80b-lead">Lista lida da documentação OpenAPI do backend.</p>
+        ${!d ? '<p class="v80b-mu">A pedir à API…</p>' : eps
+          ? `<div class="v80b-tw"><table class="v80b-t"><thead><tr><th>Método</th><th>Caminho</th><th>Descrição</th></tr></thead><tbody>${eps.map(e => `<tr><td><code>${e.m}</code></td><td><code>${esc(e.p)}</code></td><td>${esc(e.s)}</td></tr>`).join('')}</tbody></table></div>`
+          : `<div class="v80b-err"><b>✖ A lista de endpoints não vem da API.</b> ${v73Estado(d.docs, 'GET /v3/api-docs')}</div>`}
+      </section>
+      <section class="v80b-sec" id="v110-pecas" data-sec="pecas">
+        <h2>Onde está cada peça</h2>
+        <div class="v80b-tw"><table class="v80b-t"><thead><tr><th>Peça</th><th>Pasta</th><th>Papel</th></tr></thead><tbody>
+          ${Object.entries(V110_CX).map(([id, c]) => `<tr><td><a href="#" data-v110bx="${id}">${esc(c.t)}</a></td><td><code>${esc(c.p)}</code></td><td>${esc(c.o.split('. ')[0])}.</td></tr>`).join('')}
+        </tbody></table></div>
+      </section>
+    </main>
+  </div>`;
+}
+function v110Render() {
+  const box = $('arqView'); if (!box || !$('app')?.classList.contains('view-arq')) return;
+  const sc = box.querySelector('.v80b-main')?.scrollTop || 0;
+  box.innerHTML = v110Html();
+  const m = box.querySelector('.v80b-main'); if (m) { m.scrollTop = sc; m.addEventListener('scroll', v110Spy, { passive: true }); }
+  v110Spy();
+  if (!S.v110.d) v110Carregar();
+}
+function v110Spy() {
+  const box = $('arqView'), m = box?.querySelector('.v80b-main'); if (!m) return;
+  const top = m.getBoundingClientRect().top; let cur = 'visao';
+  m.querySelectorAll('[data-sec]').forEach(x => { if (x.getBoundingClientRect().top - top <= 90) cur = x.dataset.sec; });
+  if (m.scrollTop + m.clientHeight >= m.scrollHeight - 4) cur = [...m.querySelectorAll('section[data-sec]')].pop()?.dataset.sec || cur;
+  S.v110.sec = cur;
+  box.querySelectorAll('[data-v110sec]').forEach(b => b.classList.toggle('on', b.dataset.v110sec === cur));
+}
+document.addEventListener('click', e => {
+  const box = $('arqView'); if (!box || !box.contains(e.target)) return;
+  const bx = e.target.closest('[data-v110bx]');
+  if (bx) {
+    e.preventDefault(); S.v110.sel = bx.dataset.v110bx; v110Render();
+    const m = box.querySelector('.v80b-main'), a = $('v110-visao'); if (m && a && bx.tagName === 'A') m.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+  const s = e.target.closest('[data-v110sec]');
+  if (s) { const m = box.querySelector('.v80b-main'), a = $('v110-' + s.dataset.v110sec); if (m && a) m.scrollTo({ top: a.getBoundingClientRect().top - m.getBoundingClientRect().top + m.scrollTop - 12, behavior: 'smooth' }); return; }
+  if (e.target.closest('[data-v110re]')) { e.preventDefault(); S.v110.d = null; v110Render(); }
+});
+// o último pedido muda depois de cada inferência
+const _v110After = v62AfterRun;
+v62AfterRun = function() { const r = _v110After.apply(this, arguments); setTimeout(v110Render, 50); return r; };
+
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    /* (1) faixa: Tickets e Perguntas são separadores; só um ativo */
+    .v94-tk.on::after,.v94-q.on::after{display:none !important}
+    .v94-q.quente{background:none !important;box-shadow:none !important}
+    .v94-q.quente:hover{background:rgba(245,185,69,.06) !important}
+    .v94-q.quente .v94-l{color:var(--dim) !important}
+    .v94-q.quente .v94-l::after{content:'à espera';margin-left:8px;padding:1px 6px;border-radius:9px;background:#f5b945;color:#1a1205;font-size:9px;letter-spacing:.3px;vertical-align:1px}
+    .v94-q.quente .v94-s{color:#c9b98f !important}
+    .v94-tk.on,.v94-q.on{background:linear-gradient(180deg,rgba(34,211,238,.10),rgba(15,27,39,.9)) !important;box-shadow:inset 0 2px 0 var(--cyan),inset 1px 0 0 #22d3ee55,inset -1px 0 0 #22d3ee55 !important}
+    .v94-tk.on .v94-l{color:var(--cyan) !important}
+    .v94-q.on{background:linear-gradient(180deg,rgba(245,185,69,.12),rgba(26,20,7,.9)) !important;box-shadow:inset 0 2px 0 #f5b945,inset 1px 0 0 #f5b94555,inset -1px 0 0 #f5b94555 !important}
+    .v94-q.on .v94-l{color:#f5b945 !important}
+    .v94-q.on .v94-l::after{display:none}
+
+    /* (2) menu da direita */
+    body.v101 #v101Sec .svtab{display:inline-flex !important;align-items:center;gap:6px}
+    body.v101 #v101Sec{width:auto !important;flex:none !important}
+    body.v101 #v101Sec .svtab{width:auto !important;flex:none !important;min-width:0 !important;white-space:nowrap}
+    body.v101 #v101Sec .svtab svg{flex-shrink:0;opacity:.85;width:13px !important;height:13px !important;min-width:13px}
+    body.v101 #v101Sec .svtab.active svg{opacity:1;color:var(--cyan)}
+    body.v101 #v101Sec .svtab.active{box-shadow:inset 0 0 0 1px #22d3ee88 !important}
+    body.v101 #bHelp{width:auto !important;padding:0 11px !important;display:inline-flex;align-items:center;gap:6px;color:var(--cyan);font:700 11px var(--mono)}
+    body.v101 #bHelp b{font-size:12px}
+    body.v101 #v101Sec .svtab{padding:0 9px !important;gap:5px}
+    @media (max-width:1480px){body.v101 #v101Sec .svtab svg{display:none}}
+    @media (max-width:1340px){body.v101 #bHelp span{display:none}body.v101 #bHelp{padding:0 10px !important}body.v101 #v104Fim{gap:6px !important}body.v101 #v101Sec .svtab{padding:0 7px !important;font-size:10.5px !important}}
+
+    /* (3) página Arquitetura: mesmo tema da vista Conhecimento */
+    .app.view-arq #backendView{display:none !important}
+    .app.view-arq #arqView{display:block}
+    #arqView{height:100%}
+    .v110 .v80b-main>*{max-width:1180px}
+    .v110-live{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 18px}
+    .v110-chip{display:inline-flex;align-items:center;gap:5px;font:600 11.5px var(--mono);border:1px solid #30363d;border-radius:6px;padding:4px 9px;color:#c9d1d9;background:#0b0f14}
+    .v110-chip.ok{color:#7ee2b8;border-color:#2ea04366;background:#0f2a1d}
+    .v110-chip.bad{color:#ffb3ad;border-color:#da363366;background:#2a1215}
+    .v110-chip.warn{color:#f5d38a;border-color:#f5b94566;background:#241c0b}
+    .v110-chips{display:flex;flex-wrap:wrap;gap:6px}
+    .v110-mu{color:#7d8590;font:11.5px var(--mono)}
+    .v110-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+    .v110-dg{position:relative;background:#070c12;border:1px solid #21262d;border-radius:12px;padding:34px 26px 24px;display:flex;flex-direction:column;align-items:center}
+    .v110-lg{position:absolute;left:16px;top:12px;display:flex;gap:16px;font:11px var(--mono);color:#7d8590}
+    .v110-lg span{display:inline-flex;align-items:center;gap:6px}
+    .v110-lg .ln{display:inline-block;width:18px;border-top:2px solid #2a7f90}
+    .v110-lg .ln.dash{border-top:2px dashed #8b7a45}
+    .v110-row{display:flex;justify-content:center;gap:56px;width:100%}
+    .v110-row.two>*{flex:0 0 260px}
+    .v110-row.ars{gap:56px}
+    .v110-ar{position:relative;height:30px;width:260px;display:flex;justify-content:center}
+    .v110-ar::before{content:'';position:absolute;top:0;bottom:6px;left:50%;border-left:2px solid #2a7f90}
+    .v110-ar::after{content:'';position:absolute;bottom:0;left:calc(50% - 5px);border:5px solid transparent;border-top:6px solid #2a7f90;border-bottom:0}
+    .v110-ar.up::after{top:0;bottom:auto;border-top:0;border-bottom:6px solid #8b7a45}
+    .v110-ar.up::before{top:6px;bottom:0}
+    .v110-ar.dash::before{border-left:2px dashed #8b7a45}
+    .v110-ar span{position:absolute;left:calc(50% + 10px);top:7px;font:10.5px var(--mono);color:#7d8590;white-space:nowrap}
+    .v110-split{position:relative;width:316px;height:30px}
+    .v110-split::before{content:'';position:absolute;left:50%;top:0;height:14px;border-left:2px solid #2a7f90}
+    .v110-split::after{content:'';position:absolute;left:0;right:0;top:14px;height:16px;border:2px solid #2a7f90;border-bottom:0;border-radius:6px 6px 0 0}
+    .v110-join{position:relative;width:316px;height:16px}
+    .v110-join::before{content:'';position:absolute;left:0;right:0;top:0;height:8px;border:2px dashed #8b7a45;border-top:0;border-radius:0 0 6px 6px}
+    .v110-join::after{content:'';position:absolute;left:50%;top:8px;bottom:0;border-left:2px dashed #8b7a45}
+    .v110-band{position:relative;width:100%;max-width:640px;border:1px dashed #263f54;border-radius:10px;padding:26px 0 14px;margin:2px 0}
+    .v110-bt{position:absolute;left:12px;top:7px;font:700 10px var(--mono);letter-spacing:.8px;color:#5f7d8c;text-transform:uppercase}
+    .v110-bx{--k:#38bdf8;width:260px;min-height:58px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;text-align:left;padding:9px 13px;border-radius:6px;cursor:pointer;
+      background:#0b141d;border:1px solid color-mix(in srgb,var(--k) 55%,#0b141d);color:#e6edf3;font-family:var(--mono);transition:border-color .15s,box-shadow .15s,background .15s}
+    .v110-bx b{font-size:12.5px;color:#fff}
+    .v110-bx b::before{content:'◆ ';color:var(--k);font-size:10px}
+    .v110-bx small{font-size:10.5px;color:#8ea6b2}
+    .v110-bx:hover{border-color:var(--k);background:#0e1a26}
+    .v110-bx.on{border-color:var(--k);box-shadow:0 0 0 1px var(--k),0 0 16px color-mix(in srgb,var(--k) 35%,transparent);background:#0f1d2a}
+    .v110-bx.k-ui,.v110-det.k-ui{--k:#38bdf8}
+    .v110-bx.k-pl,.v110-det.k-pl{--k:#22d3ee}
+    .v110-bx.k-dr,.v110-det.k-dr{--k:#818cf8}
+    .v110-bx.k-kb,.v110-det.k-kb{--k:#fbbf24}
+    .v110-det{position:sticky;top:0;background:#0b0f14;border:1px solid #21262d;border-top:2px solid var(--k);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+    .v110-det h3{margin:2px 0 0;font:700 16px var(--mono);color:#fff}
+    .v110-det p{margin:0;color:#c9d1d9;font-size:13.5px}
+    .v110-kick{font:700 10.5px var(--mono);letter-spacing:.8px;color:var(--k);text-transform:uppercase}
+    .v110-path{font:11px var(--mono);color:#8ea6b2;word-break:break-all}
+    .v110-h{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#7d8590;margin-top:10px}
+    .v110-steps{list-style:none;padding:0;margin:4px 0 14px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;counter-reset:none}
+    .v110-steps li{position:relative;background:#0b0f14;border:1px solid #21262d;border-radius:10px;padding:12px 12px 12px 14px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:#c9d1d9}
+    .v110-steps li b{font:700 11px var(--mono);color:var(--cyan)}
+    .v110-steps li b::before{content:'[ '}.v110-steps li b::after{content:' ]'}
+    .v110-steps li:not(:last-child)::after{content:'›';position:absolute;right:-9px;top:50%;transform:translateY(-50%);color:#4c6878;font-size:16px}
+    .v110-steps em{font-style:normal;color:#fff}
+    .v110-pr{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+    .v110-pr div{background:#0b0f14;border:1px solid #21262d;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+    .v110-pr b{color:#fff;font-size:14px}.v110-pr span{color:#9aa4b2;font-size:13px}
+    .v110 .v80b-t a{color:#58a6ff;text-decoration:none}
+    @media (max-width:1180px){.v110-grid{grid-template-columns:1fr}.v110-det{position:static}.v110-steps{grid-template-columns:1fr 1fr}}
+  `;
+  document.head.appendChild(st);
+})();
+v110Menu();
+setTimeout(v110Menu, 600);
+
+/* =====================================================================
+   v111: (1) arranque sem "encolhe e cresce": quando chega a resposta, a câmara
+             vai logo para o enquadramento final (grafo todo), com um fade curto,
+             e no fim da animação não volta a fazer zoom ao fechar a consola;
+         (2) a pestana "Auditoria & Explicação" sai do grafo (fora do Comparador);
+             antes da primeira inferência aparece o aviso com o botão ▶.
+   ===================================================================== */
+function v111Salto() {
+  const vis = getVisibleNodesForCurrentState;
+  getVisibleNodesForCurrentState = () => new Set(NODES.map(n => n.id));
+  try { animateCameraToVisibleGraph(0); } finally { getVisibleNodesForCurrentState = vis; }
+  S._v111Fixo = performance.now();
+  const vp = $('vp');
+  if (vp) { vp.style.transition = 'none'; vp.style.opacity = '0'; requestAnimationFrame(() => { vp.style.transition = 'opacity .35s ease'; vp.style.opacity = '1'; }); }
+}
+// durante a animação inicial, a câmara não persegue as colunas que vão aparecendo
+const _v111Cam = animateCameraToVisibleGraph;
+animateCameraToVisibleGraph = function(ms, z) {
+  if (S._v111Fixo && !R.finished && performance.now() - S._v111Fixo < 60000) return;
+  return _v111Cam.apply(this, arguments);
+};
+// no fim da animação, fechar a consola de eventos não volta a mexer no zoom
+const _v111Recolher = v82Recolher;
+v82Recolher = function() {
+  const aj = v82Ajustar;
+  v82Ajustar = function() { setTimeout(() => { if (NODES.length) render(); }, 60); };
+  try { return _v111Recolher.apply(this, arguments); } finally { setTimeout(() => { v82Ajustar = aj; S._v111Fixo = 0; }, 800); }
+};
+
+function v111Aviso() {
+  const cv = $('canvas'); if (!cv) return;
+  const res = v61Res && v61Res();
+  const fora = document.querySelector('.app.view-dossier, .app.view-backend');
+  const mostrar = !res && S.apiOnline && S.apiLoaded && !(typeof v81Anim === 'function' && v81Anim()) && !R.playing && S.engine !== 'both' && !fora;
+  document.body.classList.toggle('v111-semtab', S.engine !== 'both');
+  let a = $('v111Aviso');
+  if (!mostrar) { a?.remove(); return; }
+  const nome = S.engine === 'drools' ? 'Drools' : 'SWI-Prolog';
+  const n = (typeof v67GlobalPassos === 'function' ? v67GlobalPassos(S.engine === 'drools' ? 'drools' : 'prolog') : []).length;
+  const html = `<span class="v111-k">[ inferência por correr ]</span><b>O ${nome} ainda não correu este pedido</b><p>Os tickets, as perguntas e as explicações aparecem depois de o motor responder.${n ? ` O pedido tem ${n} passos (${esc(v62ScenTitle(S.scen || 'all'))}).` : ''}</p><button type="button" class="v111-go">▶ Executar no ${nome}</button>`;
+  if (!a) { a = document.createElement('div'); a.id = 'v111Aviso'; cv.appendChild(a); a.addEventListener('click', e => { if (e.target.closest('.v111-go')) play(); }); ['mousedown', 'pointerdown', 'wheel'].forEach(t => a.addEventListener(t, e => e.stopPropagation())); }
+  if (a._h !== html) { a._h = html; a.innerHTML = html; }
+}
+const _v111Render = render;
+render = function() { const r = _v111Render.apply(this, arguments); try { v111Aviso(); } catch (e) {} return r; };
+setInterval(() => { try { v111Aviso(); } catch (e) {} }, 700);
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    body.v111-semtab #v82Tab{display:none !important}
+    body.v111-semtab #simZoomBar{right:16px !important}
+    #v111Aviso{position:absolute;right:18px;top:50%;transform:translateY(-50%);z-index:30;width:290px;box-sizing:border-box;padding:16px 16px 14px;border-radius:10px;
+      background:rgba(6,13,20,.94);border:1px solid #22d3ee66;box-shadow:0 14px 40px rgba(0,0,0,.55),0 0 0 1px rgba(34,211,238,.08);font:12px/1.5 var(--mono);color:var(--txt);animation:v111in .4s ease}
+    @keyframes v111in{from{opacity:0;transform:translate(14px,-50%)}to{opacity:1;transform:translateY(-50%)}}
+    #v111Aviso .v111-k{display:block;font-size:10px;font-weight:700;letter-spacing:.8px;color:var(--cyan);margin-bottom:6px}
+    #v111Aviso b{display:block;color:#fff;font-size:13px;margin-bottom:4px}
+    #v111Aviso p{margin:0 0 12px;color:var(--dim)}
+    #v111Aviso .v111-go{width:100%;padding:9px;border-radius:7px;border:1px solid var(--cyan);background:rgba(34,211,238,.12);color:#e6fbff;font:700 12px var(--mono);cursor:pointer}
+    #v111Aviso .v111-go:hover{background:rgba(34,211,238,.24)}
+  `;
+  document.head.appendChild(st);
+})();
+
+/* =====================================================================
+   v112: Comparador como Consola de paridade. Com "Comparar" escolhido e as
+   respostas dos dois motores, o botão Consola mostra:
+   faixa de paridade · tickets com o estado de cada um · o "Como?" do Prolog
+   e o do Drools lado a lado, passo a passo · o pedido enviado e os tempos.
+   O painel antigo (Auditoria & Explicação) não aparece nesta vista.
+   ===================================================================== */
+S.v112 = { sel: null, filtro: 'todos' };
+const v112Key = t => v76Termo(t.incidente) + '|' + v76Termo(t.ativo);
+const v112Prio = t => String(v76Termo(t.prioridade)).toLowerCase();
+function v112Tipo(t) {
+  const i = t.incidente;
+  const a = i && i.args ? v76Termo(i.args[0]) : v76Termo(i);
+  const s = v80H(a);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function v112Estado(c) {
+  if (c._v112) return c._v112;
+  const TA = new Map(c.pl.tickets.map(t => [v112Key(t), t])), TB = new Map(c.dr.tickets.map(t => [v112Key(t), t]));
+  const dif = new Set([...c.soPL, ...c.soDR, ...c.just]);
+  const chaves = (res, num) => { try { return v78Prova(res, num).ded.map(v76Chave); } catch (e) { return []; } };
+  const itens = [];
+  new Set([...TA.keys(), ...TB.keys()]).forEach(k => {
+    const a = TA.get(k), b = TB.get(k), t = a || b;
+    let st = 'igual';
+    if (!b) st = 'soPL'; else if (!a) st = 'soDR';
+    else if (JSON.stringify([a.acao, a.gravidade, a.prioridade, a.fechado ?? null]) !== JSON.stringify([b.acao, b.gravidade, b.prioridade, b.fechado ?? null])) st = 'estado';
+    else if ([...chaves(c.pl, a.facto), ...chaves(c.dr, b.facto)].some(x => dif.has(x))) st = 'prem';
+    itens.push({ k, a, b, t, st });
+  });
+  const ord = { p1: 1, p2: 2, p3: 3, p4: 4 };
+  itens.sort((x, y) => (ord[v112Prio(x.t)] || 9) - (ord[v112Prio(y.t)] || 9) || x.k.localeCompare(y.k));
+  return (c._v112 = itens);
+}
+const V112_ST = { igual: ['= igual', 'ok'], estado: ['≠ estado', 'bad'], prem: ['≠ premissas', 'bad'], soPL: ['só Prolog', 'pl'], soDR: ['só Drools', 'dr'] };
+function v112Linhas(c, it) {
+  const lado = (res, t) => {
+    if (!t) return null;
+    const P = v78Prova(res, t.facto), main = new Set(P.caminho);
+    return { P, main, ded: P.ded };
+  };
+  const L = lado(c.pl, it.a), R2 = lado(c.dr, it.b);
+  const keyOf = f => v76Chave(f);
+  const ordem = [], vistos = new Set(), info = new Map();
+  const junta = (X, qual) => X && X.ded.forEach(f => {
+    const k = keyOf(f);
+    if (!info.has(k)) info.set(k, { k, main: false });
+    const e = info.get(k); e[qual] = f; e[qual + 'P'] = X.P; if (X.main.has(f.numero)) e.main = true;
+    if (!vistos.has(k)) { vistos.add(k); ordem.push(k); }
+  });
+  junta(L, 'pl'); junta(R2, 'dr');
+  return ordem.map(k => {
+    const e = info.get(k);
+    e.eq = e.pl && e.dr ? JSON.stringify(c.A.get(k)) === JSON.stringify(c.B.get(k)) : false;
+    return e;
+  });
+}
+function v112Card(f, P, cls) {
+  if (!f) return `<div class="v112-cd vazio ${cls}"><span>— não concluído por este motor</span></div>`;
+  const prem = (f.premissas || []).map(p => {
+    if (typeof p === 'number') { const g = P.by.get(p); return `<span class="v112-pp" title="${esc(g ? v71F(g) : '')}">${esc(g ? v80H(g.predicado) : '#' + p)}</span>`; }
+    const neg = p && p.f === 'nao', tx = v71T(neg ? (p.args || [])[0] : p);
+    return `<span class="v112-pp ${neg ? 'n' : 'c'}" title="${neg ? 'Negação verificada: ' : 'Condição calculada: '}${esc(tx)}">${neg ? '¬ ' : 'ƒ '}${esc(tx)}</span>`;
+  }).join('');
+  return `<div class="v112-cd ${cls}"><div class="v112-ch"><span class="v112-r">R${esc(String(f.regra))}</span><b>${esc(v80H(f.predicado))}</b></div>
+    <div class="v112-ca">${esc((f.args || []).map(v71T).join(' · '))}</div><div class="v112-cp">${prem}</div></div>`;
+}
+function v112Html(c) {
+  const itens = v112Estado(c);
+  const cont = { todos: itens.length, dif: itens.filter(x => x.st === 'estado' || x.st === 'prem').length, soPL: itens.filter(x => x.st === 'soPL').length, soDR: itens.filter(x => x.st === 'soDR').length };
+  const F = S.v112.filtro;
+  const vis = itens.filter(x => F === 'todos' || (F === 'dif' ? (x.st === 'estado' || x.st === 'prem') : x.st === F));
+  if (!S.v112.sel || !itens.some(x => x.k === S.v112.sel)) S.v112.sel = (vis[0] || itens[0] || {}).k || null;
+  const it = itens.find(x => x.k === S.v112.sel);
+  const nDed = r => r.factos.filter(f => f.origem === 'regra').length;
+  const nReg = r => new Set(r.factos.filter(f => f.origem === 'regra').map(f => f.regra)).size;
+  const inc = r => (r.incidentes || []).length;
+  const cel = (lbl, a, b, on) => `<div class="v112-k ${on ? 'on' : ''}"><span class="v112-l">${lbl}</span><span class="v112-n"><i class="pl">${a}</i> <em class="${a === b ? 'eq' : 'ne'}">${a === b ? '=' : '≠'}</em> <i class="dr">${b}</i></span></div>`;
+  const nDif = c.soPL.length + c.soDR.length + c.just.length;
+  const nivelA = !c.tick.soPL.length && !c.tick.soDR.length && !c.tick.estado.length && !c.perg.soPL.length && !c.perg.soDR.length;
+  const bar = `<div class="v112-bar">
+    <div class="v112-v ${c.igual ? 'ok' : 'bad'}"><span class="v112-o">${c.igual ? '=' : '≠'}</span><span><b>${c.igual ? 'Resultados idênticos' : `${nDif} diferença(s) entre os motores`}</b>
+      <small>nível A ${nivelA ? '✓' : '✕'} incidentes, tickets, perguntas · nível B ${c.just.length || c.soPL.length || c.soDR.length ? '✕' : '✓'} regras e premissas</small></span></div>
+    ${cel('Incidentes', inc(c.pl), inc(c.dr))}${cel('Tickets', c.pl.tickets.length, c.dr.tickets.length, true)}${cel('Perguntas', c.pl.perguntas.length, c.dr.perguntas.length)}
+    ${cel('Factos deduzidos', nDed(c.pl), nDed(c.dr))}${cel('Regras disparadas', nReg(c.pl), nReg(c.dr))}
+  </div>`;
+  const fil = [['todos', 'todos'], ['dif', 'diferentes'], ['soPL', 'só Prolog'], ['soDR', 'só Drools']].map(([k, t]) => `<button type="button" data-v112f="${k}" class="${F === k ? 'on' : ''}">${t} ${cont[k]}</button>`).join('');
+  const lista = vis.length ? vis.map(x => {
+    const t = x.t, [lt, lc] = V112_ST[x.st], p = v112Prio(t);
+    return `<button type="button" class="v112-it ${x.k === S.v112.sel ? 'on' : ''}" data-v112t="${esc(x.k)}">
+      <span class="v112-ih"><span class="v112-pr" style="--cc:${v89PrioCor[p] || '#84a0ae'}">${esc(p.toUpperCase())}</span><b>${esc(v112Tipo(t))}</b><span class="v112-at">${esc(v76Termo(t.ativo))}</span><span class="v112-st ${lc}">${lt}</span></span>
+      <span class="v112-is">${esc(v80H(v76Termo(t.acao)))}</span></button>`;
+  }).join('') : `<div class="v112-vz">Nenhum ticket neste filtro.</div>`;
+  let caso = '<div class="v112-vz">Sem tickets nas respostas.</div>';
+  if (it) {
+    const t = it.t, p = v112Prio(t), [lt, lc] = V112_ST[it.st];
+    const linhas = v112Linhas(c, it);
+    const pri = linhas.filter(l => l.main), atr = linhas.filter(l => !l.main);
+    const iguais = linhas.filter(l => l.eq).length;
+    const row = l => `<div class="v112-row">${v112Card(l.pl, l.plP, 'pl' + (l.eq ? '' : ' dif'))}<span class="v112-g ${l.eq ? 'eq' : 'ne'}">${l.eq ? '=' : '≠'}</span>${v112Card(l.dr, l.drP, 'dr' + (l.eq ? '' : ' dif'))}</div>`;
+    const mesmo = c.pl._passos && c.dr._passos && JSON.stringify(c.pl._passos) === JSON.stringify(c.dr._passos);
+    caso = `<div class="v112-hd">
+        <div class="v112-hp" style="--cc:${v89PrioCor[p] || '#84a0ae'}"><span>prioridade</span><b>${esc(p.toUpperCase())}</b></div>
+        <div class="v112-ht"><span>ticket · ${it.a && it.b ? 'nos dois motores' : it.a ? 'só no Prolog' : 'só no Drools'}</span><b>${esc(v112Tipo(t))}</b><small>ativo <b>${esc(v76Termo(t.ativo))}</b> · ${esc(v80H(v76Termo(t.acao)))}</small></div>
+        <div class="v112-hq"><span>paridade deste ticket</span><b class="${lc}">${it.st === 'igual' ? '= mesma conclusão' : lt}</b><small>${iguais} de ${linhas.length} passos com a mesma regra e premissas</small></div>
+        <button type="button" class="v112-hg" data-v112g="1"><span>grafo</span><b>◉ Ver no grafo</b><small>os dois motores</small></button>
+      </div>
+      <div class="v112-cols"><span class="pl">● SWI-Prolog · Como?</span><span></span><span class="dr">● Drools · Como?</span></div>
+      <div class="v112-rows">
+        ${pri.map(row).join('')}
+        ${atr.length ? `<details class="v112-atr"><summary>Cálculo de atributos · ${atr.length} passo(s)</summary>${atr.map(row).join('')}</details>` : ''}
+      </div>
+      <div class="v112-ft">
+        <span class="${mesmo ? 'ok' : 'bad'}">${mesmo ? '✓' : '✕'} ${mesmo ? `o mesmo pedido foi enviado aos dois motores (${(c.pl._passos || []).length} passos)` : 'os dois motores não responderam ao mesmo pedido'}</span>
+        <span>tempo de resposta: Prolog ${c.pl._ms ?? '—'} ms · Drools ${c.dr._ms ?? '—'} ms</span>
+        <span class="v112-sp"></span>
+        <button type="button" data-v112run="1">↻ Correr de novo nos dois</button>
+        <button type="button" data-v112tec="1">Detalhes técnicos ›</button>
+      </div>`;
+  }
+  return `<div class="v112">${bar}<div class="v112-main">
+    <aside class="v112-lst"><div class="v112-lh"><span>Tickets nos dois motores</span></div><div class="v112-fl">${fil}</div><div class="v112-li">${lista}</div></aside>
+    <section class="v112-caso">${caso}</section></div></div>`;
+}
+function v112Ok() {
+  return S.engine === 'both' && S.v89.modo === 'painel' && !R.playing && !!v76Comparar();
+}
+function v112Render() {
+  const cv = $('canvas'); if (!cv) return;
+  let el = $('v112P');
+  const ok = v112Ok();
+  const app = $('app');
+  app?.classList.toggle('v112-on', ok);
+  if (!ok) { el?.remove(); if (S.engine === 'both') app?.classList.remove('v89-on'); return; }
+  app?.classList.add('v89-on');
+  if (!el && S.v79C && S.v79C.aberto && !S.v112._tec) { try { v79CmpFechar(); } catch (e) {} }
+  if (!el && !app.classList.contains('log-collapsed')) { app.classList.add('log-collapsed'); try { v82TxtConsola(true); } catch (e) {} }
+  if (!app.classList.contains('noinsp')) { app.classList.add('noinsp'); try { updateButtons(); } catch (e) {} }
+  if (!el) {
+    el = document.createElement('div'); el.id = 'v112P';
+    ['wheel', 'mousedown', 'pointerdown', 'dblclick', 'touchstart'].forEach(t => el.addEventListener(t, e => e.stopPropagation(), { passive: true }));
+    cv.appendChild(el);
+  }
+  const c = v76Comparar();
+  const ls = el.querySelector('.v112-li')?.scrollTop || 0, cs = el.querySelector('.v112-rows')?.scrollTop || 0;
+  el.innerHTML = v112Html(c);
+  const l = el.querySelector('.v112-li'); if (l) l.scrollTop = ls;
+  const r = el.querySelector('.v112-rows'); if (r && !S.v112._novo) r.scrollTop = cs;
+  S.v112._novo = false;
+}
+const _v112R = v89Render;
+v89Render = function() { const r = _v112R.apply(this, arguments); try { v112Render(); } catch (e) { console.error(e); } return r; };
+window.v89Render = v89Render;
+document.addEventListener('click', e => {
+  const P = $('v112P'); if (!P || !P.contains(e.target)) return;
+  const t = e.target.closest('[data-v112t]');
+  if (t) { S.v112.sel = t.dataset.v112t; S.v112._novo = true; v112Render(); return; }
+  const f = e.target.closest('[data-v112f]');
+  if (f) { S.v112.filtro = f.dataset.v112f; S.v112.sel = null; v112Render(); return; }
+  if (e.target.closest('[data-v112g]')) { v89Modo('grafo'); setTimeout(() => { try { v94Tabs(); } catch (er) {} }, 50); return; }
+  if (e.target.closest('[data-v112run]')) { v61CorrerAmbos(); return; }
+  if (e.target.closest('[data-v112tec]')) { S.v112._tec = true; try { v79CmpAbrir(); } catch (er) {} }
+});
+// botão Consola ativo também no Comparador
+const _v112Tabs = v94Tabs;
+v94Tabs = function() {
+  const r = _v112Tabs.apply(this, arguments);
+  const sim = $('tabSim'), g = $('tabGrafo');
+  if (sim && g && S.engine === 'both') {
+    const naSim = !document.querySelector('.app.view-dossier, .app.view-backend');
+    const tem = !!v76Comparar();
+    sim.disabled = !tem;
+    sim.classList.toggle('active', naSim && tem && S.v89.modo === 'painel');
+    g.classList.toggle('active', naSim && !(tem && S.v89.modo === 'painel'));
+  }
+  return r;
+};
+document.addEventListener('click', e => {
+  if (S.engine !== 'both' || !e.target.closest) return;
+  if (e.target.closest('#tabSim') && v76Comparar()) setTimeout(() => { v89Modo('painel'); v94Tabs(); }, 10);
+}, true);
+// novo resultado dos dois motores: recalcular e abrir a Consola de paridade
+const _v112After = v62AfterRun;
+v62AfterRun = function() {
+  const r = _v112After.apply(this, arguments);
+  if (S.engine === 'both') setTimeout(() => { if (v76Comparar() && !R.playing) { S.v112.sel = null; if (S.v79C && S.v79C.aberto && !S.v112._tec) { try { v79CmpFechar(); } catch (e) {} } v89Modo('painel'); v94Tabs(); } }, 700);
+  return r;
+};
+const _v112Fecha = v79CmpFechar;
+v79CmpFechar = function() { S.v112._tec = false; return _v112Fecha.apply(this, arguments); };
+window.v79CmpFechar = v79CmpFechar;
+const _v112Eng = setEngineMode;
+setEngineMode = function() { const r = _v112Eng.apply(this, arguments); setTimeout(() => { try { v112Render(); v94Tabs(); } catch (e) {} }, 30); return r; };
+
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    .app.v112-on #v79CmpBtn,.app.v112-on #v82Tab,.app.v112-on #v84Badge{display:none !important}
+    #v112P{position:absolute;inset:0;z-index:34;background:radial-gradient(1200px 600px at 50% -10%,rgba(192,132,252,.06),transparent 60%),#070c12;overflow:hidden;font-family:var(--mono);color:var(--txt)}
+    .v112{height:100%;box-sizing:border-box;padding:14px 18px;display:flex;flex-direction:column;gap:12px}
+    .v112-bar{display:grid;grid-template-columns:1.7fr repeat(5,minmax(0,1fr));border:1px solid var(--line2);border-radius:6px;overflow:hidden;background:linear-gradient(180deg,rgba(10,20,29,.95),rgba(4,9,13,.95));flex-shrink:0}
+    .v112-v{display:flex;align-items:center;gap:12px;padding:10px 16px;border-right:1px solid #16293a}
+    .v112-v.ok{background:linear-gradient(135deg,rgba(52,211,153,.14),rgba(10,20,29,.9))}
+    .v112-v.bad{background:linear-gradient(135deg,rgba(251,113,133,.16),rgba(10,20,29,.9))}
+    .v112-o{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:18px;color:#fff;flex-shrink:0}
+    .v112-v.ok .v112-o{background:#2ea043}.v112-v.bad .v112-o{background:#da3633}
+    .v112-v b{display:block;font-size:13px;color:#fff}.v112-v small{font-size:10.5px;color:#9fd8bd}
+    .v112-v.bad small{color:#fecdd3}
+    .v112-k{display:flex;flex-direction:column;gap:3px;padding:10px 14px;border-right:1px solid #16293a;min-width:0}
+    .v112-k:last-child{border-right:0}
+    .v112-k.on{box-shadow:inset 0 2px 0 #c084fc;background:rgba(192,132,252,.07)}
+    .v112-l{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);font-weight:700}
+    .v112-k.on .v112-l{color:#d8b4fe}
+    .v112-n{font-size:18px;font-weight:800;white-space:nowrap}
+    .v112-n i{font-style:normal}.v112-n i.pl{color:#67e8f9}.v112-n i.dr{color:#a5b4fc}
+    .v112-n em{font-style:normal}.v112-n em.eq{color:#3fb950}.v112-n em.ne{color:#ff7b72}
+    .v112-main{flex:1;min-height:0;display:grid;grid-template-columns:365px minmax(0,1fr);gap:14px}
+    .v112-lst,.v112-caso{border:1px solid var(--line);border-radius:8px;background:#0a1118;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+    .v112-lh{padding:10px 12px;border-bottom:1px solid #16293a;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#d8b4fe}
+    .v112-fl{display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid #16293a;flex-wrap:wrap}
+    .v112-fl{gap:2px !important}
+    .v112-fl button{background:none;border:0;border-radius:5px;padding:4px 6px;color:var(--dim);font:700 10.5px var(--mono);cursor:pointer}
+    .v112-fl button:hover{color:#fff}
+    .v112-fl button.on{background:#1d1630;color:#f3e8ff;box-shadow:inset 0 0 0 1px #c084fc88}
+    .v112-li{overflow:auto;flex:1}
+    .v112-it{display:flex;flex-direction:column;gap:4px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid #13212d;padding:10px 12px;color:var(--txt);font:12px var(--mono);cursor:pointer}
+    .v112-it:hover{background:rgba(192,132,252,.05)}
+    .v112-it.on{background:rgba(16,40,58,.35);box-shadow:inset 3px 0 0 #c084fc}
+    .v112-ih{display:flex;align-items:center;gap:8px;min-width:0}
+    .v112-ih b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .v112-pr{font-size:10px;font-weight:800;color:var(--cc);border:1px solid var(--cc);border-radius:3px;padding:0 4px;flex-shrink:0}
+    .v112-at{color:var(--cyan);white-space:nowrap}
+    .v112-st{margin-left:auto;font-size:10px;font-weight:800;border-radius:4px;padding:1px 6px;white-space:nowrap;flex-shrink:0}
+    .v112-st.ok,b.ok{color:#7ee2b8}.v112-st.ok{border:1px solid #2ea04388;background:#0f2a1d}
+    .v112-st.bad,b.bad{color:#ffb3ad}.v112-st.bad{border:1px solid #da363388;background:#2a1215}
+    .v112-st.pl,b.pl{color:#67e8f9}.v112-st.pl{border:1px solid #22d3ee66;background:#0b2229}
+    .v112-st.dr,b.dr{color:#a5b4fc}.v112-st.dr{border:1px solid #818cf866;background:#12152b}
+    .v112-is{font-size:11px;color:var(--dim)}
+    .v112-vz{padding:20px;color:var(--dim);font-size:12px}
+    .v112-hd{display:grid;grid-template-columns:96px minmax(0,1fr) 260px 190px;border-bottom:1px solid #16293a;flex-shrink:0}
+    .v112-hd>*{padding:11px 14px;display:flex;flex-direction:column;gap:3px;border-right:1px solid #16293a;min-width:0}
+    .v112-hd>*:last-child{border-right:0}
+    .v112-hd span{font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);font-weight:700}
+    .v112-hp{background:color-mix(in srgb,var(--cc) 14%,#0a1118)}.v112-hp b{font-size:26px;color:var(--cc);line-height:1.1}
+    .v112-ht b{font-size:17px;color:#fff}.v112-ht small,.v112-hq small,.v112-hg small{font-size:11px;color:var(--dim)}.v112-ht small b{font-size:11px;color:var(--txt)}
+    .v112-hq b{font-size:14px}
+    .v112-hg{background:rgba(34,211,238,.06);border:0;text-align:left;cursor:pointer;color:var(--txt);font-family:var(--mono)}
+    .v112-hg:hover{background:rgba(34,211,238,.14)}.v112-hg b{font-size:12.5px;color:var(--cyan)}
+    .v112-cols{display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);padding:12px 16px 6px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;flex-shrink:0}
+    .v112-cols .pl{color:var(--cyan)}.v112-cols .dr{color:#a5b4fc}
+    .v112-rows{overflow:auto;flex:1;padding:0 16px 12px;display:flex;flex-direction:column;gap:8px}
+    .v112-row{display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);align-items:stretch}
+    .v112-g{display:grid;place-items:center;font-weight:800;font-size:16px}.v112-g.eq{color:#3fb950}.v112-g.ne{color:#ff7b72}
+    .v112-cd{border-radius:6px;padding:8px 12px;font-size:12px;min-width:0;display:flex;flex-direction:column;gap:3px}
+    .v112-cd.pl{border:1px solid #1d3442;background:#0b141d}.v112-cd.dr{border:1px solid #2b2f5a;background:#0e1022}
+    .v112-cd.dif{border-color:#da363399 !important;background:#1c0f13 !important}
+    .v112-cd.vazio{display:grid;place-items:center;color:#ffb3ad;font-size:11px;border-style:dashed}
+    .v112-ch{display:flex;align-items:center;gap:7px}.v112-ch b{color:#fff}
+    .v112-r{font-size:10px;font-weight:800;color:#070c12;background:var(--cyan);border-radius:3px;padding:0 4px}
+    .v112-cd.dr .v112-r{background:#a5b4fc}
+    .v112-ca{font-size:11px;color:#b9cbd4;word-break:break-word}
+    .v112-cp{display:flex;flex-wrap:wrap;gap:4px}
+    .v112-pp{font-size:10px;color:#9fb6c2;border:1px solid #1f3646;border-radius:4px;padding:0 5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:16px;box-sizing:border-box}
+    .v112-pp.n{color:#fda4af;border-color:#fb718555}.v112-pp.c{color:#fde68a;border-color:#fbbf2455}
+    .v112-atr{border-top:1px dashed #1f3646;padding-top:8px}
+    .v112-atr summary{cursor:pointer;color:var(--dim);font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px}
+    .v112-atr .v112-row{margin-bottom:8px}
+    .v112-ft{display:flex;align-items:center;gap:16px;padding:9px 16px;border-top:1px solid #16293a;font-size:11px;color:var(--dim);flex-shrink:0;flex-wrap:wrap}
+    .v112-ft .ok{color:#7ee2b8}.v112-ft .bad{color:#ffb3ad}.v112-sp{flex:1}
+    .v112-ft button{background:none;border:1px solid var(--line2);border-radius:6px;padding:5px 10px;color:var(--cyan);font:700 11px var(--mono);cursor:pointer}
+    .v112-ft button:hover{border-color:var(--cyan)}
+    @media (max-width:1250px){.v112-main{grid-template-columns:300px minmax(0,1fr)}.v112-hd{grid-template-columns:80px minmax(0,1fr) 200px 150px}}
+  `;
+  document.head.appendChild(st);
+})();
+
+/* v113: expandir ou recolher o notch fecha o menu de cenários */
+const _v113Exp = toggleDynamicIslandExpand;
+toggleDynamicIslandExpand = function() { $('socScenDropdown')?.classList.remove('open'); return _v113Exp.apply(this, arguments); };
+window.toggleDynamicIslandExpand = toggleDynamicIslandExpand;
+
+/* v114: prova destacada no grafo: só ficam as setas e os arcos ∧ da prova */
+const _v114Apl = v83Aplicar;
+v83Aplicar = function() {
+  const r = _v114Apl.apply(this, arguments);
+  try {
+    gE.querySelectorAll('.v114-off').forEach(x => x.classList.remove('v114-off'));
+    gA.querySelectorAll('.v114-off').forEach(x => x.classList.remove('v114-off'));
+    if (gN.querySelector('.node.v83-on')) {
+      gE.querySelectorAll('path.edge.v83-dim').forEach(e => { e.classList.add('v114-off'); const h = e.nextElementSibling; if (h && h.classList.contains('hit')) h.classList.add('v114-off'); });
+      const dim = new Set([...gN.querySelectorAll('.node.v83-dim')].map(n => n.dataset.id));
+      gA.querySelectorAll('[data-id]').forEach(a => { if (dim.has(a.dataset.id)) a.classList.add('v114-off'); });
+    }
+  } catch (e) {}
+  return r;
+};
+(function() { const st = document.createElement('style'); st.textContent = '#gE .v114-off,#gA .v114-off{display:none !important}'; document.head.appendChild(st); })();
+
+/* v115: as setas da base de conhecimento (desenhadas a 35%, pareciam inativas) só aparecem com o nó da base selecionado;
+   a ligação continua visível em cada regra ("Premissas: … ∧ KB") e no nó da base ("Dispara: …") */
+const _v115Render = render;
+render = function() {
+  const r = _v115Render.apply(this, arguments);
+  try {
+    const ver = S.sel === 'kb';
+    gE.querySelectorAll('path.edge.kb-edge').forEach(e => {
+      e.classList.toggle('v115-kb', !ver);
+      const h = e.nextElementSibling; if (h && h.classList.contains('hit')) h.classList.toggle('v115-kb', !ver);
+    });
+  } catch (e) {}
+  return r;
+};
+(function() { const st = document.createElement('style'); st.textContent = '#gE .v115-kb{display:none !important} #gE path.edge.kb-edge.lit:not(.v115-kb){opacity:1 !important}'; document.head.appendChild(st); })();
+
+/* =====================================================================
+   v116: (1) arcos ∧ contam só as entradas que estão à vista (mais a da base,
+             que só se esconde por arrumação e aparece em "Premissas: … ∧ KB");
+         (2) o ✕ da "Prova destacada" desliga o destaque, redesenha o grafo
+             e volta à Consola.
+   ===================================================================== */
+const _v116Pt = new Map();
+function v116Ponto(p, cx, cy, r) {
+  const ck = p.getAttribute('d') + '|' + cx + '|' + cy;
+  let pt = _v116Pt.get(ck);
+  if (pt) return pt;
+  const L = p.getTotalLength();
+  pt = p.getPointAtLength(0);
+  let lo = 0, hi = L;
+  for (let it = 0; it < 12; it++) { const mid = (lo + hi) / 2; const q = p.getPointAtLength(mid); if (Math.hypot(q.x - cx, q.y - cy) >= r) { pt = { x: q.x, y: q.y }; lo = mid; } else hi = mid; }
+  if (_v116Pt.size > 4000) _v116Pt.clear();
+  _v116Pt.set(ck, pt);
+  return pt;
+}
+function v116Arcos() {
+  if (typeof gA === 'undefined' || !gA) return;
+  gA.querySelectorAll('.v116-off').forEach(x => x.classList.remove('v116-off'));
+  const oculto = el => !el || el.classList.contains('sg-hide') || el.classList.contains('dim') || el.classList.contains('v114-off') || el.classList.contains('v109-off') || getComputedStyle(el).display === 'none';
+  gA.querySelectorAll('path.andarc[data-id]').forEach(arc => {
+    const id = arc.dataset.id, n = byId[id];
+    const tx = gA.querySelector(`text.andtx[data-id="${CSS.escape(id)}"]`);
+    if (!n || oculto(arc)) { tx?.classList.add('v116-off'); return; }
+    const vis = [], conta = [];
+    (IN[id] || []).forEach(e => {
+      const el = $('e-' + key(e.id, id));
+      if (!el) return;
+      const soArrumacao = el.classList.contains('v115-kb') && !el.classList.contains('v114-off') && !el.classList.contains('sg-hide') && !el.classList.contains('dim');
+      if (!oculto(el)) { vis.push(el); conta.push(el); } else if (soArrumacao) conta.push(el);
+    });
+    if (conta.length < 2) { arc.classList.add('v116-off'); tx?.classList.add('v116-off'); return; }
+    if (tx) tx.textContent = '∧' + conta.length;
+    if (vis.length < 2) { arc.classList.add('v116-off'); return; }
+    const cx = n.x, cy = n.y + H / 2, r = 30;
+    const angs = vis.map(p => { const pt = v116Ponto(p, cx, cy, r); let a = Math.atan2(pt.y - cy, pt.x - cx); if (a < 0) a += Math.PI * 2; return a; });
+    let a1 = Math.min(...angs), a2 = Math.max(...angs);
+    const minSpan = 0.32; if (a2 - a1 < minSpan) { const m = (a1 + a2) / 2; a1 = m - minSpan / 2; a2 = m + minSpan / 2; }
+    arc.setAttribute('d', `M${cx + r * Math.cos(a1)},${cy + r * Math.sin(a1)} A${r},${r} 0 0 1 ${cx + r * Math.cos(a2)},${cy + r * Math.sin(a2)}`);
+    if (tx) { const am = (a1 + a2) / 2; tx.setAttribute('x', cx + (r + 14) * Math.cos(am) - 8); tx.setAttribute('y', cy + (r + 14) * Math.sin(am) + 4); }
+  });
+}
+const _v116Render = render;
+render = function() { const r = _v116Render.apply(this, arguments); try { v116Arcos(); } catch (e) { console.error(e); } return r; };
+document.addEventListener('click', e => {
+  if (!(e.target.closest && e.target.closest('#v84Badge [data-x]'))) return;
+  setTimeout(() => {
+    S.v83.destaque = false;
+    try { render(); } catch (er) {}
+    $('v84Badge')?.remove(); $('v84Foco')?.remove();
+    const res = v61Res && v61Res();
+    if (res && S.engine !== 'both') { v89Modo('painel'); try { v94Tabs(); } catch (er) {} }
+  }, 0);
+}, true);
+(function() { const st = document.createElement('style'); st.textContent = '#gA .v116-off{display:none !important}'; document.head.appendChild(st); })();
+
+/* v118: rodapé só com dados da resposta atual da API; no Comparador mostra os dois motores;
+   atualiza-se em cada redesenho (motor, cenário, etapa) */
+v82Rodape = function() {
+  const base = r => r ? (r._base || r) : null;
+  const regras = r => new Set(r.factos.filter(f => f.origem === 'regra').map(f => f.regra)).size;
+  const ver = S.detectedKbVersion || S.backendHealth?.versaoKB || '';
+  if ($('sKbVer')) $('sKbVer').textContent = ver ? 'v' + ver : '—';
+  const box = $('statusRulesCount');
+  if (box) {
+    let h = '<b id="sRules">—</b> regras', t = 'Ainda não há resposta do motor para este pedido.';
+    if (S.engine === 'both') {
+      const pl = base(S.engineResults?.prolog?.[S.scen || 'all']), dr = base(S.engineResults?.drools?.[S.scen || 'all']);
+      if (pl || dr) {
+        h = `regras disparadas: Prolog <b id="sRules">${pl ? regras(pl) : '—'}</b> · Drools <b>${dr ? regras(dr) : '—'}</b>`;
+        t = 'Regras diferentes que dispararam na última resposta de cada motor a este pedido.';
+      }
+    } else {
+      const r = base(v61Res && v61Res());
+      if (r) {
+        h = `<b id="sRules">${regras(r)}</b> regras disparadas · <b>${r.factos.filter(f => f.origem === 'regra').length}</b> deduções · <b>${(r.tickets || []).length}</b> tickets`;
+        t = 'Da última resposta do motor a este pedido: regras diferentes que dispararam (a base tem mais regras do que as que disparam num pedido), factos deduzidos e tickets (abertos e fechados).';
+      }
+    }
+    if (box._h !== h) { box._h = h; box.innerHTML = h; }
+    box.title = t;
+  }
+  if ($('sN')) $('sN').textContent = NODES.length;
+  if ($('sE')) $('sE').textContent = EDGES.length;
+  const ap = $('apiStatusText');
+  if (ap && S.apiOnline) ap.textContent = `API Online · ${S.engine === 'drools' ? 'Drools' : S.engine === 'both' ? 'Comparador' : 'SWI-Prolog'} · KB v${ver || '—'}`;
+};
+window.v82Rodape = v82Rodape;
+updateStatusFooterUI = function() { v82Rodape(); };
+const _v118Render = render;
+render = function() { const r = _v118Render.apply(this, arguments); try { v82Rodape(); } catch (e) {} return r; };
+
+/* =====================================================================
+   v119: navegação a partir das páginas do sistema (Conhecimento, Arquitetura,
+   API e motores): escolher um motor, um cenário, ou usar os controlos do notch
+   volta à Consola/Grafo; o logótipo leva ao início (Consola, ou Grafo sem resposta).
+   ===================================================================== */
+const v119Fora = () => !!document.querySelector('.app.view-dossier, .app.view-backend');
+function v119Voltar(modo) {
+  if (!v119Fora()) return false;
+  switchView('simulador');
+  const tem = S.engine === 'both' ? !!v76Comparar() : !!(v61Res && v61Res());
+  v89Modo(modo || (tem ? 'painel' : 'grafo'));
+  setTimeout(() => { try { v94Tabs(); } catch (e) {} }, 60);
+  return true;
+}
+window.v119Voltar = v119Voltar;
+document.addEventListener('click', e => {
+  if (!e.target.closest) return;
+  if (e.target.closest('.eng-btn')) { if (v119Fora()) setTimeout(() => v119Voltar(), 0); return; }
+  if (e.target.closest('#dynamicIsland .di-transport button, #bDockPlay, #bDockPrev, #bDockNext, #bDockReset, #bDockEnd')) { v119Voltar('grafo'); return; }
+  if (e.target.closest('.head-left .brand')) { e.preventDefault(); if (!v119Voltar()) { const tem = S.engine === 'both' ? !!v76Comparar() : !!(v61Res && v61Res()); if (tem && S.v89.modo !== 'painel') { v89Modo('painel'); setTimeout(() => { try { v94Tabs(); } catch (er) {} }, 60); } } }
+}, true);
+const _v119Scen = selectSocScenarioFromMenu;
+selectSocScenarioFromMenu = function() { const r = _v119Scen.apply(this, arguments); v119Voltar('grafo'); return r; };
+window.selectSocScenarioFromMenu = selectSocScenarioFromMenu;
+(function() { const st = document.createElement('style'); st.textContent = '.head-left .brand{cursor:pointer}'; document.head.appendChild(st); const b = document.querySelector('.head-left .brand'); if (b) b.title = 'Início: Consola SOC'; })();
 
 // Arrancar a verificação inicial após todos os handlers estarem declarados
 verifyAndRetrieveFromApi(false);
