@@ -80,23 +80,17 @@ public class InferenceService {
 
     /**
      * "Como?": corre o pedido e devolve a arvore de factos do facto pedido (campo facto, por numero ou por predicado e
-     * args). NAO_ENCONTRADO se o facto nao esta na resposta.
+     * args). Com comRegras, cada no concluido traz tambem a regra completa (regraCompleta). NAO_ENCONTRADO se o facto
+     * nao esta na resposta.
      * @param nomeMotor
      * @param corpo
+     * @param comRegras
      * @return
      */
-    public Resultado como(String nomeMotor, String corpo) {
-        return arvore(nomeMotor, corpo, false);
-    }
-
-    /**
-     * "Porque?": o mesmo que o como, e cada no concluido traz a regra completa (regraCompleta).
-     * @param nomeMotor
-     * @param corpo
-     * @return
-     */
-    public Resultado porque(String nomeMotor, String corpo) {
-        return arvore(nomeMotor, corpo, true);
+    public Resultado como(String nomeMotor, String corpo, boolean comRegras) {
+        return corre(nomeMotor, corpo, requestValidator::validaFacto, (motor, pedido) -> motor.infere(corpo),
+                (pedido, resposta) -> explicador.como(resposta, jsonMapper.writeValueAsString(pedido.get("facto")),
+                        comRegras));
     }
 
     /**
@@ -136,19 +130,6 @@ public class InferenceService {
     private static int profundidade(JsonNode pedido) {
         JsonNode p = pedido.get("profundidade");
         return p == null || p.isNull() ? PROFUNDIDADE_POR_OMISSAO : p.asInt();
-    }
-
-    /**
-     * O como e o porque: a arvore do facto pedido, com ou sem as regras completas.
-     * @param nomeMotor
-     * @param corpo
-     * @param comRegras
-     * @return
-     */
-    private Resultado arvore(String nomeMotor, String corpo, boolean comRegras) {
-        return corre(nomeMotor, corpo, requestValidator::validaFacto, (motor, pedido) -> motor.infere(corpo),
-                (pedido, resposta) -> explicador.como(resposta, jsonMapper.writeValueAsString(pedido.get("facto")),
-                        comRegras));
     }
 
     /**

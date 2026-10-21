@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 class BaseCarregadaTest {
@@ -54,5 +55,26 @@ class BaseCarregadaTest {
     @Test
     void jsonInvalidoNaoArranca() {
         assertThrows(JacksonException.class, () -> new BaseCarregada(json, "{nao e json"));
+    }
+
+    /**
+     * Verifica que as regras sao o regras.json do classpath tal como esta, com as 92 regras da base, e que sao da
+     * mesma versaoKB que o catalogo de cenarios (os dois vem do gera_json.pl).
+     * @throws Exception
+     */
+    @Test
+    void regrasVemDoRegrasJsonComAMesmaVersao() throws Exception {
+        String ficheiro;
+        try (InputStream in = getClass().getResourceAsStream("/regras.json")) {
+            ficheiro = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        BaseCarregada base = new BaseCarregada(json);
+        assertEquals(ficheiro, base.regrasJson());
+        JsonNode regras = json.readTree(base.regrasJson());
+        assertEquals(base.versaoKB(), regras.path("versaoKB").asString());
+        assertEquals(92, regras.path("regras").size());
+        JsonNode primeira = regras.path("regras").get(0);
+        assertTrue(primeira.has("id") && primeira.path("se").isArray() && primeira.path("entao").isArray(),
+                primeira.toString());
     }
 }
