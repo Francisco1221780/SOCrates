@@ -2953,7 +2953,7 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;color:#a9d6de;font-famil
       </div>
 
       <!-- Pílula Pulsante de Pergunta Pendente no Cabeçalho (V5.3) -->
-      <button class="c7-top-alert-pill" id="headerC7PendingPill" onclick="focusAnalystPromptInInspector()" title="Pergunta pendente do motor em web_srv_04 (Cenário 7 · R17/R29) — Clique para responder">
+      <button class="c7-top-alert-pill" id="headerC7PendingPill" onclick="focusAnalystPromptInInspector()" title="Pergunta pendente do motor: clique para responder">
         <span>⚠️ C7 Pendente ➔</span>
       </button>
 
@@ -3013,7 +3013,7 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;color:#a9d6de;font-famil
               <span>🔴</span>
               <span>Backend Desconectado em <code style="color:#fff">http://localhost:8080</code></span>
             </div>
-            Não foi possível contactar a API REST do Spring Boot. Para executar a inferência real nos motores SWI-Prolog e Drools, inicie a aplicação Spring Boot.
+            <span id="emptyApiMsg">Não foi possível contactar a API REST do Spring Boot. Para executar a inferência real nos motores SWI-Prolog e Drools, inicie a aplicação Spring Boot. A ligação volta a ser tentada sozinha a cada 5 s.</span>
           </div>
 
           <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:8px">
@@ -3100,17 +3100,13 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;color:#a9d6de;font-famil
         <!-- Faixa Interativa de Input / Pergunta do Motor integrada no Notch (AC12) -->
         <div class="di-prompt-banner" id="diPromptBanner">
           <div class="di-prompt-head">
-            <span id="diPromptBadge">⚠️ INPUT REQUERIDO PELO MOTOR · R17/R29</span>
+            <span id="diPromptBadge">Pergunta do motor</span>
             <button class="btn-xs" onclick="openC7Modal()" style="border-color:#fbbf2466;color:#fde68a">⤢ Janela Detalhada</button>
           </div>
           <div class="di-prompt-q" id="diPromptQuestion">
-            Sensor EDR offline em <b>web_srv_04</b>. Confirma atividade anómala / shell ativa no serviço?
           </div>
           <div class="di-prompt-btns" id="diPromptBtns">
-            <button class="di-ans-btn sim" onclick="submitAnalystResponse('sim')">🚨 SIM (Confirmar)</button>
-            <button class="di-ans-btn nao" onclick="submitAnalystResponse('nao')">🛡️ NÃO (Descartar)</button>
-            <button class="di-ans-btn unk" onclick="submitAnalystResponse('nao_sei')">❓ NÃO SEI (Suspeita)</button>
-          </div>
+</div>
         </div>
 
         <!-- Gaveta Expansível da Dynamic Island (Scrubber + Pins + Filtro/Pesquisa) -->
@@ -3224,37 +3220,7 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;color:#a9d6de;font-famil
   </div>
 </div>
 
-<div class="c7-modal-backdrop" id="c7ModalBackdrop">
-  <div class="c7-modal-box">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
-      <span class="prio-badge p2" style="font-size:10.5px">⚠️ INTERVENÇÃO DO ANALISTA SOC · CENÁRIO 7 (AC12)</span>
-      <button class="btn-xs" onclick="closeC7Modal()" title="Minimizar para inspecionar o grafo antes de responder">Minimizar ✕</button>
-    </div>
-    <div style="font-family:var(--brand);font-size:15px;font-weight:700;color:#fff;margin-bottom:6px">
-      Sensor Host (EDR) Offline em <span style="color:var(--cyan)" id="c7TargetHost">web_srv_04</span>
-    </div>
-    <div style="font-size:12px;color:var(--txt);line-height:1.55;background:#081018;border:1px solid var(--line2);border-left:3px solid var(--and);padding:10px 12px;border-radius:4px" id="c7QuestionText">
-      O sensor EDR do ativo encontra-se offline após deteção de exploit viável (ev_e1). Observa alguma shell ativa lançada pelo serviço atacado (httpd)?
-    </div>
-    <div style="font-size:11px;color:var(--dim);margin-top:8px">
-      A sua resposta será adicionada ao passo <code>resposta_analista/4</code> e reenviada ao motor stateless:
-    </div>
-    <div class="c7-opt-grid">
-      <button class="c7-opt-btn sim" onclick="submitAnalystResponse('sim')">
-        <span style="font-size:15px">🚨 SIM</span>
-        <span style="font-size:9.5px;color:var(--dim);font-weight:400">Confirmar Shell → P1/P2 Isolar</span>
-      </button>
-      <button class="c7-opt-btn nao" onclick="submitAnalystResponse('nao')">
-        <span style="font-size:15px">🛡️ NÃO</span>
-        <span style="font-size:9.5px;color:var(--dim);font-weight:400">Sem Shell → P4 Sem Impacto</span>
-      </button>
-      <button class="c7-opt-btn unk" onclick="submitAnalystResponse('nao_sei')">
-        <span style="font-size:15px">❓ NÃO SEI</span>
-        <span style="font-size:9.5px;color:var(--dim);font-weight:400">Inconclusivo → P3 Vigiar</span>
-      </button>
-    </div>
-  </div>
-</div>
+<!-- v137: o modal antigo do cenário 7 (texto escrito à mão) foi removido; as perguntas vêm só da API -->
 
 <script>
 /* =====================================================================
@@ -7158,16 +7124,7 @@ function getPendingEngineQuestions() {
     }));
   }
   if (!S.apiLoaded) return [];
-  const pendingList = [];
-  if ((S.batchExecuted || R.lit.has('r17')) && !S.c7Answer && S.scen === 'c7') {
-    pendingList.push({
-      scen: 'c7',
-      alvo: 'web_srv_04',
-      evento: 'ev_e1',
-      pergunta: 'shell_servico'
-    });
-  }
-  return pendingList;
+  return []; // v137: sem API não há perguntas (nada escrito à mão)
 }
 
 isC7QuestionCurrentlyPending = function() {
@@ -7670,8 +7627,8 @@ function showEngineQuestionPrompt(p) {
   if (banner) banner.classList.add('active');
 
   const qId = p.pergunta || p.id || 'P3';
-  const txt = p.texto || 'Pergunta ao analista: confirma-se atividade suspeita no ativo?';
-  const alvo = p.ativo || p.alvo || 'web_srv_04';
+  const txt = p.texto || '';
+  const alvo = p.ativo || p.alvo || '—';
 
   if ($('diPromptBadge')) $('diPromptBadge').textContent = `⚠️ AGUARDA RESPOSTA (${qId})`;
   if ($('diPromptQuestion')) $('diPromptQuestion').textContent = txt;
@@ -7689,9 +7646,7 @@ function showEngineQuestionPrompt(p) {
       }).join(' ');
     } else {
       btns.innerHTML = `
-        <button class="di-ans-btn sim" onclick="submitAnalystResponse('sim')" title="Confirmar Shell">SIM (Confirmar Shell)</button>
-        <button class="di-ans-btn nao" onclick="submitAnalystResponse('nao')" title="Descartar">NÃO (Sem Shell)</button>
-        <button class="di-ans-btn unk" onclick="submitAnalystResponse('nao_sei')" title="Inconclusivo">NÃO SEI</button>
+        <span class="v120-mu">A resposta do motor não traz as opções desta pergunta.</span>
       `;
     }
   }
@@ -7858,13 +7813,17 @@ verifyAndRetrieveFromApi = async function(manualClick = false) {
   const statusEl = $('emptyApiCheckStatus');
   if (statusEl) {
     statusEl.style.color = 'var(--cyan)';
-    statusEl.textContent = `A contactar ${baseUrl}/api/health...`;
+    statusEl.style.background = 'rgba(34,211,238,.08)'; statusEl.style.borderColor = 'rgba(34,211,238,.35)';
+    statusEl.textContent = `A contactar ${baseUrl}/api/health…`;
   }
+  if ($('emptyApiMsg')) $('emptyApiMsg').style.display = 'none';
+  clearTimeout(window._v124Retry);
   if (manualClick) log('rede', `A verificar ${baseUrl}/api/health e /api/cenarios...`, 'c');
 
   try {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 2000);
+    // o health verifica a base Prolog: com o motor ocupado pode demorar alguns segundos
+    const timer = setTimeout(() => ctrl.abort(), 10000);
     const resHealth = await fetch(`${baseUrl}/api/health`, { signal: ctrl.signal });
     clearTimeout(timer);
     if (!resHealth.ok) throw new Error(`HTTP ${resHealth.status}`);
@@ -7930,8 +7889,11 @@ verifyAndRetrieveFromApi = async function(manualClick = false) {
     if ($('apiStatusText')) $('apiStatusText').textContent = 'API Offline (:8080)';
     if (statusEl) {
       statusEl.style.color = '#fca5a5';
-      statusEl.textContent = `🔴 Sem resposta em ${baseUrl} (${err.message})`;
+      statusEl.style.background = 'rgba(239,68,68,0.12)'; statusEl.style.borderColor = 'rgba(239,68,68,0.3)';
+      statusEl.textContent = `🔴 Sem resposta em ${baseUrl} (${err.name === 'AbortError' ? 'sem resposta em 10 s' : err.message})`;
     }
+    if ($('emptyApiMsg')) $('emptyApiMsg').style.display = '';
+    window._v124Retry = setTimeout(() => { if (!S.apiOnline) verifyAndRetrieveFromApi(false); }, 5000);
   }
 };
 
@@ -8206,9 +8168,12 @@ function v62ChainOf(res, num) {
 const _v62Spacing = enforceCleanFullGraphSpacing;
 enforceCleanFullGraphSpacing = function() {
   if (!V62.active) return _v62Spacing();
-  const TOP_Y = 136, STEP = 68, MAXSTEP = 140;
+  const TOP_Y = 160, STEP = 68, MAXSTEP = 140;
   const cols = {};
-  NODES.forEach(n => { (cols[n.col] = cols[n.col] || []).push(n); });
+  // v132: antes de correr, os nós escondidos (ex.: base de conhecimento) não ocupam lugar na coluna
+  let v132vis = null;
+  try { if (typeof v132PreRun === 'function' && v132PreRun()) v132vis = getVisibleNodesForCurrentState(); } catch (e) {}
+  NODES.forEach(n => { if (v132vis && !v132vis.has(n.id)) return; (cols[n.col] = cols[n.col] || []).push(n); });
   const maxCount = Math.max(1, ...Object.values(cols).map(a => a.length));
   const c = $('canvas')?.getBoundingClientRect();
   const usedCols = Object.keys(cols).length || 1;
@@ -9044,10 +9009,12 @@ function v67GlobalPassos(eng) {
 }
 async function v67Run(passos, engines, animate) {
   const view = S.scen || 'all';
+  const meu = S.v143 = (S.v143 || 0) + 1, eng0 = S.engine; // v143: número desta execução
   S.scen = 'all';
   let rs;
   try { rs = await Promise.all(engines.map(e => v61Inferir(e, passos))); }
   finally { S.scen = view; }
+  if (meu !== S.v143 || S.engine !== eng0) { try { log('motor', 'resposta de um pedido anterior ignorada (o motor ou o pedido mudou entretanto)', 'c'); } catch (e) {} return null; }
   if (!rs[0]) return null;
   S.lastExecutedPassos = JSON.parse(JSON.stringify(passos));
   if (view !== 'all') engines.forEach((e, i) => { if (rs[i]) S.engineResults[e][view] = v66FilterResult(rs[i], view) || rs[i]; });
@@ -9059,7 +9026,7 @@ const v67Engines = () => S.engine === 'both' ? ['prolog', 'drools'] : [S.engine 
 
 const _v67Play = play;
 play = async function() {
-  if (!S.apiOnline || !S.apiLoaded) return _v67Play();
+  if (!S.apiOnline || !S.apiLoaded) { try { showV61Error('A API não está disponível: sem resposta do motor não há inferência (nada é simulado no UI).'); } catch (e) {} return; }
   if (R.playing) { R.playing = false; updateButtons(); updateTimelineDockUI(); return; }
   if (S.v62Pending && !R.finished && S.timelineSnapshots?.length) { await v62RunWaves(); return; }
   const engines = v67Engines();
@@ -9814,9 +9781,7 @@ v62AfterRun = function() {
      como ERRO, com a indicação se está previsto numa issue ou se é preciso pedir.
    ===================================================================== */
 const V73_PREVISTOS = {
-  'POST /api/{motor}/whynot': { issue: '#7 (estrutura no motor) e #18 (endpoint)', para: '"Porque não?" (whynot/1)' },
-  'GET /api/metaconhecimento': { issue: null, para: 'metaconhecimento (facto_dispara_regras/2)' },
-  'GET /api/regras': { issue: null, para: 'texto das regras (SE/ENTÃO) nas explicações e no dossiê' }
+  'GET /api/regras': { issue: 'PR #43 (develop): atualizar o backend', para: 'texto das regras (SE/ENTÃO) nas explicações e no dossiê' }
 };
 (function() {
   ['dossierView', 'backendView'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
@@ -9842,8 +9807,8 @@ function v73Estado(r, chave) {
   if (r.ok) return `<span class="v73-ok">✓ HTTP ${r.status} · ${r.ms} ms</span>`;
   if (r.status === 0) return `<span class="v73-bad">✖ sem comunicação (${esc(r.erro || '')})</span>`;
   const prev = chave && V73_PREVISTOS[chave];
-  const nota = r.status === 404 ? (prev ? (prev.issue ? `não existe ainda · previsto em ${esc(prev.issue)}` : 'não existe · não está no plano de arquitetura nem nas issues (proposta do UI, a pedir à equipa)') : 'não existe') : (r.data?.erro ? esc(r.data.erro) : '');
-  return `<span class="v73-bad">✖ HTTP ${r.status}${nota ? ' · ' + nota : ''}</span>`;
+  const nota = r.status === 404 ? (prev && prev.issue ? `o backend em execução ainda não tem este endpoint (${esc(prev.issue)})` : 'o backend não tem este endpoint') : (r.data?.erro ? esc(r.data.erro) : '');
+  return `<span class="v73-bad">✖ HTTP ${r.status}${nota ? ': ' + nota : ''}</span>`;
 }
 (function() {
   const st = document.createElement('style');
@@ -9874,11 +9839,13 @@ async function v73RenderBackend() {
   const versao = health.data?.versaoKB || cat.data?.versaoKB || S.detectedKbVersion || '';
   const corpoVazio = JSON.stringify({ versaoKB: versao, passos: [{ id: 'base', factos: [] }] });
   const post = p => v73Get(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: corpoVazio });
-  const [plInf, drInf, plWn, drWn, meta, regras] = await Promise.all([
+  const [plInf, drInf, plWn, drWn, meta, regras, plComo, drComo] = await Promise.all([
     post('/api/prolog/infer'), post('/api/drools/infer'),
     v73Get('/api/prolog/whynot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versaoKB: versao, passos: [{ id: 'base', factos: [] }], facto: { predicado: 'ataque_dirigido', args: ['ev_e1', 'web_srv_04'] } }) }),
     v73Get('/api/drools/whynot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versaoKB: versao, passos: [{ id: 'base', factos: [] }], facto: { predicado: 'ataque_dirigido', args: ['ev_e1', 'web_srv_04'] } }) }),
-    v73Get('/api/metaconhecimento'), v73Get('/api/regras')
+    null, v73Get('/api/regras'),
+    v73Get('/api/prolog/como', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versaoKB: versao, passos: [{ id: 'base', factos: [] }], facto: { numero: 1 } }) }),
+    v73Get('/api/drools/como?regras=true', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versaoKB: versao, passos: [{ id: 'base', factos: [] }], facto: { numero: 1 } }) })
   ]);
   const linhas = [
     ['GET', '/api/health', 'disponibilidade dos motores e versão da base', health, null],
@@ -9887,7 +9854,8 @@ async function v73RenderBackend() {
     ['POST', '/api/drools/infer', 'inferência no Drools (teste: um passo vazio)', drInf, null],
     ['POST', '/api/prolog/whynot', 'porque não? (Prolog)', plWn, 'POST /api/{motor}/whynot'],
     ['POST', '/api/drools/whynot', 'porque não? (Drools)', drWn, 'POST /api/{motor}/whynot'],
-    ['GET', '/api/metaconhecimento', 'metaconhecimento facto_dispara_regras/2', meta, 'GET /api/metaconhecimento'],
+    ['POST', '/api/prolog/como', 'como? (Prolog) · árvore de um facto', plComo, null],
+    ['POST', '/api/drools/como?regras=true', 'como? (Drools) · árvore com a regra completa em cada nó', drComo, null],
     ['GET', '/api/regras', 'texto das regras (SE/ENTÃO)', regras, 'GET /api/regras']
   ];
   const motores = (health.data?.motores || []).map(m => `<tr><td><b>${esc(m.motor)}</b></td><td>${m.pronto ? '<span class="v73-ok">✓ pronto</span>' : '<span class="v73-bad">✖ não pronto</span>'}</td><td><code>${esc(m.versaoKB || '')}</code></td><td>${(m.erros || []).length ? `<span class="v73-bad">${esc(m.erros.join('; '))}</span>` : '—'}</td></tr>`).join('');
@@ -10402,7 +10370,7 @@ function v78LeituraHtml(res, num) {
   const rg = S.v78Regras;
   const notaRegras = !rg || rg.pendente ? '<span class="v71-dim">a pedir o texto das regras…</span>'
     : rg.ok ? '<span class="v73-ok">✓ texto das regras de GET /api/regras</span>'
-    : `<span class="v73-bad">✖ texto das regras indisponível: GET /api/regras ${rg.status ? '→ HTTP ' + rg.status : '→ sem comunicação'}${rg.status === 404 ? ' · não está no plano nem nas issues (proposta do UI): pedir à equipa' : ''}</span>`;
+    : `<span class="v73-bad">✖ texto das regras indisponível: GET /api/regras ${rg.status ? '→ HTTP ' + rg.status : '→ sem comunicação'}${rg.status === 404 ? ' · o backend em execução ainda não tem o PR #43 (develop)' : ''}</span>`;
   return `<div class="v78">
     <div class="v78-cam">
       <div class="v78-ch">Explicação em grafo</div>
@@ -11889,7 +11857,7 @@ function v80BHtml() {
   const doPred = p => ini.filter(f => f.predicado === p);
   const fonte = ultima || (d.base.ok ? d.base.data : null);
   const ix = fonte ? v80BIndice(fonte) : { porFacto: [], porRegra: [] };
-  const erro = (r, chave, para) => `<div class="v80b-err"><b>✖ ${esc(para)} não vem da API.</b> ${v73Estado(r, chave)}</div>`;
+  const erro = (r, chave, para) => `<div class="v80b-err"><b>Não foi possível obter ${esc(para)}.</b> ${v73Estado(r, chave)}</div>`;
   const secs = {};
   for (const [sec] of navs) {
   const fl = String((sec === 'meta' ? S.v80B.fMeta : S.v80B.fFactos) || '').toLowerCase();
@@ -11904,13 +11872,13 @@ function v80BHtml() {
         <div><span>regras que dispararam</span><b>${ix.porRegra.length}</b><small>${ultima ? 'no último pedido do simulador' : 'só com a base, sem telemetria'}</small></div>
         <div><span>cenários</span><b>${cens.length}</b><small>${Object.entries(grupos).map(([g, n]) => `${n} ${esc(g)}`).join(' · ')}</small></div>
       </div>
-      <div class="v80b-links">${[['meta', 'Metaconhecimento', 'o índice de disparo das regras, o que significa cada conclusão e como se pergunta ao analista'], ['regras', 'Regras', 'as regras que dispararam e o que concluem'], ['factos', 'Factos da base', `${ini.length} factos iniciais, por predicado, com pesquisa`], ['decisao', 'Prioridades', 'a matriz gravidade × classe do ativo e a ordem das prioridades'], ['cenarios', 'Cenários', 'o catálogo de telemetria usado nos testes']].map(([k, t, d]) => `<button data-bsec="${k}"><b>${t}</b><span>${d}</span></button>`).join('')}</div>
-      <p class="v80b-mu">Tudo nesta vista é lido agora da API (${esc(S.apiBaseUrl || '')}): <code>GET /api/health</code>, <code>GET /api/cenarios</code> e <code>POST /api/${esc(d.eng)}/infer</code> só com a base. O que a API não expõe aparece como erro.</p>`;
+      <div class="v80b-links">${[['meta', 'Metaconhecimento', 'o índice de disparo das regras, o que significa cada conclusão e como se pergunta ao analista'], ['regras', 'Regras', 'todas as regras da base em SE … ENTÃO, e quais dispararam'], ['factos', 'Factos da base', `${ini.length} factos iniciais, por predicado, com pesquisa`], ['decisao', 'Prioridades', 'a matriz gravidade × classe do ativo e a ordem das prioridades'], ['cenarios', 'Cenários', 'o catálogo de telemetria usado nos testes']].map(([k, t, d]) => `<button data-bsec="${k}"><b>${t}</b><span>${d}</span></button>`).join('')}</div>
+      <p class="v80b-mu">Tudo nesta vista é lido agora da API (${esc(S.apiBaseUrl || '')}): <code>GET /api/health</code>, <code>GET /api/cenarios</code>, <code>GET /api/regras</code> e <code>POST /api/${esc(d.eng)}/infer</code> só com a base. O que a API não expõe aparece como erro.</p>`;
   } else if (sec === 'meta') {
     const lst = S.v80B.porRegra ? ix.porRegra.filter(x => !fl || ('r' + x.r).includes(fl) || [...x.entra, ...x.sai].some(k => k.toLowerCase().includes(fl))) : ix.porFacto.filter(x => !fl || x.k.toLowerCase().includes(fl));
     const metaApi = d.meta.ok
       ? `<div class="v80b-ok">✓ <code>GET /api/metaconhecimento</code></div><pre class="v71-pre">${esc(JSON.stringify(d.meta.data, null, 2))}</pre>`
-      : erro(d.meta, 'GET /api/metaconhecimento', 'O índice facto_dispara_regras/2');
+      : `<div class="v80b-info">A API não disponibiliza este índice: ele vive no <code>soc_suporte.txt</code> do motor Prolog. A secção seguinte mostra o mesmo índice tal como se observa nas inferências.</div>`;
     const sig = doPred('significado');
     const pc = doPred('pergunta_confirmacao'), pe = doPred('pergunta_evidencia'), tp = doPred('texto_pergunta'), op = doPred('opcao_resposta');
     const ids = [...new Set([...pc.map(f => v71T(f.args[1])), ...pe.map(f => v71T(f.args[1])), ...tp.map(f => v71T(f.args[0]))])];
@@ -11921,7 +11889,7 @@ function v80BHtml() {
         <h3>1 · Índice de disparo · <code>facto_dispara_regras/2</code></h3>
         <p class="v80b-mu">Gerado a partir das regras por <code>motores/prolog/ferramentas/gera_meta.pl</code> (com <code>findall/3</code>) para o <code>soc_suporte.txt</code>; o CI confirma que está atualizado (<code>--verificar</code>). O motor consulta-o em cada facto novo.</p>
         ${metaApi}
-        <p class="v80b-mu" style="margin-top:10px">O plano de arquitetura (AC13) prevê que, no arranque, cada motor confirme que o metaconhecimento carregado é igual ao que o <code>gera_meta.pl</code> gera das regras atuais e que, se não for, o <code>GET /api/health</code> diga que o motor não está pronto. Estado agora: ${(d.health.data?.motores || []).map(m => `<b>${esc(m.motor)}</b> ${m.pronto ? '✓ pronto' : '✕ não pronto'}`).join(' · ') || 'sem resposta do /api/health'}. O índice em si não é exposto pela API: não está no plano nem nas issues (proposta do UI, a pedir à equipa).</p>
+        <p class="v80b-mu" style="margin-top:10px">O plano de arquitetura (AC13) prevê que, no arranque, cada motor confirme que o metaconhecimento carregado é igual ao que o <code>gera_meta.pl</code> gera das regras atuais e que, se não for, o <code>GET /api/health</code> diga que o motor não está pronto. Estado agora: ${(d.health.data?.motores || []).map(m => `<b>${esc(m.motor)}</b> ${m.pronto ? '✓ pronto' : '✕ não pronto'}`).join(' · ') || 'sem resposta do /api/health'}..</p>
       </article>
 
       <article class="v80b-card" id="v80b-meta-obs" data-sec="meta-obs">
@@ -11951,9 +11919,7 @@ function v80BHtml() {
       </article>`;
   } else if (sec === 'regras') {
     corpo = `<h2>Regras</h2>
-      ${d.regras.ok ? `<pre class="v71-pre">${esc(JSON.stringify(d.regras.data, null, 2))}</pre>` : erro(d.regras, 'GET /api/regras', 'O texto das regras (SE/ENTÃO)')}
-      <article class="v80b-card"><h3>Regras que dispararam ${ultima ? 'no último pedido do simulador' : 'só com a base'} · ${ix.porRegra.length}</h3>
-      <div class="v80b-tw"><table class="v80b-t"><thead><tr><th>regra</th><th>conclui</th><th>disparos</th></tr></thead><tbody>${ix.porRegra.map(x => `<tr><td><b>R${x.r}</b></td><td>${[...x.sai].map(k => `<code>${esc(k)}</code>`).join(' ')}</td><td class="n">${x.n}</td></tr>`).join('') || '<tr><td colspan="3">nenhuma</td></tr>'}</tbody></table></div></article>`;
+      ${v126RegrasSec(d.regras, ix, erro, ultima)}`;
   } else if (sec === 'factos') {
     const ks = [...porPred.keys()].sort().filter(k => !fl || k.toLowerCase().includes(fl) || porPred.get(k).some(f => v71F(f).toLowerCase().includes(fl)));
     corpo = `<h2>Factos da base</h2>
@@ -12225,6 +12191,7 @@ function v80BSpy() {
     .v80b-card{background:#0b0f14;border:1px solid #21262d;border-radius:12px;padding:16px 18px;margin:0 0 16px}
     .v80b-card h3{margin:0 0 4px;font-size:15px;color:#fff}
     .v80b-card h3 code,.v80b code{font-family:var(--mono);font-size:12px}
+    .v80b-info{background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.25);border-radius:8px;padding:10px 12px;margin-top:10px;color:#cbd5e1;font-size:12.5px}
     .v80b-err{background:#da36331a;border:1px solid #da363366;border-radius:8px;padding:10px 12px;margin-top:10px;color:#ffdcd7;font-size:12.5px}
     .v80b-ok{color:#3fb950;margin-top:8px}
     .v80b-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin:14px 0}
@@ -13581,7 +13548,7 @@ function v91Caso(res, D) {
         <div class="v91-ct"><b>${esc(v80H(v71T(inc[0])))} · ${esc(v71T(t.ativo))}</b><span>${x.fechado ? `✓ Fechado pelo motor: ${esc(v80H(x.motivo))}` : `Ação: ${esc(v80H(v71T(t.acao)))}`}</span></div>
       </div>
       ${sig ? `<p class="v91-sig">${esc(v61Fmt(sig))}</p>` : ''}
-      <div class="v91-kv">${kv('gravidade', esc(v71T(t.gravidade)))}${kv('impactados', esc(v71T(t.impactados)))}${kv('evento', esc(v71T(inc[1])))}${kv('cenário', `${esc(String(x.passo || '').toUpperCase())}${cat ? ` · ${esc(cat.descricao)}` : ''}`)}${kv('facto', '#' + t.facto)}</div>
+      <div class="v91-kv">${kv('gravidade', esc(v71T(t.gravidade)))}${kv('impactados', esc(v71T(t.impactados)))}${kv('evento', esc(v71T(inc[1])))}${kv('cenário', `${v128CenTxt(x.passo, v71T(inc[1]))}${cat ? ` · ${esc(cat.descricao)}` : ''}`)}${kv('facto', '#' + t.facto)}</div>
       ${v91Tabs([['como', '🌳 Como?'], ['whynot', '🚫 Porque não?'], ['provas', '📡 Provas']])}
       <div class="v91-tb">${S.v91.tab === 'como' ? v91Como(res, t.facto) : S.v91.tab === 'whynot' ? v71TabWhynot(res) : v71TabProvas(res)}</div>
     </section>`;
@@ -13936,7 +13903,7 @@ v91Caso = (function(prev) {
       <div class="v92-ch">
         <span class="v71-p p-${esc(x.prio)} v91-big">${esc(x.prio.toUpperCase())}</span>
         <div class="v91-ct"><b>${esc(v80H(v71T(inc[0])))} · ${esc(v71T(t.ativo))}</b><span>${x.fechado ? `✓ Fechado pelo motor: ${esc(v80H(x.motivo))}` : `Ação recomendada: <b class="v92-acao">${esc(v80H(v71T(t.acao)))}</b>`}${sig ? ` · ${esc(v61Fmt(sig))}` : ''}</span></div>
-        <div class="v91-kv">${kv('gravidade', esc(v71T(t.gravidade)))}${kv('impactados', esc(v71T(t.impactados)))}${kv('evento', esc(v71T(inc[1])))}${kv('cenário', `<span title="${esc(cat ? cat.descricao : '')}">${esc(String(x.passo || '').toUpperCase())}</span>`)}${kv('facto', '#' + t.facto)}</div>
+        <div class="v91-kv">${kv('gravidade', esc(v71T(t.gravidade)))}${kv('impactados', esc(v71T(t.impactados)))}${kv('evento', esc(v71T(inc[1])))}${kv('cenário', `<span title="${esc(cat ? cat.descricao : '')}">${v128CenTxt(x.passo, v71T(inc[1]))}</span>`)}${kv('facto', '#' + t.facto)}</div>
       </div>
       ${v91Tabs([['como', '🌳 Como?'], ['whynot', '🚫 Porque não?'], ['provas', '📡 Provas']])}
       <div class="v91-tb">${S.v91.tab === 'como' ? v92Leitura(res, t.facto) : S.v91.tab === 'whynot' ? v71TabWhynot(res) : v71TabProvas(res)}</div>
@@ -15040,6 +15007,7 @@ function v103Leitura(res, num) {
         <div class="v103-a">${args(f)}</div>
         ${s ? `<div class="v103-sig">${esc(v61Fmt(s))}</div>` : ''}
         <div class="v103-pr"><span class="v103-pq">porque</span>${ps.map(prem).join('')}</div>
+        ${typeof v126Regra === 'function' ? v126Regra(f.regra) : ''}
       </div></div>`;
   };
   const principais = P.ded.filter(f => main.has(f.numero));
@@ -15247,7 +15215,7 @@ v91Caso = function(res, D) {
       <div class="v105-hd">
         <div class="v105-c v105-pr" style="--cc:${v89PrioCor[x.prio] || '#7dd3fc'}"><span class="v94-l">Prioridade</span><b>${esc(x.prio.toUpperCase())}</b><small>${x.fechado ? 'fechado' : 'aberto'}</small></div>
         <div class="v105-c v105-inc"><span class="v94-l">Incidente · ticket #${t.facto}</span><b class="v105-tt">${esc(tit.charAt(0).toUpperCase() + tit.slice(1))}</b>
-          <div class="v105-meta">${meta('ativo', esc(ativo))}${meta('gravidade', `<em class="v105-g">${esc(v71T(t.gravidade))}</em>`)}${meta('evento', esc(v71T(inc[1])))}${meta('cenário', esc(String(x.passo || '—').toUpperCase()), cat ? cat.descricao : '')}${imp !== `[${ativo}]` ? meta('impactados', esc(imp)) : ''}</div></div>
+          <div class="v105-meta">${meta('ativo', esc(ativo))}${meta('gravidade', `<em class="v105-g">${esc(v71T(t.gravidade))}</em>`)}${meta('evento', esc(v71T(inc[1])))}${meta('cenário', v128CenTxt(x.passo, v71T(inc[1])), cat ? cat.descricao : '')}${imp !== `[${ativo}]` ? meta('impactados', esc(imp)) : ''}</div></div>
         <div class="v105-c v105-ac"><span class="v94-l">${x.fechado ? 'Fechado pelo motor' : 'Ação recomendada'}</span><b>${esc(v80H(x.fechado ? x.motivo : v71T(t.acao)))}</b>${sig ? `<small>${esc(v61Fmt(sig))}</small>` : ''}</div>
         ${v105Acoes(t.facto)}
       </div>
@@ -15262,7 +15230,7 @@ v91Caso = function(res, D) {
     <div class="v105-hd">
       <div class="v105-c v105-pr q" style="--cc:#f5b945"><span class="v94-l">Pergunta</span><b>?</b><small>${a ? 'respondida' : 'pendente'}</small></div>
       <div class="v105-c v105-inc"><span class="v94-l">Pergunta ao analista</span><b class="v105-tt">${esc(v80H(q.pergunta).charAt(0).toUpperCase() + v80H(q.pergunta).slice(1))}</b>
-        <div class="v105-meta"><span><i>ativo</i>${esc(q.ativo)}</span><span><i>evento</i>${esc(q.evento)}</span><span><i>cenário</i>${esc(String(cen || '—').toUpperCase())}</span></div></div>
+        <div class="v105-meta"><span><i>ativo</i>${esc(q.ativo)}</span><span><i>evento</i>${esc(q.evento)}</span><span><i>cenário</i>${v128CenTxt(cen, q.evento)}</span></div></div>
       <div class="v105-c v105-ac q"><span class="v94-l">Estado</span><b>${a ? `Resposta registada: ${esc(a.valor)}` : 'O motor espera esta resposta'}</b><small>${a ? 'por enviar ao motor' : 'responda abaixo'}</small></div>
       ${v105Acoes(q.facto)}
     </div>
@@ -15565,7 +15533,7 @@ function v110Vivo(id) {
   const chip = (t, c) => `<span class="v110-chip ${c || ''}">${t}</span>`;
   if (!d) return chip('a pedir à API…');
   if (id === 'pad' || id === 'prolog' || id === 'dad' || id === 'drools') {
-    if (!d.health.ok) return `<div class="v80b-err"><b>✖ O estado do motor não vem da API.</b> ${v73Estado(d.health, 'GET /api/health')}</div>`;
+    if (!d.health.ok) return `<div class="v80b-err"><b>Não foi possível obter o estado do motor.</b> ${v73Estado(d.health, 'GET /api/health')}</div>`;
     const m = v110Motor(id === 'pad' || id === 'prolog' ? 'prolog' : 'drools');
     if (!m) return `<div class="v80b-err"><b>✖ O /api/health não traz este motor.</b></div>`;
     return chip(m.pronto ? '● pronto' : '✖ indisponível', m.pronto ? 'ok' : 'bad') + (d.health.data?.versaoKB ? chip('KB v' + esc(d.health.data.versaoKB)) : '');
@@ -15602,7 +15570,7 @@ function v110Html() {
     if (t === null) return `<span class="v110-mu">${esc(lbl)} · lista de endpoints indisponível</span>`;
     return t ? `<span class="v73-ok">✓ ${esc(lbl)}</span>` : `<span class="v73-bad">✖ ${esc(lbl)} · ainda não existe na API</span>`;
   };
-  const navs = [['visao', 'Visão geral'], ['pedido', 'Como corre um pedido'], ['expl', 'Explicações'], ['principios', 'Princípios'], ['endpoints', 'Endpoints'], ['pecas', 'Onde está cada peça']];
+  const navs = [['visao', 'Visão geral'], ['pedido', 'Como corre um pedido'], ['expl', 'Explicações'], ['principios', 'Princípios'], ['endpoints', 'Endpoints'], ['pecas', 'Onde fica no repositório']];
   return `<div class="v80b v110">
     <nav class="v80b-nav"><div class="v80b-nt">Arquitetura</div>
       ${navs.map(([k, t]) => `<button type="button" data-v110sec="${k}" class="${S.v110.sec === k ? 'on' : ''}">${t}</button>`).join('')}
@@ -15614,7 +15582,7 @@ function v110Html() {
         <p class="v80b-lead">Dois motores de inferência respondem ao mesmo pedido com o mesmo formato de resposta, e é isso que permite compará-los. O backend só conhece o contrato JSON; as regras e os factos vivem fora do Java. Clica numa caixa para ver o que faz, onde está e onde aparece na interface.</p>
         <div class="v110-live">${!d ? '<span class="v110-chip">a pedir à API…</span>' : d.health.ok
           ? `<span class="v110-chip ok">● backend online</span>${(d.health.data?.motores || []).map(m => `<span class="v110-chip ${m.pronto ? 'ok' : 'bad'}">${m.pronto ? '●' : '✖'} ${esc(m.motor)}${d.health.data?.versaoKB ? ' · KB v' + esc(d.health.data.versaoKB) : ''}</span>`).join('')}<span class="v110-mu">GET /api/health · ${d.health.ms} ms</span>`
-          : `<div class="v80b-err"><b>✖ O estado do sistema não vem da API.</b> ${v73Estado(d.health, 'GET /api/health')}</div>`}</div>
+          : `<div class="v80b-err"><b>Não foi possível obter o estado do sistema.</b> ${v73Estado(d.health, 'GET /api/health')}</div>`}</div>
         <div class="v110-grid">
           <div class="v110-dg">
             <div class="v110-lg"><span><i class="ln"></i>chamada / dependência</span><span><i class="ln dash"></i>ficheiros que o motor lê</span></div>
@@ -15677,11 +15645,11 @@ function v110Html() {
         <p class="v80b-lead">Lista lida da documentação OpenAPI do backend.</p>
         ${!d ? '<p class="v80b-mu">A pedir à API…</p>' : eps
           ? `<div class="v80b-tw"><table class="v80b-t"><thead><tr><th>Método</th><th>Caminho</th><th>Descrição</th></tr></thead><tbody>${eps.map(e => `<tr><td><code>${e.m}</code></td><td><code>${esc(e.p)}</code></td><td>${esc(e.s)}</td></tr>`).join('')}</tbody></table></div>`
-          : `<div class="v80b-err"><b>✖ A lista de endpoints não vem da API.</b> ${v73Estado(d.docs, 'GET /v3/api-docs')}</div>`}
+          : `<div class="v80b-err"><b>Não foi possível obter a lista de endpoints.</b> ${v73Estado(d.docs, 'GET /v3/api-docs')}</div>`}
       </section>
       <section class="v80b-sec" id="v110-pecas" data-sec="pecas">
-        <h2>Onde está cada peça</h2>
-        <div class="v80b-tw"><table class="v80b-t"><thead><tr><th>Peça</th><th>Pasta</th><th>Papel</th></tr></thead><tbody>
+        <h2>Onde fica cada componente no repositório</h2>
+        <div class="v80b-tw"><table class="v80b-t"><thead><tr><th>Componente</th><th>Pasta</th><th>O que faz</th></tr></thead><tbody>
           ${Object.entries(V110_CX).map(([id, c]) => `<tr><td><a href="#" data-v110bx="${id}">${esc(c.t)}</a></td><td><code>${esc(c.p)}</code></td><td>${esc(c.o.split('. ')[0])}.</td></tr>`).join('')}
         </tbody></table></div>
       </section>
@@ -16231,7 +16199,7 @@ function v116Arcos() {
       if (!oculto(el)) { vis.push(el); conta.push(el); } else if (soArrumacao) conta.push(el);
     });
     if (conta.length < 2) { arc.classList.add('v116-off'); tx?.classList.add('v116-off'); return; }
-    if (tx) tx.textContent = '∧' + conta.length;
+    if (tx) { const nKb = conta.length - vis.length; tx.textContent = '∧' + vis.length + (nKb ? '+KB' : ''); tx.setAttribute('title', `${conta.length} premissas: ${vis.length} com seta visível${nKb ? ' + a base de conhecimento' : ''}`); }
     if (vis.length < 2) { arc.classList.add('v116-off'); return; }
     const cx = n.x, cy = n.y + H / 2, r = 30;
     const angs = vis.map(p => { const pt = v116Ponto(p, cx, cy, r); let a = Math.atan2(pt.y - cy, pt.x - cx); if (a < 0) a += Math.PI * 2; return a; });
@@ -16316,6 +16284,2020 @@ const _v119Scen = selectSocScenarioFromMenu;
 selectSocScenarioFromMenu = function() { const r = _v119Scen.apply(this, arguments); v119Voltar('grafo'); return r; };
 window.selectSocScenarioFromMenu = selectSocScenarioFromMenu;
 (function() { const st = document.createElement('style'); st.textContent = '.head-left .brand{cursor:pointer}'; document.head.appendChild(st); const b = document.querySelector('.head-left .brand'); if (b) b.title = 'Início: Consola SOC'; })();
+
+/* =====================================================================
+   v120 · FASE 0 + FASE 1: camada de API para as explicações e "Porque não?"
+   - api: POST /api/{motor}/{whynot|como|porque|porque-pergunta} com o mesmo
+     versaoKB e os mesmos passos do último /infer; cache por pedido; 503 com
+     nova tentativa; erros por código HTTP (400, 404, 422, 500, 503, 504).
+   - "Porque não?" de cada caso: perguntas geradas da resposta e da base
+     (ticket fechado, prioridade P1, versão confirmada do incidente via
+     substitui/2, resolvido) + facto livre; árvore com os tipos de linha do
+     whynot/1 (os mesmos textos da consola do motor).
+   ===================================================================== */
+S.v120 = { cache: new Map(), corre: new Map(), sel: {}, prof: {}, livre: '' };
+
+function v120Hash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36) + ':' + s.length; }
+function v120Motor() { return S.engine === 'drools' ? 'drools' : 'prolog'; }
+function v120Passos(res) { const b = res ? (res._base || res) : null; return (b && b._passos) || (res && res._passos) || []; }
+const V120_HTTP = {
+  400: 'pedido inválido', 404: 'endpoint ou motor desconhecido', 405: 'método não aceite', 422: 'o facto ou a pergunta pedidos não estão na resposta',
+  500: 'o motor falhou', 501: 'ainda não implementado neste motor', 503: 'motor ocupado', 504: 'o motor demorou demasiado (timeout)'
+};
+// devolve logo o que está em cache ({estado:'pronto'|'erro'|'a-pedir'}) e, se faltar, pede e chama aoAcabar()
+function v120Pedir(motor, endpoint, extra, passos, aoAcabar) {
+  const corpo = { versaoKB: S.detectedKbVersion || S.backendHealth?.versaoKB || '6', passos, ...extra };
+  const chave = motor + '|' + endpoint + '|' + v120Hash(JSON.stringify(passos)) + '|' + JSON.stringify(extra);
+  const c = S.v120.cache.get(chave);
+  if (c && c.estado !== 'erro-rede') return c;
+  if (S.v120.corre.has(chave)) return { estado: 'a-pedir', desde: S.v120.corre.get(chave) };
+  const t0 = performance.now();
+  S.v120.corre.set(chave, t0);
+  (async () => {
+    let r = null, txt = '', tent = 0;
+    while (tent < 3) {
+      try {
+        r = await fetch(`${S.apiBaseUrl || ''}/api/${motor}/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+        txt = await r.text();
+      } catch (e) { r = null; txt = e.message; }
+      if (r && r.status === 503) { tent++; await new Promise(ok => setTimeout(ok, 700 * tent)); continue; }
+      break;
+    }
+    const ms = Math.round(performance.now() - t0);
+    let data = null; try { data = JSON.parse(txt); } catch (e) {}
+    let out;
+    if (!r) out = { estado: 'erro-rede', ms, erro: txt };
+    else if (r.ok && data && data.estado !== 'erro') out = { estado: 'pronto', ms, status: r.status, data };
+    else out = { estado: 'erro', ms, status: r.status, data, erro: (data && (data.erro || data.message || data.error)) || '' };
+    S.v120.cache.set(chave, out);
+    if (S.v120.cache.size > 300) S.v120.cache.delete(S.v120.cache.keys().next().value);
+    S.v120.corre.delete(chave);
+    try { log(out.estado === 'pronto' ? 'API' : 'erro API', `POST /api/${motor}/${endpoint} · HTTP ${out.status ?? '—'} · ${ms} ms`, out.estado === 'pronto' ? 'ok' : 'bl'); } catch (e) {}
+    if (aoAcabar) aoAcabar(out);
+  })();
+  return { estado: 'a-pedir', desde: t0, novo: true };
+}
+function v120Erro(out, endpoint) {
+  if (out.estado === 'erro-rede') return `<div class="v120-err"><b>✖ Sem comunicação com a API</b> (${esc(out.erro || '')}).</div>`;
+  const nota = V120_HTTP[out.status] || '';
+  return `<div class="v120-err"><b>✖ HTTP ${out.status}</b> em <code>POST /api/${esc(v120Motor())}/${esc(endpoint)}</code>${nota ? ` · ${esc(nota)}` : ''}${out.erro ? `<br><span>Mensagem do motor: ${esc(out.erro)}</span>` : ''}</div>`;
+}
+function v120Espera(out) {
+  const s = Math.max(0, Math.round((performance.now() - (out.desde || performance.now())) / 1000));
+  return `<div class="v120-wait"><span class="v120-spin"></span>A perguntar ao motor ${v120Motor() === 'prolog' ? 'Prolog' : 'Drools'}… ${s ? s + ' s' : ''}<small>cada pedido corre outra vez todos os passos</small></div>`;
+}
+
+// ---------- termos ----------
+function v120Termo(t) {
+  if (t === null || t === undefined) return '_';
+  if (Array.isArray(t)) return '[' + t.map(v120Termo).join(', ') + ']';
+  if (typeof t === 'object' && t.var) return `<i class="v120-var">${esc(t.var)}</i>`;
+  if (typeof t === 'object' && 'f' in t) {
+    if (t.f === 'v' && (t.args || []).every(a => typeof a === 'number')) return esc((t.args || []).join('.'));
+    return `${esc(t.f)}(${(t.args || []).map(v120Termo).join(', ')})`;
+  }
+  if (typeof t === 'string' && /^[A-Z][A-Za-z0-9_]*$/.test(t)) return `<i class="v120-var">${esc(t)}</i>`;
+  return esc(String(t));
+}
+const v120Nome = t => (t && typeof t === 'object' && 'f' in t) ? t.f : '';
+
+// ---------- perguntas geradas para um ticket ----------
+function v120Perguntas(res, t) {
+  const b = res._base || res, inc = t.incidente, tipo = inc && inc.args ? v71T(inc.args[0]) : '', ev = inc && inc.args ? inc.args[1] : null;
+  const ativo = t.ativo, out = [];
+  const fechado = b.factos.some(f => f.predicado === 'ticket_fechado' && JSON.stringify(f.args[0]) === JSON.stringify(inc));
+  if (!fechado) out.push({ id: 'fechado', titulo: 'Porque é que este ticket não fechou?', sub: 'ticket_fechado/2 · R85, R86', facto: { predicado: 'ticket_fechado', args: [inc, { var: 'Motivo' }] } });
+  if (String(v71T(t.prioridade)).toLowerCase() !== 'p1') out.push({ id: 'p1', titulo: 'Porque é que não é P1?', sub: 'prioridade/2', facto: { predicado: 'prioridade', args: [inc, 'p1'] } });
+  // tipos mais fortes que este, pela tabela substitui/2 da base
+  b.factos.filter(f => f.predicado === 'substitui' && f.origem === 'inicial' && v71T(f.args[1]) === tipo).forEach(f => {
+    const forte = v71T(f.args[0]);
+    out.push({ id: 'forte-' + forte, titulo: `Porque não passou a ${v80H(forte)}?`, sub: `incidente/4 · substitui(${forte}, ${tipo})`, facto: { predicado: 'incidente', args: [{ f: 'inc', args: [forte, ev] }, forte, ativo, { var: 'Impactados' }] } });
+  });
+  if (!fechado && !b.factos.some(f => f.predicado === 'resolvido' && JSON.stringify(f.args[0]) === JSON.stringify(inc))) out.push({ id: 'resolvido', titulo: 'Porque é que o incidente não está resolvido?', sub: 'resolvido/2 · R51, R57–R63, R68, R73', facto: { predicado: 'resolvido', args: [inc, { var: 'Motivo' }] } });
+  return out;
+}
+// facto livre: "predicado(arg, X, ...)" -> {predicado, args} (maiúscula ou _ = variável)
+function v120Livre(txt) {
+  const t = v71TermParse(txt);
+  const conv = a => {
+    if (typeof a === 'string' && /^[A-Z_][A-Za-z0-9_]*$/.test(a)) return { var: a === '_' ? 'X' + Math.random().toString(36).slice(2, 5) : a };
+    if (a && typeof a === 'object' && 'f' in a) return { f: a.f, args: (a.args || []).map(conv) };
+    if (Array.isArray(a)) return a.map(conv);
+    return a;
+  };
+  if (!t || !t.predicado) throw new Error('escreva predicado(arg1, arg2, …)');
+  return { predicado: t.predicado, args: (t.args || []).map(conv) };
+}
+
+// ---------- árvore do whynot ----------
+function v120Arvore(linhas, res, chaveProf) {
+  const b = res._base || res, by = new Map(b.factos.map(f => [f.numero, f]));
+  const num = n => n == null ? '' : `<span class="v120-n" title="${esc(by.has(n) ? v71F(by.get(n)) : 'facto n.º ' + n)}">#${n}</span>`;
+  const faltas = [];
+  const html = linhas.map(l => {
+    const t = l.termo ? v120Termo(l.termo) : '';
+    const pad = `style="--n:${Math.max(0, (l.nivel || 1) - 1)}"`;
+    switch (l.tipo) {
+      case 'regra': {
+        const se = (l.se || []).map(c => `<li class="${c.verificada ? 'ok' : 'ko'}"><b>${c.verificada ? '✓' : '✗'}</b><span>${c.tipo === 'nao' ? 'não ' : c.tipo === 'avalia' ? 'calcular ' : ''}${v120Termo(c.termo)}</span>${num(c.numero)}</li>`).join('');
+        const entao = (l.entao || []).map(v120Termo).join(', ');
+        const nOk = (l.se || []).filter(c => c.verificada).length;
+        return `<div class="v120-l v120-regra" ${pad}><div class="v120-rh"><span class="v120-r">R${esc(String(l.regra))}</span><span>podia concluir <b>${entao}</b></span><em>${nOk} de ${(l.se || []).length} condições verificadas</em></div>
+          <div class="v120-se"><span class="v120-k">SE</span><ul>${se}</ul><span class="v120-k">ENTÃO</span><div class="v120-en">${entao}</div></div></div>`;
+      }
+      case 'premissa_falsa': return `<div class="v120-l v120-f" ${pad}>✗ Falta: <b>${t}</b></div>`;
+      case 'calculada_premissa_falsa': return `<div class="v120-l v120-f" ${pad}>ƒ Falta: a condição calculada <b>${t}</b></div>`;
+      case 'condicao_falsa': return `<div class="v120-l v120-f" ${pad}>ƒ Falta: a condição <b>${t}</b> não se verifica</div>`;
+      case 'condicao_nao_falsa': return `<div class="v120-l v120-f" ${pad}>¬ Impede: a condição <b>${t}</b> verifica-se</div>`;
+      case 'premissa_nao_falsa': return `<div class="v120-l v120-f" ${pad}>¬ Impede: a regra exige que <b>${t}</b> não exista</div>`;
+      case 'facto_verdadeiro': return `<div class="v120-l v120-v" ${pad}>O facto <b>${l.encontrado ? v120Termo(l.encontrado) : t}</b> existe ${num(l.numero)}</div>`;
+      case 'dado_de_entrada': faltas.push(t); return `<div class="v120-l v120-in" ${pad}>⇥ <b>${t}</b> é um dado de entrada: não está na base e nenhuma regra o conclui · <em>tem de chegar na telemetria ou numa resposta do analista</em></div>`;
+      case 'ja_explicado': return `<div class="v120-l v120-mu" ${pad}>(${t}: já explicado acima)</div>`;
+      case 'profundidade': return `<div class="v120-l v120-mu" ${pad}>Há mais causas abaixo deste nível. <button type="button" class="v120-mais" data-v120prof="${esc(chaveProf)}">Ver mais causas</button></div>`;
+      case 'falta_correr_motor': return `<div class="v120-l v120-mu" ${pad}>As condições de uma regra que conclui <b>${t}</b> verificam-se: falta correr o motor com estes passos.</div>`;
+      case 'calculada_falsa': return `<div class="v120-l v120-f" ${pad}>ƒ A condição calculada <b>${t}</b> é falsa</div>`;
+      case 'verdadeiro': return `<div class="v120-l v120-v" ${pad}>✓ Este facto <b>existe</b> ${num(l.numero)}: não há "porque não".</div>`;
+      case 'nao_verdadeiro': return `<div class="v120-l v120-v" ${pad}>O facto <b>${t}</b> é verdadeiro</div>`;
+      default: return `<div class="v120-l v120-mu" ${pad}>${esc(l.tipo)} ${t}</div>`;
+    }
+  }).join('');
+  const resumo = linhas.length && linhas[0].tipo === 'verdadeiro' ? '' : faltas.length
+    ? `<div class="v120-sum"><b>Para isto acontecer, falta chegar:</b> ${[...new Set(faltas)].map(x => `<code>${x}</code>`).join(' ')}</div>`
+    : linhas.some(l => l.tipo === 'regra') ? '' : `<div class="v120-sum">Nenhuma regra da base conclui este facto.</div>`;
+  return resumo + `<div class="v120-tree">${html}</div>`;
+}
+
+function v120Bloco(res, alvoId, facto, titulo) {
+  const motor = v120Motor(), prof = S.v120.prof[alvoId] || 4;
+  const out = v120Pedir(motor, 'whynot', { facto, profundidade: prof }, v120Passos(res), () => v120Atualiza());
+  let corpo;
+  if (out.estado === 'a-pedir') corpo = v120Espera(out);
+  else if (out.estado !== 'pronto') corpo = v120Erro(out, 'whynot');
+  else corpo = v120Arvore(out.data.explicacao || [], res, alvoId) + `<div class="v120-meta">POST /api/${motor}/whynot · HTTP ${out.status} · ${out.ms} ms · profundidade ${prof}</div>`;
+  return `<div class="v120-q"><div class="v120-qt">${esc(titulo)} <code>${v120Termo({ f: facto.predicado, args: facto.args })}</code></div>${corpo}</div>`;
+}
+
+function v120Tab(res) {
+  const s = S.v91 && S.v91.sel;
+  const b = res._base || res;
+  const t = s && s.k === 't' ? b.tickets.find(x => x.facto === s.n) : null;
+  const casoId = t ? 't' + t.facto : 'livre';
+  const pergs = t ? v120Perguntas(res, t) : [];
+  if (!S.v120.sel[casoId]) S.v120.sel[casoId] = pergs[0] ? pergs[0].id : 'livre';
+  const ativa = S.v120.sel[casoId];
+  const preds = [...new Set(b.factos.filter(f => f.origem === 'regra').map(f => `${f.predicado}/${(f.args || []).length}`))].sort();
+  const chips = pergs.map(p => `<button type="button" class="v120-c ${ativa === p.id ? 'on' : ''}" data-v120q="${esc(casoId)}|${esc(p.id)}"><b>${esc(p.titulo)}</b><small>${esc(p.sub)}</small></button>`).join('')
+    + `<button type="button" class="v120-c ${ativa === 'livre' ? 'on' : ''}" data-v120q="${esc(casoId)}|livre"><b>Outro facto…</b><small>escrever o facto</small></button>`;
+  let corpo = '';
+  if (ativa === 'livre') {
+    const txt = S.v120.livre || '';
+    let pedido = '';
+    if (S.v120.livreFacto) pedido = v120Bloco(res, 'livre:' + JSON.stringify(S.v120.livreFacto), S.v120.livreFacto, 'Porque não');
+    corpo = `<div class="v120-free"><input id="v120In" list="v120Preds" value="${esc(txt)}" placeholder="ex.: compromisso_confirmado(web_srv_04, ev_e1)  ·  maiúscula = variável"><button type="button" id="v120Go">Perguntar ao motor</button>
+      <datalist id="v120Preds">${preds.map(p => `<option value="${esc(p.split('/')[0])}(">${esc(p)}</option>`).join('')}</datalist></div>
+      ${S.v120.livreErro ? `<div class="v120-err">${esc(S.v120.livreErro)}</div>` : ''}${pedido}`;
+  } else {
+    const p = pergs.find(x => x.id === ativa);
+    if (p) corpo = v120Bloco(res, casoId + ':' + p.id, p.facto, p.titulo);
+  }
+  return `<div class="v120" data-v120caso="${esc(casoId)}"><div class="v120-intro">O motor explica porque é que uma conclusão <b>não</b> aconteceu: para cada regra que a podia tirar, que condições falharam e, descendo, porquê.</div>
+    <div class="v120-cs">${chips}</div><div id="v120Out">${corpo}</div></div>`;
+}
+// redesenha só a zona da resposta (sem mexer no resto da Consola)
+function v120Atualiza() {
+  const box = document.querySelector('.v120');
+  const res = v61Res && v61Res();
+  if (!box || !res) return;
+  const tmp = document.createElement('div'); tmp.innerHTML = v120Tab(res);
+  const novo = tmp.querySelector('#v120Out'), velho = box.querySelector('#v120Out');
+  if (novo && velho) velho.innerHTML = novo.innerHTML;
+}
+setInterval(() => { if (document.querySelector('.v120-wait')) v120Atualiza(); }, 1000);
+
+const _v120TabWn = v71TabWhynot;
+v71TabWhynot = function(res) {
+  if (!res || !res.factos) return _v120TabWn.apply(this, arguments);
+  return v120Tab(res);
+};
+document.addEventListener('click', e => {
+  if (!e.target.closest) return;
+  const q = e.target.closest('[data-v120q]');
+  if (q) { const [c, id] = q.dataset.v120q.split('|'); S.v120.sel[c] = id; v89Render(); return; }
+  const m = e.target.closest('[data-v120prof]');
+  if (m) { const k = m.dataset.v120prof; S.v120.prof[k] = Math.min(8, (S.v120.prof[k] || 4) + 2); v120Atualiza(); return; }
+  if (e.target.closest('#v120Go')) {
+    const v = ($('v120In')?.value || '').trim(); S.v120.livre = v; S.v120.livreErro = '';
+    try { S.v120.livreFacto = v120Livre(v); } catch (er) { S.v120.livreFacto = null; S.v120.livreErro = 'Facto mal escrito: ' + er.message + '. Nada foi enviado.'; }
+    v89Render();
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target && e.target.id === 'v120In') { e.preventDefault(); $('v120Go')?.click(); } });
+document.addEventListener('input', e => { if (e.target && e.target.id === 'v120In') S.v120.livre = e.target.value; });
+
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    .v120{display:flex;flex-direction:column;gap:12px;font-family:var(--mono);font-size:12px;color:var(--txt)}
+    .v120-intro{color:var(--dim);font-size:11.5px}
+    .v120-cs{display:flex;flex-wrap:wrap;gap:8px}
+    .v120-c{display:flex;flex-direction:column;gap:2px;text-align:left;background:#0b141d;border:1px solid #1f3646;border-radius:7px;padding:8px 11px;color:var(--txt);font-family:var(--mono);cursor:pointer;min-width:190px}
+    .v120-c b{font-size:12px;color:#fff}.v120-c small{font-size:10px;color:var(--dim)}
+    .v120-c:hover{border-color:#fb718588}
+    .v120-c.on{border-color:#fb7185;background:rgba(251,113,133,.08);box-shadow:inset 0 2px 0 #fb7185}
+    .v120-q{border:1px solid #1f3646;border-radius:8px;background:#0a1118;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+    .v120-qt{font-size:12.5px;color:#fff;font-weight:700}.v120-qt code{font-weight:400;color:#fda4af;font-size:11.5px}
+    .v120-sum{border:1px solid #f5b94566;background:rgba(245,185,69,.07);border-radius:7px;padding:9px 12px;color:#f1e3b8}
+    .v120-sum code{color:#fde68a;margin-right:6px}
+    .v120-tree{display:flex;flex-direction:column;gap:6px}
+    .v120-l{margin-left:calc(var(--n) * 22px);padding:5px 10px;border-left:2px solid #1f3646;line-height:1.5}
+    .v120-l b{font-weight:600;color:#fff}
+    .v120-f{border-left-color:#fb7185;color:#fecdd3}
+    .v120-in{border-left-color:#f5b945;background:rgba(245,185,69,.06);color:#f1e3b8}.v120-in em{color:var(--dim);font-style:normal}
+    .v120-v{border-left-color:#3fb950;color:#bbf7d0}
+    .v120-mu{color:var(--dim)}
+    .v120-regra{border:1px solid #1f3646;border-left:2px solid var(--cyan);border-radius:0 7px 7px 0;background:#0b141d;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+    .v120-rh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.v120-rh em{margin-left:auto;font-style:normal;color:var(--dim);font-size:10.5px}
+    .v120-r{font-size:10px;font-weight:800;color:#070c12;background:var(--cyan);border-radius:3px;padding:0 5px}
+    .v120-se{display:grid;grid-template-columns:52px minmax(0,1fr);gap:4px 8px;align-items:start}
+    .v120-k{font-size:10px;font-weight:800;letter-spacing:1px;color:var(--dim);padding-top:3px}
+    .v120-se ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+    .v120-se li{display:flex;gap:7px;align-items:baseline}
+    .v120-se li.ok b{color:#3fb950}.v120-se li.ko b{color:#ff7b72}.v120-se li.ko span{color:#fecdd3}
+    .v120-en{color:#a5f3fc}
+    .v120-n{font-size:10px;color:var(--cyan);border:1px solid #22d3ee44;border-radius:4px;padding:0 4px;margin-left:4px;cursor:help}
+    .v120-var{color:#fbbf24;font-style:italic}
+    .v120-mais{margin-left:8px;background:none;border:1px solid var(--cyan);color:var(--cyan);border-radius:5px;padding:2px 8px;font:700 10.5px var(--mono);cursor:pointer}
+    .v120-meta{font-size:10px;color:#5f7d8c}
+    .v120-err{border:1px solid #da363366;background:#2a1215;border-radius:7px;padding:9px 12px;color:#ffdcd7}.v120-err span{color:#fecdd3}
+    .v120-wait{display:flex;align-items:center;gap:10px;color:var(--cyan);padding:8px 0}.v120-wait small{color:var(--dim)}
+    .v120-spin{width:14px;height:14px;border-radius:50%;border:2px solid #22d3ee33;border-top-color:var(--cyan);animation:v120s .8s linear infinite}
+    @keyframes v120s{to{transform:rotate(360deg)}}
+    .v120-free{display:flex;gap:8px}
+    .v120-free input{flex:1;background:#050b11;border:1px solid var(--line2);color:#fff;border-radius:6px;padding:8px 10px;font:12px var(--mono)}
+    .v120-free button{background:rgba(251,113,133,.12);border:1px solid #fb7185;color:#fecdd3;border-radius:6px;padding:0 12px;font:700 11.5px var(--mono);cursor:pointer}
+  `;
+  document.head.appendChild(st);
+})();
+
+/* v121: "Porque não?" carregado antecipadamente, com prioridades
+   1) o ticket escolhido (todas as perguntas dele), à frente da fila;
+   2) depois de cada inferência, "porque não fechou?" dos primeiros tickets abertos da lista;
+   um pedido de cada vez no Prolog (≈2–4 s cada) e três no Drools; a fila esvazia-se quando muda a resposta. */
+S.v121 = { fila: [], ativos: 0, chaveRes: null, ultSel: null };
+function v121Max() { return v120Motor() === 'prolog' ? 1 : 3; }
+function v121Chave(res) { const b = res ? (res._base || res) : null; return b ? v120Motor() + '|' + v120Hash(JSON.stringify(v120Passos(res))) : null; }
+function v121Junta(res, tarefas, frente) {
+  const k = v121Chave(res); if (!k) return;
+  if (S.v121.chaveRes !== k) { S.v121.fila = []; S.v121.chaveRes = k; }
+  const novas = tarefas.map(t => ({ k, ...t }));
+  S.v121.fila = frente ? [...novas, ...S.v121.fila] : [...S.v121.fila, ...novas];
+  v121Corre();
+}
+function v121Corre() {
+  const res = v61Res && v61Res();
+  if (!res || S.v121.chaveRes !== v121Chave(res)) { S.v121.fila = []; return; }
+  // os pedidos que o analista faz (em curso e não da fila) têm prioridade
+  const doUtilizador = [...S.v120.corre.keys()].length - S.v121.ativos;
+  while (S.v121.ativos < v121Max() && doUtilizador <= 0 && S.v121.fila.length) {
+    const t = S.v121.fila.shift();
+    const out = v120Pedir(v120Motor(), 'whynot', { facto: t.facto, profundidade: 4 }, v120Passos(res), () => { S.v121.ativos = Math.max(0, S.v121.ativos - 1); v120Atualiza(); setTimeout(v121Corre, 50); });
+    if (out.novo) S.v121.ativos++;
+  }
+}
+function v121Ticket(res, facto) {
+  const b = res._base || res, t = b.tickets.find(x => x.facto === facto);
+  return t ? v120Perguntas(res, t).map(p => ({ facto: p.facto })) : [];
+}
+const _v121R = v89Render;
+v89Render = function() {
+  const r = _v121R.apply(this, arguments);
+  try {
+    const res = v61Res && v61Res(), s = S.v91 && S.v91.sel;
+    if (res && s && s.k === 't' && S.engine !== 'both') {
+      const id = v121Chave(res) + '#' + s.n;
+      if (S.v121.ultSel !== id) { S.v121.ultSel = id; v121Junta(res, v121Ticket(res, s.n), true); }
+    }
+  } catch (e) {}
+  return r;
+};
+window.v89Render = v89Render;
+const _v121After = v62AfterRun;
+v62AfterRun = function() {
+  const r = _v121After.apply(this, arguments);
+  setTimeout(() => {
+    try {
+      const res = v61Res && v61Res(); if (!res || S.engine === 'both') return;
+      const D = v91Dados(res);
+      const abertos = [...(D.E.abertos || [])].sort((a, b) => String(a.prio).localeCompare(String(b.prio)) || a.t.facto - b.t.facto).slice(0, v120Motor() === 'prolog' ? 8 : 20);
+      v121Junta(res, abertos.map(x => ({ facto: { predicado: 'ticket_fechado', args: [x.t.incidente, { var: 'Motivo' }] } })), false);
+    } catch (e) {}
+  }, 1500);
+  return r;
+};
+
+/* v122: Comparador — num ticket que só um motor concluiu, o outro motor explica porque não ("Porque não?" pelo /whynot) */
+function v122Bloco(motor, res, alvoId, facto, titulo) {
+  const prof = S.v120.prof[alvoId] || 4;
+  const out = v120Pedir(motor, 'whynot', { facto, profundidade: prof }, v120Passos(res), () => v122Atualiza());
+  const nome = motor === 'prolog' ? 'SWI-Prolog' : 'Drools';
+  let corpo;
+  if (out.estado === 'a-pedir') corpo = v120Espera(out).replace(/A perguntar ao motor \w+/, 'A perguntar ao motor ' + nome);
+  else if (out.estado !== 'pronto') corpo = v120Erro(out, 'whynot').replace(/\/api\/\w+\//, `/api/${motor}/`);
+  else corpo = v120Arvore(out.data.explicacao || [], res, alvoId) + `<div class="v120-meta">POST /api/${motor}/whynot · HTTP ${out.status} · ${out.ms} ms · profundidade ${prof}</div>`;
+  return `<div class="v120 v122"><div class="v120-q"><div class="v120-qt">${esc(titulo)} <code>${v120Termo({ f: facto.predicado, args: facto.args })}</code></div>${corpo}</div></div>`;
+}
+function v122Extra() {
+  const c = v76Comparar(); if (!c) return '';
+  const it = v112Estado(c).find(x => x.k === S.v112.sel);
+  if (!it || (it.a && it.b)) return '';
+  const falta = it.a ? 'drools' : 'prolog', t = it.a || it.b;
+  const res = falta === 'drools' ? (S.engineResults?.drools?.[S.scen || 'all']) : (S.engineResults?.prolog?.[S.scen || 'all']);
+  if (!res) return '';
+  const facto = { predicado: 'ticket', args: [t.incidente, t.ativo, { var: 'Acao' }, { var: 'Gravidade' }, { var: 'Prioridade' }, { var: 'Impactados' }] };
+  return v122Bloco(falta, res, 'cmp:' + falta + ':' + it.k, facto, `Porque é que o ${falta === 'drools' ? 'Drools' : 'SWI-Prolog'} não concluiu este ticket?`);
+}
+const _v122Html = v112Html;
+v112Html = function(c) {
+  const h = _v122Html.apply(this, arguments);
+  const x = v122Extra();
+  return x ? h.replace('<div class="v112-ft">', `<div class="v122-wn">${x}</div><div class="v112-ft">`) : h;
+};
+function v122Atualiza() { const el = document.querySelector('.v122-wn'); if (el) el.innerHTML = v122Extra(); }
+setInterval(() => { if (document.querySelector('.v122 .v120-wait')) v122Atualiza(); }, 1000);
+document.addEventListener('click', e => {
+  const m = e.target.closest && e.target.closest('.v122 [data-v120prof]');
+  if (m) { e.stopImmediatePropagation(); const k = m.dataset.v120prof; S.v120.prof[k] = Math.min(8, (S.v120.prof[k] || 4) + 2); v122Atualiza(); }
+}, true);
+(function() { const st = document.createElement('style'); st.textContent = '.v122-wn{padding:0 16px 12px;flex-shrink:0;max-height:46%;overflow:auto}.v122 .v120-q{border-color:#fb718566}'; document.head.appendChild(st); })();
+
+/* v123: (1) separadores do caso como pequenos quadrados com ícone desenhado (sem emojis);
+         (2) o painel antigo "Auditoria & Explicação" e a pestana lateral saem de todos os modos
+             (a Consola e a Consola de paridade substituem-nos); o botão antigo "Paridade" do grafo também;
+         (3) no Comparador sem as duas respostas, o aviso com o botão para enviar aos dois motores. */
+const V123_IC = {
+  como: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="5" r="2.2"/><circle cx="5" cy="19" r="2.2"/><circle cx="19" cy="19" r="2.2"/><path d="M12 7.5v4M12 11.5l-6 5.5M12 11.5l6 5.5"/></svg>',
+  whynot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/></svg>',
+  provas: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 4H6a2 2 0 0 0-2 2v4l-2 2 2 2v4a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v4l2 2-2 2v4a2 2 0 0 1-2 2h-2"/></svg>',
+  porque: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.8"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>'
+};
+const V123_SUB = { como: 'cadeia de regras', whynot: 'o que faltou', provas: 'pedido e resposta', porque: 'porque pergunta' };
+const _v123Tabs = v91Tabs;
+v91Tabs = function(lista) {
+  const limpa = l => String(l).replace(/^[^\p{L}\p{N}]+/u, '').trim();
+  const h = _v123Tabs(lista.map(([k, l]) => [k, limpa(l)]));
+  return h.replace(/<button class="([^"]*)" data-v91tab="([^"]+)">([^<]*)<\/button>/g, (m, cls, k, l) =>
+    `<button class="${cls} v123-t" data-v91tab="${k}"><span class="v123-i">${V123_IC[k] || ''}</span><span class="v123-x"><b>${l}</b><small>${V123_SUB[k] || ''}</small></span></button>`);
+};
+window.v91Tabs = v91Tabs;
+function v123Painel() {
+  const app = $('app'); if (!app) return;
+  if (!app.classList.contains('noinsp')) { app.classList.add('noinsp'); try { updateButtons(); } catch (e) {} }
+}
+const _v123Render = render;
+render = function() { const r = _v123Render.apply(this, arguments); try { v123Painel(); } catch (e) {} return r; };
+setInterval(v123Painel, 800);
+// aviso do v111 também no Comparador
+const _v123Aviso = v111Aviso;
+v111Aviso = function() {
+  if (S.engine !== 'both') return _v123Aviso.apply(this, arguments);
+  const cv = $('canvas'); if (!cv) return;
+  const fora = document.querySelector('.app.view-dossier, .app.view-backend');
+  const mostrar = !v76Comparar() && S.apiOnline && S.apiLoaded && !R.playing && !(typeof v81Anim === 'function' && v81Anim()) && !fora;
+  let a = $('v111Aviso');
+  if (!mostrar) { a?.remove(); return; }
+  const pl = !!(S.engineResults?.prolog?.[S.scen || 'all']), dr = !!(S.engineResults?.drools?.[S.scen || 'all']);
+  const html = `<span class="v111-k">[ comparador ]</span><b>Ainda não há respostas dos dois motores</b><p>O mesmo pedido vai ao SWI-Prolog e ao Drools e as respostas comparam-se pelo conteúdo.${pl || dr ? ` Já respondeu: ${pl ? 'SWI-Prolog' : 'Drools'}.` : ''}</p><button type="button" class="v111-go v123-both">⚡ Enviar aos dois motores</button>`;
+  if (!a) { a = document.createElement('div'); a.id = 'v111Aviso'; cv.appendChild(a); ['mousedown', 'pointerdown', 'wheel'].forEach(t => a.addEventListener(t, e => e.stopPropagation())); }
+  if (a._h !== html) { a._h = html; a.innerHTML = html; }
+};
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#v111Aviso .v123-both')) { e.stopImmediatePropagation(); v61CorrerAmbos(); } }, true);
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    .app .insp,#v82Tab,#bInsp,#v79CmpBtn{display:none !important}
+    .v91-tabs{display:flex;gap:8px;border-bottom:0 !important}
+    .v91-tabs .v123-t{display:flex !important;align-items:center;gap:9px;height:46px;padding:0 14px 0 6px !important;border:1px solid #1d3442 !important;border-radius:8px !important;background:#08111a !important;color:#9fb6c2 !important;font-family:var(--mono) !important;cursor:pointer;box-shadow:none !important;margin:0 !important}
+    .v91-tabs .v123-t::after,.v91-tabs .v123-t::before{display:none !important}
+    .v91-tabs .v123-t:hover{border-color:#2b5568 !important;color:#e6fbff !important}
+    .v91-tabs .v123-t.on{border-color:var(--cyan) !important;background:rgba(34,211,238,.08) !important;color:#e6fbff !important;box-shadow:inset 0 0 0 1px rgba(34,211,238,.35) !important}
+    .v123-i{width:32px;height:32px;border-radius:6px;display:grid;place-items:center;background:#0d1b26;border:1px solid #1d3442;flex-shrink:0}
+    .v123-i svg{width:17px;height:17px}
+    .v123-t.on .v123-i{background:var(--cyan);border-color:var(--cyan);color:#02080d}
+    .v123-t[data-v91tab="whynot"].on{border-color:#fb7185 !important;background:rgba(251,113,133,.08) !important;box-shadow:inset 0 0 0 1px rgba(251,113,133,.35) !important}
+    .v123-t[data-v91tab="whynot"].on .v123-i{background:#fb7185;border-color:#fb7185}
+    .v123-t[data-v91tab="porque"].on{border-color:#f5b945 !important;background:rgba(245,185,69,.08) !important;box-shadow:inset 0 0 0 1px rgba(245,185,69,.35) !important}
+    .v123-t[data-v91tab="porque"].on .v123-i{background:#f5b945;border-color:#f5b945}
+    .v123-x{display:flex;flex-direction:column;align-items:flex-start;line-height:1.25}
+    .v123-x b{font-size:12px;font-weight:700}.v123-x small{font-size:9.5px;color:var(--dim);font-weight:400}
+  `;
+  document.head.appendChild(st);
+})();
+
+/* =====================================================================
+   v124: (1) contagens das caixas (entradas→saídas) só com as setas visíveis;
+         (2) painel de ligação: estado certo quando a API está ligada;
+         (3) grafo inicial (antes de correr) centrado no espaço livre, igual nos dois motores.
+   ===================================================================== */
+const V124_OCULTA = ['sg-hide', 'dim', 'v114-off', 'v115-kb', 'v109-off'];
+function v124Graus() {
+  if (typeof gE === 'undefined' || !gE) return;
+  const ent = new Map(), sai = new Map();
+  gE.querySelectorAll('path.edge[id^="e-"]').forEach(e => {
+    if (V124_OCULTA.some(c => e.classList.contains(c))) return;
+    const [a, b] = e.id.slice(2).split('->');
+    sai.set(a, (sai.get(a) || 0) + 1); ent.set(b, (ent.get(b) || 0) + 1);
+  });
+  gN.querySelectorAll('g.node[data-id]').forEach(g => {
+    const pt = g.querySelector('text.pt'); if (!pt) return;
+    const id = g.dataset.id, i = ent.get(id) || 0, o = sai.get(id) || 0;
+    pt.textContent = `${i}→${o}`;
+  });
+}
+let _v124Cam = '';
+function v124Centra() {
+  const res = v61Res && v61Res();
+  const cv = $('canvas'); if (!cv || !NODES.length || R.playing) return;
+  const semRes = S.engine === 'both' ? !v76Comparar() : !res;
+  if (!semRes) { _v124Cam = ''; return; }
+  const c = cv.getBoundingClientRect(); if (c.width < 100) return;
+  const vis = NODES.filter(n => { const g = gN.querySelector(`g.node[data-id="${CSS.escape(n.id)}"]`); return g && !g.classList.contains('sg-hide'); });
+  if (!vis.length) return;
+  const chave = [S.engine, S.scen, vis.length, Math.round(c.width), Math.round(c.height), !!$('v111Aviso')].join('|');
+  if (chave === _v124Cam) return;
+  _v124Cam = chave;
+  const aviso = $('v111Aviso') ? V131_AV : 0, rodape = 0;
+  const minX = Math.min(...vis.map(n => n.x)) - 30, maxX = Math.max(...vis.map(n => n.x)) + W + 30;
+  // fundo da faixa calculado como no v132 (último nó + H + 40), e não lido do DOM: assim o resultado
+  // é o mesmo seja qual for o momento em que é chamado (Prolog, Drools e Comparar ficam iguais)
+  const minY = Math.min(...vis.map(n => n.y)) - 90, maxY = Math.max(...vis.map(n => n.y)) + H + 40 + 18;
+  const livreW = c.width - aviso - 40, livreH = c.height - 40 - rodape;
+  const z = Math.max(0.35, Math.min(1, livreW / (maxX - minX), livreH / (maxY - minY)));
+  S.zoom = z;
+  // grafo + aviso formam um conjunto centrado no ecrã
+  S.px = 20 + (c.width - 40 - ((maxX - minX) * z + aviso)) / 2 - minX * z;
+  S.py = 20 + (livreH - (maxY - minY) * z) / 2 - minY * z;
+  updateTransform();
+}
+// antes de correr, qualquer pedido de enquadramento usa o enquadramento centrado no espaço livre
+const _v124AnimCam = animateCameraToVisibleGraph;
+animateCameraToVisibleGraph = function() {
+  const semRes = S.engine === 'both' ? !v76Comparar() : !(v61Res && v61Res());
+  if (semRes && !R.playing && !(typeof v81Anim === 'function' && v81Anim()) && NODES.length) { _v124Cam = ''; try { v124Centra(); return; } catch (e) {} }
+  return _v124AnimCam.apply(this, arguments);
+};
+const _v124Render = render;
+render = function() {
+  const r = _v124Render.apply(this, arguments);
+  try { v124Graus(); } catch (e) {}
+  try { v111Aviso(); v124Centra(); } catch (e) {}
+  return r;
+};
+const _v124Toggle = toggleCanvasEmptyOverlay;
+toggleCanvasEmptyOverlay = function(force) {
+  const r = _v124Toggle.apply(this, arguments);
+  const st = $('emptyApiCheckStatus');
+  if (st && S.apiOnline && $('canvasEmptyOverlay')?.style.display === 'flex') {
+    st.style.color = '#7ee2b8'; st.style.background = 'rgba(52,211,153,.10)'; st.style.borderColor = 'rgba(52,211,153,.35)';
+    st.textContent = `✓ Ligado a ${S.apiBaseUrl || 'http://localhost:8080'} · KB v${S.detectedKbVersion || '—'}`;
+    if ($('emptyApiMsg')) $('emptyApiMsg').style.display = 'none';
+  }
+  return r;
+};
+window.toggleCanvasEmptyOverlay = toggleCanvasEmptyOverlay;
+
+/* v125: setas que atravessam colunas passam pelos intervalos entre as caixas (nunca por trás de uma caixa),
+   para que uma seta nunca pareça sair de uma caixa que não é a sua; etiqueta ∧ junto à entrada da regra. */
+const _v125Edge = edgePath;
+edgePath = function(a, b) {
+  if (!a || !b || a.col == null || b.col == null || b.col - a.col < 2 || b.x <= a.x + W) return _v125Edge.apply(this, arguments);
+  const base = _v125Edge.apply(this, arguments);
+  const m = /^M([\d.-]+),([\d.-]+)/.exec(base), e = /([\d.-]+),([\d.-]+)\s*$/.exec(base);
+  if (!m || !e) return base;
+  const x1 = +m[1], y1 = +m[2], x2 = +e[1], y2 = +e[2];
+  const vis = v125Vis();
+  const pts = [[x1, y1]];
+  for (let c = a.col + 1; c < b.col; c++) {
+    const col = NODES.filter(n => n.col === c && (!vis || vis.has(n.id))).sort((p, q) => p.y - q.y);
+    const cx0 = colX(c) - 14, cx1 = colX(c) + W + 14;
+    const t = (cx0 + cx1) / 2;
+    const yAlvo = y1 + (y2 - y1) * ((t - x1) / Math.max(1, x2 - x1));
+    let wy = yAlvo;
+    if (col.length) {
+      const gaps = [[-Infinity, col[0].y]];
+      for (let i = 0; i < col.length - 1; i++) gaps.push([col[i].y + H, col[i + 1].y]);
+      gaps.push([col[col.length - 1].y + H, Infinity]);
+      let best = null, bd = Infinity;
+      for (const [g0, g1] of gaps) {
+        if (g1 - g0 < 6) continue;
+        const lo = isFinite(g0) ? g0 + 3 : g1 - 26, hi = isFinite(g1) ? g1 - 3 : g0 + 26;
+        const yy = Math.max(lo, Math.min(hi, yAlvo));
+        const d = Math.abs(yy - yAlvo);
+        if (d < bd) { bd = d; best = yy; }
+      }
+      if (best != null) wy = best;
+    }
+    pts.push([cx0, wy], [cx1, wy]);
+  }
+  pts.push([x2, y2]);
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 1; i < pts.length; i++) {
+    const [px, py] = pts[i - 1], [qx, qy] = pts[i];
+    if (Math.abs(qy - py) < 0.5) { d += ` L${qx},${qy}`; continue; }
+    const dx = Math.max(12, (qx - px) * 0.5);
+    d += ` C${px + dx},${py} ${qx - dx},${qy} ${qx},${qy}`;
+  }
+  return d;
+};
+// etiqueta ∧ sempre à esquerda da entrada da regra, logo acima do arco
+const _v125Arcos = v116Arcos;
+v116Arcos = function() {
+  const r = _v125Arcos.apply(this, arguments);
+  try {
+    gA.querySelectorAll('text.andtx[data-id]').forEach(tx => {
+      const n = byId[tx.dataset.id]; if (!n) return;
+      tx.setAttribute('x', n.x - 36); tx.setAttribute('y', n.y + H / 2 - 22); tx.setAttribute('text-anchor', 'end');
+    });
+  } catch (e) {}
+  return r;
+};
+
+/* v125b: qualquer seta que ainda atravesse uma caixa que não é a sua passa por um corredor livre */
+let _v125VisC = null;
+const _v125Render = render;
+render = function() { _v125VisC = null; _v125CaixasC = null; return _v125Render.apply(this, arguments); };
+function v125Vis() {
+  if (_v125VisC === null) { try { _v125VisC = getVisibleNodesForCurrentState() || false; } catch (e) { _v125VisC = false; } }
+  return _v125VisC || null;
+}
+let _v125CaixasC = null;
+const _v125Cruza = new Map();
+function v125Caixas() {
+  if (!_v125CaixasC) { const vis = v125Vis(); _v125CaixasC = NODES.filter(n => !vis || vis.has(n.id)); }
+  return _v125CaixasC;
+}
+// amostra o caminho (M, L, C, Q absolutos) sem tocar no DOM
+function v125Pontos(d) {
+  const tk = d.match(/[MLCQ]|-?[\d.]+(?:e-?\d+)?/g) || [];
+  const out = []; let i = 0, cx = 0, cy = 0, cmd = 'M';
+  const num = () => +tk[i++];
+  while (i < tk.length) {
+    if (/[MLCQ]/.test(tk[i])) cmd = tk[i++];
+    if (cmd === 'M') { cx = num(); cy = num(); out.push([cx, cy]); cmd = 'L'; }
+    else if (cmd === 'L') { const x = num(), y = num(); const n = Math.max(1, Math.ceil(Math.hypot(x - cx, y - cy) / 7)); for (let k = 1; k <= n; k++) out.push([cx + (x - cx) * k / n, cy + (y - cy) * k / n]); cx = x; cy = y; }
+    else if (cmd === 'C') { const a1 = num(), b1 = num(), a2 = num(), b2 = num(), x = num(), y = num(); const n = Math.max(4, Math.ceil(Math.hypot(x - cx, y - cy) / 7)); for (let k = 1; k <= n; k++) { const t = k / n, u = 1 - t; out.push([u*u*u*cx + 3*u*u*t*a1 + 3*u*t*t*a2 + t*t*t*x, u*u*u*cy + 3*u*u*t*b1 + 3*u*t*t*b2 + t*t*t*y]); } cx = x; cy = y; }
+    else if (cmd === 'Q') { const a1 = num(), b1 = num(), x = num(), y = num(); for (let k = 1; k <= 4; k++) { const t = k / 4, u = 1 - t; out.push([u*u*cx + 2*u*t*a1 + t*t*x, u*u*cy + 2*u*t*b1 + t*t*y]); } cx = x; cy = y; }
+    else i++;
+  }
+  return out;
+}
+function v125Atravessa(d, a, b, caixas) {
+  const k = d + '|' + a.id + '|' + b.id + '|' + caixas.length;
+  if (_v125Cruza.has(k)) return _v125Cruza.get(k);
+  const pts = v125Pontos(d), L = pts.length;
+  let hit = false;
+  for (let s = 1; s < L - 1 && !hit; s++) {
+    const [qx, qy] = pts[s];
+    for (const n of caixas) { if (n.id !== a.id && n.id !== b.id && qx > n.x + 1 && qx < n.x + W - 1 && qy > n.y + 1 && qy < n.y + H - 1) { hit = true; break; } }
+  }
+  if (_v125Cruza.size > 6000) _v125Cruza.clear();
+  _v125Cruza.set(k, hit);
+  return hit;
+}
+function v125Off(a, b) { let h = 0; const s = a.id + b.id; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return ((Math.abs(h) % 5) - 2) * 4; }
+const _v125Edge2 = edgePath;
+edgePath = function(a, b) {
+  const d = _v125Edge2.apply(this, arguments);
+  if (!a || !b) return d;
+  const caixas = v125Caixas();
+  if (!v125Atravessa(d, a, b, caixas)) return d;
+  const r = 7, off = v125Off(a, b);
+  if (Math.abs(a.x - b.x) < 18) {
+    // mesma coluna: pelo corredor à direita da coluna
+    const gx = a.x + W + 14 + Math.abs(off), y1 = a.y + H / 2, y2 = b.y + H / 2, dir = y2 > y1 ? 1 : -1;
+    return `M${a.x + W},${y1} L${gx - r},${y1} Q${gx},${y1} ${gx},${y1 + dir * r} L${gx},${y2 - dir * r} Q${gx},${y2} ${gx - r},${y2} L${b.x + W + 2},${y2}`;
+  }
+  // colunas diferentes: sai na horizontal, desce ou sobe no corredor entre colunas e entra na horizontal
+  const m = /^M([\d.-]+),([\d.-]+)/.exec(d), e = /([\d.-]+),([\d.-]+)\s*$/.exec(d);
+  const x1 = m ? +m[1] : a.x + W, y1 = m ? +m[2] : a.y + H / 2, x2 = e ? +e[1] : b.x - 2, y2 = e ? +e[2] : b.y + H / 2;
+  const gx = Math.round(b.x - 34 + off), dir = y2 > y1 ? 1 : -1;
+  if (Math.abs(y2 - y1) < 2 * r) return d;
+  return `M${x1},${y1} L${gx - r},${y1} Q${gx},${y1} ${gx},${y1 + dir * r} L${gx},${y2 - dir * r} Q${gx},${y2} ${gx + r},${y2} L${x2},${y2}`;
+};
+
+/* =====================================================================
+   v126: texto das regras vem de GET /api/regras (PR #43)
+   - Conhecimento › Regras: as 92 regras em SE … ENTÃO, com filtro e
+     indicação das que dispararam no último pedido.
+   - "Como?": cada passo tem a regra completa (abre ao clicar).
+   - Se o backend ainda não tem o endpoint, volta a tentar mais tarde.
+   ===================================================================== */
+S.v126 = { f: '', so: false };
+function v126Lista() {
+  const r = S.v78Regras;
+  if (!r || !r.ok || !r.data) return null;
+  return Array.isArray(r.data) ? r.data : (r.data.regras || []);
+}
+function v126Obj(n) {
+  const l = v126Lista();
+  return l ? l.find(o => String(o.id ?? o.numero ?? o.regra).replace(/^R/i, '') === String(n)) : null;
+}
+function v126Cond(c) {
+  if (c && typeof c === 'object' && 'nao' in c) return `<span class="v126-k n">não</span> ${v120Termo(c.nao)}`;
+  if (c && typeof c === 'object' && 'avalia' in c) return `<span class="v126-k c">calcular</span> ${v120Termo(c.avalia)}`;
+  return v120Termo(c);
+}
+function v126Corpo(x) {
+  return `<div class="v126-se"><span class="v126-l">SE</span><ol>${(x.se || []).map(c => `<li>${v126Cond(c)}</li>`).join('')}</ol>
+    <span class="v126-l">ENTÃO</span><ol class="en">${(x.entao || []).map(c => `<li>${v126Cond(c)}</li>`).join('')}</ol></div>`;
+}
+function v126Texto(x) {
+  const t = c => (c && c.nao ? 'não ' + v71T(c.nao) : c && c.avalia ? v71T(c.avalia) : v71T(c));
+  return `${(x.se || []).map(t).join(' ')} ${(x.entao || []).map(t).join(' ')}`.toLowerCase();
+}
+v78TextoRegra = function(n) {
+  const x = v126Obj(n);
+  return x ? `<details class="v126-d"><summary>regra R${esc(String(n))} completa</summary>${v126Corpo(x)}</details>` : '';
+};
+function v126Regra(n) { return v78TextoRegra(n); }
+v78CarregarRegras = async function() {
+  const r = S.v78Regras;
+  if (!S.apiOnline || typeof v73Get !== 'function') return;
+  if (r && (r.ok || r.pendente || (r.quando && Date.now() - r.quando < 15000))) return;
+  S.v78Regras = { pendente: true };
+  const out = await v73Get('/api/regras');
+  out.quando = Date.now();
+  S.v78Regras = out;
+  try { if (document.querySelector('.v103, .v78, .v91-tb')) { if (typeof v89Render === 'function') v89Render(); } } catch (e) {}
+};
+function v126RegrasSec(rg, ix, erro, ultima) {
+  if (rg && rg.ok && rg.data && !S.v78Regras?.ok) S.v78Regras = rg;
+  const disp = new Map(ix.porRegra.map(x => [x.r, x.n]));
+  const tab = `<article class="v80b-card"><h3>Regras que dispararam ${ultima ? 'no último pedido do simulador' : 'só com a base'} · ${ix.porRegra.length}</h3>
+      <div class="v80b-tw"><table class="v80b-t"><thead><tr><th>regra</th><th>conclui</th><th>disparos</th></tr></thead><tbody>${ix.porRegra.map(x => `<tr><td><b>R${x.r}</b></td><td>${[...x.sai].map(k => `<code>${esc(k)}</code>`).join(' ')}</td><td class="n">${x.n}</td></tr>`).join('') || '<tr><td colspan="3">nenhuma</td></tr>'}</tbody></table></div></article>`;
+  if (!rg || !rg.ok || !rg.data) return erro(rg || {}, 'GET /api/regras', 'o texto das regras') + tab;
+  const lista = Array.isArray(rg.data) ? rg.data : (rg.data.regras || []);
+  const calc = rg.data.calculadas || [];
+  const f = S.v126.f.toLowerCase();
+  const linhas = lista.map(x => {
+    const n = disp.get(x.id) || 0;
+    const txt = `r${x.id} ${v126Texto(x)}`;
+    const vis = (!f || txt.includes(f)) && (!S.v126.so || n);
+    return `<div class="v126-r ${n ? 'on' : ''}" data-v126t="${esc(txt)}" data-v126n="${n}" ${vis ? '' : 'hidden'}>
+      <div class="v126-h"><b>R${esc(String(x.id))}</b><span>conclui ${(x.entao || []).map(c => `<code>${esc(c.f || '')}</code>`).join(' ')}</span>${n ? `<em>disparou ${n}×</em>` : '<em class="z">não disparou</em>'}</div>
+      ${v126Corpo(x)}</div>`;
+  }).join('');
+  const nDisp = lista.filter(x => disp.get(x.id)).length;
+  return `<div class="v80b-ok">✓ <code>GET /api/regras</code> · versaoKB ${esc(String(rg.data.versaoKB ?? ''))} · ${lista.length} regras · ${rg.ms} ms</div>
+    <div class="v80b-tools"><input id="v126F" placeholder="filtrar (ex.: R41, ticket ou resposta_analista)" value="${esc(S.v126.f)}">
+      <div class="v80b-seg"><button class="${S.v126.so ? '' : 'on'}" data-v126so="0">todas · ${lista.length}</button><button class="${S.v126.so ? 'on' : ''}" data-v126so="1">dispararam ${ultima ? 'no último pedido' : 'só com a base'} · ${nDisp}</button></div>
+      <span class="v80b-mu" id="v126C"></span></div>
+    ${calc.length ? `<p class="v80b-mu">Condições calculadas pelo motor (não são factos): ${calc.map(c => `<code>${esc(c)}</code>`).join(' ')}</p>` : ''}
+    <div class="v126-lst">${linhas}</div>` + tab;
+}
+function v126Filtra() {
+  const f = S.v126.f.toLowerCase();
+  let k = 0;
+  document.querySelectorAll('.v126-r').forEach(el => {
+    const vis = (!f || el.dataset.v126t.includes(f)) && (!S.v126.so || +el.dataset.v126n);
+    el.hidden = !vis; if (vis) k++;
+  });
+  document.querySelectorAll('[data-v126so]').forEach(b => b.classList.toggle('on', (b.dataset.v126so === '1') === S.v126.so));
+  const c = document.getElementById('v126C'); if (c) c.textContent = `${k} regra(s)`;
+}
+document.addEventListener('input', e => { if (e.target && e.target.id === 'v126F') { S.v126.f = e.target.value; v126Filtra(); } });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-v126so]'); if (!b) return; e.preventDefault(); S.v126.so = b.dataset.v126so === '1'; v126Filtra(); });
+new MutationObserver(() => { const c = document.getElementById('v126C'); if (c && !c.textContent) v126Filtra(); }).observe(document.body, { childList: true, subtree: true });
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    .v126-lst{display:flex;flex-direction:column;gap:8px;margin:10px 0 16px}
+    .v126-r{border:1px solid var(--line2);border-radius:8px;padding:8px 10px;background:rgba(255,255,255,.015)}
+    .v126-r.on{border-color:rgba(34,211,238,.35)}
+    .v126-h{display:flex;gap:10px;align-items:baseline;margin-bottom:4px;font-size:12px}
+    .v126-h b{color:var(--cyan);font-family:var(--mono,monospace);min-width:38px}
+    .v126-h em{margin-left:auto;font-style:normal;font-size:10.5px;color:#86efac}
+    .v126-h em.z{color:var(--dim)}
+    .v126-se{display:grid;grid-template-columns:52px 1fr;gap:2px 8px;font-family:var(--mono,monospace);font-size:11px;line-height:1.5}
+    .v126-se ol{margin:0;padding:0;list-style:none}
+    .v126-se ol li{padding:1px 0;color:#cbd5e1;overflow-wrap:anywhere}
+    .v126-se ol li+li:before{content:'E ';color:var(--dim)}
+    .v126-se ol.en li{color:#fde68a}
+    .v126-l{font-size:10px;font-weight:700;letter-spacing:.6px;color:var(--dim);padding-top:2px}
+    .v126-k{font-family:inherit;font-size:10px;padding:0 4px;border-radius:3px}
+    .v126-k.n{background:rgba(244,63,94,.15);color:#fda4af}
+    .v126-k.c{background:rgba(168,85,247,.15);color:#d8b4fe}
+    .v126-d{margin-top:5px}
+    .v126-d summary{cursor:pointer;font-size:10.5px;color:var(--cyan);list-style:none}
+    .v126-d summary::-webkit-details-marker{display:none}
+    .v126-d summary:before{content:'▸ '}
+    .v126-d[open] summary:before{content:'▾ '}
+    .v126-d .v126-se{margin-top:4px;padding:6px 8px;border-left:2px solid var(--cyan);background:rgba(34,211,238,.04)}
+  `;
+  document.head.appendChild(st);
+})();
+setTimeout(() => { try { v78CarregarRegras(); } catch (e) {} }, 1500);
+
+/* =====================================================================
+   v128
+   1) As respostas do analista fazem parte do caso e vão para os dois motores:
+      o motor que recebe as respostas já não pergunta. A faixa e a lista
+      mostram as perguntas respondidas, e é possível apagar as respostas.
+   2) Lista de tickets: o código do cenário não sobrepõe o texto (um ticket
+      que nasce de uma resposta mostra o cenário do evento, com ↩).
+   3) Animação: a câmara enquadra sempre o grafo inteiro e centrado, mesmo
+      quando o layout muda a meio (colunas divididas, outro motor).
+   ===================================================================== */
+function v128Passos() {
+  const res = typeof v61Res === 'function' ? v61Res() : null;
+  const b = res ? (res._base || res) : null;
+  return (b && b._passos) || S.lastExecutedPassos || [];
+}
+function v128Respondidas() {
+  return v128Passos().filter(p => String(p.id).startsWith('resposta_')).map(p => {
+    const a = ((p.factos || [])[0] || {}).args || [];
+    return { id: p.id, ativo: v71T(a[0]), evento: v71T(a[1]), pergunta: v71T(a[2]), valor: v71T(a[3]) };
+  });
+}
+function v128CenTxt(passo, ev) {
+  const p = String(passo || '');
+  if (!p) return '—';
+  if (!p.startsWith('resposta_')) return esc(p.toUpperCase());
+  const orig = ev ? v128Passos().find(x => !String(x.id).startsWith('resposta_') && (x.factos || []).some(f => v71T((f.args || [])[0]) === ev)) : null;
+  return `${esc(orig ? String(orig.id).toUpperCase() : '')} <small class="v128-ap" title="${esc(p)}">↩ após resposta</small>`;
+}
+function v128Cid(passo, ev) {
+  const p = String(passo || '');
+  if (!p.startsWith('resposta_')) return `<span class="v91-cid">${esc(p.toUpperCase())}</span>`;
+  const orig = ev ? v128Passos().find(x => !String(x.id).startsWith('resposta_') && (x.factos || []).some(f => v71T((f.args || [])[0]) === ev)) : null;
+  return `<span class="v91-cid r" title="Concluído depois da resposta do analista (${esc(p)})">↩ ${esc(orig ? String(orig.id).toUpperCase() : 'resposta')}</span>`;
+}
+async function v128Apagar() {
+  const engines = v67Engines();
+  const full = v67GlobalPassos(engines[0]).filter(p => !String(p.id).startsWith('resposta_'));
+  if (S.v75Full) S.v75Full = JSON.parse(JSON.stringify(full));
+  S.v64Answers = {};
+  log('analista', `respostas apagadas: inferência total com ${full.length} passos, sem respostas`, 'c');
+  await v67Run(full, engines, true);
+  if (typeof updateHeaderC7PendingPill === 'function') updateHeaderC7PendingPill();
+}
+window.v128Apagar = v128Apagar;
+// faixa: com 0 pendentes e respostas enviadas, diz quantas foram respondidas
+v94Faixa = (function(prev) {
+  return function(res) {
+    let h = prev(res);
+    const r = v128Respondidas();
+    if (!r.length) return h;
+    return h.replace('o motor não precisa de mais dados', `${r.length} respondida(s) · o motor já as tem · ver →`)
+      .replace('o motor espera respostas · responder →', `o motor espera respostas · ${r.length} já respondida(s) →`);
+  };
+})(v94Faixa);
+// lista de perguntas: as respondidas aparecem por baixo, com o valor, e há um botão para as apagar
+v91Fila = (function(prev) {
+  return function(D) {
+    let h = prev(D);
+    const r = v128Respondidas();
+    if (S.v92.modoPerg && r.length) {
+      const it = r.map(a => `<div class="v91-it q fe v128-it"><span class="v91-qi">✓</span>
+        <span class="v91-itx"><b>${esc(v80H(a.pergunta))}</b> <span class="v91-at">${esc(a.ativo)}</span>
+        <small>respondida: <b>${esc(a.valor)}</b> · evento ${esc(a.evento)} · enviada ao motor</small></span></div>`).join('');
+      const bloco = `<div class="v128-resp"><div class="v128-rh"><span>Respondidas · ${r.length}</span><button type="button" class="v91-bt" data-v128apagar="1" title="Tira as respostas do pedido e corre o motor outra vez">↺ Apagar respostas</button></div>
+        <p>As respostas fazem parte do caso: vão no pedido a qualquer motor (Prolog, Drools ou Comparar). Por isso, depois de responder, nenhum dos motores volta a fazer estas perguntas.</p>${it}</div>`;
+      h = h.replace(/<\/div>\s*<\/section>\s*$/, bloco + '</div></section>');
+      if (!D.perg.length) h = h.replace('<div class="v91-vz">O motor não tem perguntas para o analista.</div>', '<div class="v91-vz">Não há perguntas por responder.</div>');
+    }
+    return h;
+  };
+})(v91Fila);
+// substitui o código das linhas cujo passo é uma resposta (precisa do ticket para saber o evento)
+(function() {
+  const fix = root => {
+    root.querySelectorAll('.v91-it .v91-cid:not(.r)').forEach(el => {
+      const t = el.textContent || '';
+      if (!/^RESPOSTA_/.test(t)) return;
+      const bt = el.closest('[data-v91t]');
+      let ev = null;
+      if (bt) {
+        const res = v61Res && v61Res(); const b = res && (res._base || res);
+        const tk = b && b.tickets.find(x => String(x.facto) === bt.dataset.v91t);
+        const inc = tk && tk.incidente;
+        ev = inc && inc.args ? v71T(inc.args[1]) : null;
+      } else {
+        const bq = el.closest('[data-v91q]');
+        const res = v61Res && v61Res(); const bb = res && (res._base || res);
+        const q = bq && bb ? (bb.perguntas || []).find(y => v64Key(y) === bq.dataset.v91q) : null;
+        ev = q ? v71T(q.evento) : null;
+      }
+      const tmp = document.createElement('div'); tmp.innerHTML = v128Cid(t.toLowerCase(), ev);
+      el.replaceWith(tmp.firstChild);
+    });
+  };
+  new MutationObserver(() => { const p = document.getElementById('v89P'); if (p) fix(p); }).observe(document.body, { childList: true, subtree: true });
+})();
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-v128apagar]');
+  if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  b.disabled = true; b.textContent = 'a correr…';
+  v128Apagar();
+}, true);
+// 3) câmara durante a animação: enquadra o grafo inteiro sempre que o layout muda
+let _v128Assin = '';
+const _v128Render = render;
+render = function() {
+  const r = _v128Render.apply(this, arguments);
+  try {
+    if (S._v111Fixo && !R.finished && NODES.length) {
+      const xs = NODES.map(n => n.x), ys = NODES.map(n => n.y), cv = $('canvas');
+      const assin = [NODES.length, Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys), cv ? cv.clientWidth : 0, cv ? cv.clientHeight : 0].join('|');
+      if (assin !== _v128Assin) {
+        const primeira = !_v128Assin;
+        _v128Assin = assin;
+        const vis = getVisibleNodesForCurrentState;
+        getVisibleNodesForCurrentState = () => new Set(NODES.map(n => n.id));
+        try { if (!primeira) _v111Cam(320); } finally { getVisibleNodesForCurrentState = vis; }
+      }
+    } else if (R.finished || !NODES.length) _v128Assin = '';
+  } catch (e) {}
+  return r;
+};
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    .v91-it{position:relative}
+    .v91-cid{flex:0 0 auto;max-width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+    .v91-cid.r{color:#c4b5fd}
+    .v91-itx{min-width:0}
+    .v128-resp{border-top:1px solid var(--line2);margin-top:4px;padding:8px 0 4px}
+    .v128-rh{display:flex;justify-content:space-between;align-items:center;padding:0 12px;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#86efac}
+    .v128-resp p{margin:6px 12px 6px;font-size:11px;color:var(--dim);line-height:1.45}
+    .v128-it{cursor:default}
+    .v128-ap{font-size:.8em;color:#c4b5fd;font-weight:600;white-space:nowrap}
+  `;
+  document.head.appendChild(st);
+})();
+
+/* =====================================================================
+   v129
+   1) Aviso "inferência por correr": deixa de ser um cartão encostado à
+      direita; passa a uma barra centrada no fundo do grafo, no estilo do notch.
+   2) Comparador: o "Porque não?" fica numa secção própria, separada da
+      lista de passos (cabeçalho, sombra e botão para recolher).
+   3) Dicas: nenhum elemento usa a dica nativa do sistema (title); todas
+      usam a caixa da app.
+   ===================================================================== */
+S.v129 = { wnFechado: false };
+// 1) aviso centrado em baixo
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    #v111Aviso{right:auto !important;bottom:auto !important;
+      width:min(720px,calc(100% - 48px)) !important;display:grid !important;grid-template-columns:auto 1fr auto;align-items:center;gap:6px 18px;
+      padding:14px 16px 14px 18px !important;border-radius:16px !important;
+      background:linear-gradient(180deg,rgba(8,16,24,.96),rgba(4,9,14,.96)) !important;
+      border:1px solid rgba(34,211,238,.35) !important;box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 0 1px rgba(34,211,238,.06),0 0 40px rgba(34,211,238,.08) !important;
+      animation:v129in .45s cubic-bezier(.2,.8,.2,1) !important}
+    @keyframes v129in{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translateX(-50%)}}
+    #v111Aviso:before{content:'';grid-row:1/3;width:12px;height:12px;border-radius:50%;background:var(--cyan);box-shadow:0 0 0 0 rgba(34,211,238,.5);animation:v129pulso 2s infinite}
+    @keyframes v129pulso{0%{box-shadow:0 0 0 0 rgba(34,211,238,.55)}70%{box-shadow:0 0 0 12px rgba(34,211,238,0)}100%{box-shadow:0 0 0 0 rgba(34,211,238,0)}}
+    #v111Aviso .v111-k{display:none !important}
+    #v111Aviso b{grid-column:2;margin:0 !important;font-size:13.5px !important}
+    #v111Aviso p{grid-column:2;margin:0 !important;font-size:11.5px;line-height:1.45}
+    #v111Aviso .v111-go,#v111Aviso .v123-both{grid-column:3;grid-row:1/3;width:auto !important;white-space:nowrap;padding:10px 18px !important;border-radius:10px !important;font-size:12.5px !important}
+    #v111Aviso .v123-both{grid-row:auto}
+    #v111Aviso .v111-go:hover{box-shadow:0 0 18px rgba(34,211,238,.35)}
+    @media (max-width:760px){#v111Aviso{grid-template-columns:auto 1fr !important}#v111Aviso .v111-go,#v111Aviso .v123-both{grid-column:1/3;grid-row:auto}}
+  `;
+  document.head.appendChild(st);
+})();
+// 2) comparador: secção própria para o "Porque não?"
+v122Extra = (function(prev) {
+  return function() {
+    const h = prev.apply(this, arguments);
+    if (!h) return h;
+    const motor = /Porque é que o (\S+) não concluiu/.exec(h);
+    const nome = motor ? motor[1] : 'motor';
+    return `<div class="v129-wh"><span class="v129-wk">Porque não?</span><span>o que faltou ao ${esc(nome)} para concluir este ticket</span>
+      <button type="button" data-v129wn="1">${S.v129.wnFechado ? '▴ mostrar' : '▾ recolher'}</button></div>
+      <div class="v129-wb" ${S.v129.wnFechado ? 'hidden' : ''}>${h}</div>`;
+  };
+})(v122Extra);
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-v129wn]');
+  if (!b) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  S.v129.wnFechado = !S.v129.wnFechado;
+  if (typeof v122Atualiza === 'function') v122Atualiza();
+}, true);
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    .v122-wn{position:relative;margin-top:10px;padding:0 16px 12px !important;border-top:2px solid rgba(251,113,133,.55);
+      background:linear-gradient(180deg,#120a10,#0a0d14 70px);box-shadow:0 -16px 28px rgba(0,0,0,.55);max-height:48% !important}
+    .v129-wh{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:10px 0 8px;background:#120a10;font-size:11.5px;color:var(--dim)}
+    .v129-wk{font-size:10.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#fda4af;padding:3px 8px;border:1px solid rgba(251,113,133,.45);border-radius:6px;background:rgba(251,113,133,.08)}
+    .v129-wh button{margin-left:auto;background:none;border:1px solid var(--line2);border-radius:6px;color:var(--dim);font:11px var(--mono);padding:3px 9px;cursor:pointer}
+    .v129-wh button:hover{color:var(--txt);border-color:var(--cyan)}
+    .v122-wn .v120-qt{display:none}
+  `;
+  document.head.appendChild(st);
+})();
+// 3) dicas da app em vez das nativas
+(function() {
+  const tip = document.createElement('div');
+  tip.id = 'v129Tip';
+  document.body.appendChild(tip);
+  let alvo = null;
+  const mostra = el => {
+    const txt = el.getAttribute('data-v129t');
+    if (!txt) return;
+    tip.textContent = txt;
+    tip.style.display = 'block';
+    const r = el.getBoundingClientRect();
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+    tip.style.top = (r.bottom + 8 + h > innerHeight ? r.top - h - 8 : r.bottom + 8) + 'px';
+  };
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest && e.target.closest('[title],[data-v129t]');
+    if (el && el.hasAttribute('title') && el.namespaceURI === 'http://www.w3.org/1999/xhtml') {
+      const t = el.getAttribute('title');
+      el.removeAttribute('title');
+      if (t) el.setAttribute('data-v129t', t);
+    }
+    if (el && el.getAttribute('data-v129t')) { alvo = el; mostra(el); }
+    else if (alvo) { alvo = null; tip.style.display = 'none'; }
+  }, true);
+  ['scroll', 'mousedown', 'keydown'].forEach(t => document.addEventListener(t, () => { tip.style.display = 'none'; alvo = null; }, true));
+  const st = document.createElement('style');
+  st.textContent = `#v129Tip{position:fixed;z-index:10000;display:none;max-width:380px;pointer-events:none;padding:7px 10px;border-radius:8px;
+    background:rgba(6,13,20,.97);border:1px solid rgba(34,211,238,.35);color:#e2e8f0;font:11px/1.45 var(--mono);box-shadow:0 10px 28px rgba(0,0,0,.55);white-space:pre-line;word-break:break-word}`;
+  document.head.appendChild(st);
+})();
+
+/* =====================================================================
+   v130: Fase 3 · "Porquê?" das perguntas pela API, e a ligação aos tickets
+   - Porquê? (pergunta pendente): POST /api/{motor}/porque-pergunta
+       · geradaPor  → a regra que gerou a pergunta e a cadeia que a levou lá
+       · regrasQueUsamAResposta → o que cada resposta pode decidir
+   - Como? (ticket ou outra conclusão): se a prova usou uma resposta do
+     analista, mostra-a e abre o Porquê? dessa pergunta, pedido com os passos
+     ANTERIORES à resposta (o estado em que o motor a fez).
+   - Respondidas (lista das perguntas): cada uma abre o mesmo Porquê?.
+   ===================================================================== */
+S.v130 = { p: {}, aberto: new Set() };
+function v130Chave(motor, passos, ativo, evento, pergunta) { return [motor, v120Hash(JSON.stringify(passos)), ativo, evento, pergunta].join('|'); }
+function v130Caminho(no) {
+  // da pergunta para trás, seguindo sempre a premissa concluída por regra
+  const out = [];
+  let cur = no, guarda = 0;
+  while (cur && guarda++ < 30) {
+    out.push(cur);
+    const prox = (cur.premissas || []).map(p => p && p.no).filter(n => n && n.regra != null);
+    cur = prox[0] || null;
+  }
+  return out.reverse();
+}
+function v130Valor(regra, pergunta) {
+  // valor da resposta que a regra exige: resposta_analista(Ativo, Ev, Pergunta, Valor)
+  const x = typeof v126Obj === 'function' ? v126Obj(regra) : null;
+  if (!x) return null;
+  const c = (x.se || []).find(c => c && c.f === 'resposta_analista');
+  if (!c) return null;
+  const pg = (c.args || [])[2], v = (c.args || [])[3];
+  if (typeof pg === 'string' && pg !== pergunta) return { outra: pg };
+  return { valor: typeof v === 'string' ? v : null };
+}
+function v130Html(k) {
+  const P = S.v130.p[k]; if (!P) return '';
+  const out = v120Pedir(P.motor, 'porque-pergunta', { ativo: P.ativo, evento: P.evento, pergunta: P.pergunta }, P.passos, () => v130Refresh());
+  const nome = P.motor === 'prolog' ? 'SWI-Prolog' : 'Drools';
+  if (out.estado === 'a-pedir') return v120Espera(out).replace(/A perguntar ao motor \w+/, 'A perguntar ao motor ' + nome);
+  if (out.estado !== 'pronto') return v120Erro(out, 'porque-pergunta').replace(/\/api\/\w+\//, `/api/${P.motor}/`);
+  const d = out.data, g = d.geradaPor;
+  const cam = g ? v130Caminho(g) : [];
+  const raiz = cam[cam.length - 1];
+  const rg = raiz && (raiz.regraCompleta || (typeof v126Obj === 'function' ? v126Obj(raiz.regra) : null));
+  const usam = d.regrasQueUsamAResposta || [];
+  const grupos = new Map();
+  usam.forEach(r => {
+    const v = v130Valor(r, P.pergunta);
+    if (v && v.outra) return;
+    const g2 = v && v.valor ? v.valor : '*';
+    if (!grupos.has(g2)) grupos.set(g2, []);
+    grupos.get(g2).push(r);
+  });
+  const opc = new Map(((d.pergunta && d.pergunta.opcoes) || []).map(o => [o.valor, o.texto]));
+  const regraChip = r => {
+    const x = typeof v126Obj === 'function' ? v126Obj(r) : null;
+    const conc = x ? (x.entao || []).map(c => c.f).filter(Boolean) : [];
+    return `<details class="v130-rr"><summary><span class="v130-r">R${r}</span>${conc.length ? `conclui <b>${esc(conc.map(v80H).join(', '))}</b>` : ''}</summary>${x ? v126Corpo(x) : '<div class="v130-mu">texto da regra indisponível (GET /api/regras)</div>'}</details>`;
+  };
+  const ordem = [...grupos.keys()].sort((a, b) => (a === '*') - (b === '*'));
+  return `
+    <div class="v130-sec"><div class="v130-h"><span class="v130-n">1</span>Quem gerou a pergunta</div>
+      ${raiz ? `<p>A regra <span class="v130-r">R${esc(String(raiz.regra))}</span> concluiu <code>${esc(raiz.predicado)}(${esc((raiz.args || []).map(v71T).join(', '))})</code>: o motor precisa desta resposta para continuar.</p>
+      ${rg ? `<details class="v130-rr" open><summary>regra R${esc(String(raiz.regra))} completa</summary>${v126Corpo(rg)}</details>` : ''}
+      <div class="v130-cad">${cam.map((n, i) => `${i ? '<i>→</i>' : ''}<span><b class="v130-r">R${esc(String(n.regra))}</b>${esc(v80H(n.predicado))}</span>`).join('')}</div>`
+      : '<p>A pergunta foi introduzida diretamente nos passos (não foi gerada por uma regra).</p>'}
+    </div>
+    <div class="v130-sec"><div class="v130-h"><span class="v130-n">2</span>O que a resposta decide</div>
+      ${ordem.length ? ordem.map(v => `<div class="v130-g ${P.dada && P.dada === v ? 'dada' : ''}"><div class="v130-gv">${v === '*' ? 'qualquer resposta' : `se responder <b>${esc(opc.get(v) || v)}</b>`}${P.dada && P.dada === v ? '<em>✓ a resposta dada</em>' : ''}</div><div class="v130-gl">${grupos.get(v).map(regraChip).join('')}</div></div>`).join('')
+        : '<p>Nenhuma regra usa esta resposta.</p>'}
+    </div>
+    <div class="v120-meta">POST /api/${P.motor}/porque-pergunta · HTTP ${out.status} · ${out.ms} ms · geradaPor + regrasQueUsamAResposta [${usam.join(', ')}]</div>`;
+}
+function v130Bloco(motor, passos, ativo, evento, pergunta, titulo, dada) {
+  const k = v130Chave(motor, passos, ativo, evento, pergunta) + (dada ? '|' + dada : '');
+  S.v130.p[k] = { motor, passos, ativo, evento, pergunta, dada };
+  return `<div class="v130"><div class="v130-t">${titulo}</div><div data-v130="${esc(k)}">${v130Html(k)}</div></div>`;
+}
+function v130Refresh() {
+  document.querySelectorAll('[data-v130]').forEach(el => { const h = v130Html(el.dataset.v130); if (el._h !== h) { el._h = h; el.innerHTML = h; } });
+}
+setInterval(() => { if (document.querySelector('[data-v130] .v120-wait')) v130Refresh(); }, 1000);
+// A) Porquê? de uma pergunta pendente: primeiro a resposta da API, depois o contexto já existente
+v80Ctx = (function(prev) {
+  return function(res, q) {
+    const base = prev.apply(this, arguments);
+    if (!q || !res) return base;
+    const api = v130Bloco(v120Motor(), v120Passos(res), q.ativo, q.evento, q.pergunta,
+      `<span class="v130-k">Porquê?</span> porque é que o motor faz esta pergunta <small>resposta do motor</small>`);
+    return api + `<div class="v130-ctx"><div class="v130-t"><span class="v130-k s">Contexto</span> a evidência e os ativos à volta da pergunta <small>calculado da resposta do /infer</small></div>${base}</div>`;
+  };
+})(v80Ctx);
+// B) Como? de uma conclusão que dependeu de respostas do analista
+function v130Respostas(res, num) {
+  let P; try { P = v78Prova(res, num); } catch (e) { return []; }
+  return (P.ans || []).filter(f => f.predicado === 'resposta_analista').map(f => ({ f, passo: f.passo, a: (f.args || []).map(v71T) }));
+}
+function v130Dep(res, num) {
+  const rs = v130Respostas(res, num);
+  if (!rs.length) return '';
+  const passos = v120Passos(res);
+  return `<div class="v130-dep"><div class="v130-dh"><span class="v130-k a">Resposta do analista</span>Esta conclusão dependeu de ${rs.length === 1 ? 'uma resposta' : rs.length + ' respostas'} do analista</div>
+    ${rs.map(x => {
+      const [ativo, evento, pergunta, valor] = x.a;
+      const antes = passos.slice(0, Math.max(0, passos.findIndex(p => p.id === x.passo))).filter(p => !String(p.id).startsWith('resposta_') || p.id !== x.passo);
+      const k = 'dep|' + x.passo;
+      const aberto = S.v130.aberto.has(k);
+      return `<div class="v130-di"><span>«${esc(v80H(pergunta))}» em <b>${esc(ativo)}</b> (${esc(evento)}) = <b class="v130-val">${esc(valor)}</b></span>
+        <button type="button" class="v91-bt" data-v130abre="${esc(k)}">${aberto ? '▾' : '▸'} Porquê esta pergunta?</button></div>
+        ${aberto ? v130Bloco(v120Motor(), antes, ativo, evento, pergunta, `<span class="v130-k">Porquê?</span> porque é que o motor fez esta pergunta <small>pedido com os ${antes.length} passos anteriores à resposta</small>`, valor) : ''}`;
+    }).join('')}</div>`;
+}
+v103Leitura = (function(prev) {
+  return function(res, num) {
+    const h = prev.apply(this, arguments);
+    const d = v130Dep(res, num);
+    return d ? d + h : h;
+  };
+})(v103Leitura);
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-v130abre]');
+  if (!b) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  const k = b.dataset.v130abre;
+  S.v130.aberto.has(k) ? S.v130.aberto.delete(k) : S.v130.aberto.add(k);
+  if (typeof v89Render === 'function') v89Render();
+}, true);
+// C) Respondidas: cada uma abre o Porquê? (pedido com os passos anteriores à resposta)
+v91Fila = (function(prev) {
+  return function(D) {
+    let h = prev(D);
+    if (!S.v92.modoPerg || !h.includes('v128-it')) return h;
+    const res = v61Res && v61Res(); if (!res) return h;
+    const passos = v120Passos(res);
+    const rs = v128Respondidas();
+    let i = 0;
+    return h.replace(/<div class="v91-it q fe v128-it">([\s\S]*?enviada ao motor<\/small><\/span>)<\/div>/g, (m, corpo) => {
+      const a = rs[i++]; if (!a) return m;
+      const k = 'resp|' + a.id, aberto = S.v130.aberto.has(k);
+      const antes = passos.slice(0, Math.max(0, passos.findIndex(p => p.id === a.id)));
+      return `<div class="v91-it q fe v128-it">${corpo}<button type="button" class="v130-mini" data-v130abre="${esc(k)}">${aberto ? '▾' : '▸'} porquê?</button></div>
+        ${aberto ? `<div class="v130-in">${v130Bloco(v120Motor(), antes, a.ativo, a.evento, a.pergunta, '<span class="v130-k">Porquê?</span> porque é que o motor fez esta pergunta', a.valor)}</div>` : ''}`;
+    });
+  };
+})(v91Fila);
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    .v130{margin:0 0 14px;border:1px solid rgba(245,185,69,.35);border-radius:10px;background:rgba(245,185,69,.035);padding:10px 12px}
+    .v130-t{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt);margin-bottom:8px}
+    .v130-t small{margin-left:auto;color:var(--dim);font-size:10.5px}
+    .v130-t,.v130-dh{flex-wrap:wrap}
+    .v130-di{flex-wrap:wrap}
+    .v130-k{font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;padding:2px 7px;border-radius:5px;color:#fcd34d;border:1px solid rgba(245,185,69,.5);background:rgba(245,185,69,.1)}
+    .v130-k.s{color:var(--cyan);border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.08)}
+    .v130-k.a{color:#c4b5fd;border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.1)}
+    .v130-sec{margin:6px 0 10px}
+    .v130-h{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+    .v130-n{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:rgba(245,185,69,.15);color:#fcd34d;font-size:10px}
+    .v130-sec p{margin:0 0 6px;font-size:12px;line-height:1.5}
+    .v130-r{display:inline-block;font:700 10.5px var(--mono);color:#0b1220;background:var(--cyan);border-radius:4px;padding:0 5px;margin-right:6px}
+    .v130-cad{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:6px;font-size:11px}
+    .v130-cad span{border:1px solid var(--line2);border-radius:6px;padding:2px 7px;background:rgba(255,255,255,.02)}
+    .v130-cad i{color:var(--dim);font-style:normal}
+    .v130-rr{margin:4px 0}
+    .v130-rr summary{cursor:pointer;font-size:11.5px;list-style:none}
+    .v130-rr summary::-webkit-details-marker{display:none}
+    .v130-rr .v126-se{margin:4px 0 2px;padding:6px 8px;border-left:2px solid var(--cyan);background:rgba(34,211,238,.04)}
+    .v130-g{display:grid;grid-template-columns:170px 1fr;gap:8px;padding:6px 0;border-top:1px dashed var(--line2)}
+    .v130-g:first-child{border-top:none}
+    .v130-gv{font-size:11.5px;color:var(--dim)}
+    .v130-gv b{color:#fcd34d}
+    .v130-gv em{display:block;font-style:normal;font-size:10.5px;color:#86efac;margin-top:2px}
+    .v130-g.dada{background:rgba(134,239,172,.05);border-radius:6px;padding-left:6px}
+    .v130-mu{color:var(--dim);font-size:11px}
+    .v130-ctx{border-top:1px solid var(--line2);padding-top:10px}
+    .v130-dep{margin:0 0 14px;border:1px solid rgba(167,139,250,.4);border-radius:10px;background:rgba(167,139,250,.05);padding:10px 12px}
+    .v130-dh{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:6px}
+    .v130-di{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;padding:4px 0}
+    .v130-val{color:#fcd34d}
+    .v130-dep .v130{margin-top:8px}
+    .v130-mini{margin-left:auto;align-self:center;background:none;border:1px solid var(--line2);border-radius:6px;color:var(--dim);font:10.5px var(--mono);padding:2px 8px;cursor:pointer;white-space:nowrap}
+    .v130-mini:hover{color:var(--txt);border-color:#f5b945}
+    .v130-in{padding:0 10px 6px}
+    @media (max-width:900px){.v130-g{grid-template-columns:1fr}}
+  `;
+  document.head.appendChild(st);
+})();
+
+/* v130b: aviso de volta à lateral (sobra largura, falta altura), com o estilo novo;
+   transição suave quando o grafo cresce ao correr o motor; dica do grafo nunca fica presa */
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    #v111Aviso{right:auto !important;bottom:auto !important;transform:translateY(-50%) !important;
+      width:300px !important;grid-template-columns:auto 1fr !important;gap:8px 12px !important;padding:18px 18px 16px !important;animation:v130in .45s cubic-bezier(.2,.8,.2,1) !important}
+    @keyframes v130in{from{opacity:0;transform:translate(16px,-50%)}to{opacity:1;transform:translateY(-50%)}}
+    #v111Aviso:before{grid-row:1 !important;align-self:center}
+    #v111Aviso b{grid-column:2 !important}
+    #v111Aviso p{grid-column:1/3 !important;margin-top:2px !important}
+    #v111Aviso .v111-go,#v111Aviso .v123-both{grid-column:1/3 !important;grid-row:auto !important;width:100% !important;margin-top:6px}
+  `;
+  document.head.appendChild(st);
+})();
+// transição: a câmara anda do enquadramento das entradas para o grafo todo (sem piscar)
+v111Salto = function() {
+  const vis = getVisibleNodesForCurrentState;
+  let tgt = null;
+  getVisibleNodesForCurrentState = () => new Set(NODES.map(n => n.id));
+  try { tgt = computeCameraTargetForVisibleGraph(1.04); } finally { getVisibleNodesForCurrentState = vis; }
+  S._v111Fixo = performance.now();
+  if (!tgt) return;
+  if (_camAnimFrame) cancelAnimationFrame(_camAnimFrame);
+  const z0 = S.zoom, x0 = S.px, y0 = S.py, t0 = performance.now(), dur = 700;
+  const passo = now => {
+    const p = Math.min(1, (now - t0) / dur), e = p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+    S.zoom = z0 + (tgt.zoom - z0) * e; S.px = x0 + (tgt.px - x0) * e; S.py = y0 + (tgt.py - y0) * e;
+    updateTransform();
+    _camAnimFrame = p < 1 ? requestAnimationFrame(passo) : null;
+  };
+  _camAnimFrame = requestAnimationFrame(passo);
+};
+// dica do grafo: se o elemento por baixo desaparece (render, mudança de vista), a dica sai
+(function() {
+  const fora = () => { try { hideTip(); } catch (e) {} };
+  document.addEventListener('mousemove', e => {
+    const t = document.getElementById('tip');
+    if (t && t.style.display === 'block' && !(e.target.closest && e.target.closest('#svg, #canvas'))) fora();
+  }, true);
+  const _sv = switchView;
+  switchView = function() { fora(); return _sv.apply(this, arguments); };
+  window.switchView = switchView;
+  const _m = v89Modo;
+  v89Modo = function() { fora(); return _m.apply(this, arguments); };
+  window.v89Modo = v89Modo;
+  let mx = -1, my = -1;
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; }, true);
+  new MutationObserver(fora).observe(document.getElementById('app') || document.body, { attributes: true, attributeFilter: ['class'] });
+  setInterval(() => {
+    const t = document.getElementById('tip'); if (!t || t.style.display !== 'block') return;
+    const el = mx >= 0 ? document.elementFromPoint(mx, my) : null;
+    if (!el || !el.closest('#svg')) fora();
+  }, 300);
+})();
+
+
+/* v131: o aviso "ainda não correu" fica junto ao grafo (à direita dele, centrado na sua altura),
+   e o conjunto grafo + aviso fica centrado no ecrã; acompanha zoom e arrasto */
+const V131_AV = 356; // 300 de largura + 56 de espaço
+function v131Posiciona() {
+  const a = $('v111Aviso'), cv = $('canvas'); if (!a || !cv) return;
+  const c = cv.getBoundingClientRect();
+  const rs = [...gN.querySelectorAll('g.node:not(.sg-hide)')].map(g => g.getBoundingClientRect()).filter(r => r.width);
+  let x, y;
+  if (rs.length) {
+    const dir = Math.max(...rs.map(r => r.right)), cima = Math.min(...rs.map(r => r.top)), baixo = Math.max(...rs.map(r => r.bottom));
+    x = dir - c.left + 56; y = (Math.max(cima, c.top) + Math.min(baixo, c.bottom)) / 2 - c.top;
+  } else { x = c.width / 2 - 150; y = c.height / 2; }
+  x = Math.max(16, Math.min(c.width - a.offsetWidth - 16, x));
+  y = Math.max(a.offsetHeight / 2 + 12, Math.min(c.height - a.offsetHeight / 2 - 12, y));
+  a.style.left = Math.round(x) + 'px'; a.style.top = Math.round(y) + 'px';
+  a.classList.add('v131-ok');
+}
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `#v111Aviso{right:auto !important;bottom:auto !important;transform:translateY(-50%) !important;opacity:0;transition:opacity .3s ease}
+    #v111Aviso.v131-ok{opacity:1}`;
+  document.head.appendChild(st);
+  const _ut = updateTransform;
+  updateTransform = function() { const r = _ut.apply(this, arguments); try { v131Posiciona(); } catch (e) {} return r; };
+  const _av = v111Aviso;
+  v111Aviso = function() { const r = _av.apply(this, arguments); try { v131Posiciona(); } catch (e) {} return r; };
+  addEventListener('resize', () => { try { _v124Cam = ''; v124Centra(); v131Posiciona(); } catch (e) {} });
+})();
+
+
+
+/* v132: faixas com o mesmo espaço em cima (título → 1.ª caixa) e em baixo (última caixa → fundo) */
+function v132PreRun() {
+  const res = typeof v61Res === 'function' ? v61Res() : null;
+  return S.engine === 'both' ? !(typeof v76Comparar === 'function' && v76Comparar()) : !res;
+}
+const _v132Render = render;
+render = function() {
+  const r = _v132Render.apply(this, arguments);
+  try {
+    const vis = getVisibleNodesForCurrentState();
+    const ns = NODES.filter(n => vis.has(n.id));
+    if (ns.length) {
+      const fundo = Math.max(...ns.map(n => n.y)) + H + 40;
+      gStages.querySelectorAll('rect.stage-band').forEach(b => b.setAttribute('height', Math.max(80, fundo - +b.getAttribute('y'))));
+    }
+  } catch (e) {}
+  return r;
+};
+
+/* v133: enquanto o motor infere (o Prolog demora ~2-3 s com a Vista Global), o ecrã mostra
+   que está a trabalhar: o aviso passa a "A inferir…" com o tempo a contar, e as caixas de
+   entrada fazem uma onda de luz. A animação do grafo começa quando chega a resposta. */
+S.v133 = null;
+const _v133Inf = v61Inferir;
+v61Inferir = async function(eng, passos) {
+  const meu = { t0: performance.now(), motores: new Set([eng]), n: (passos || []).length };
+  if (S.v133) S.v133.motores.add(eng); else S.v133 = meu;
+  const cur = S.v133;
+  const tm = setTimeout(v133Mostra, 220); // pedidos rápidos (Drools) não piscam
+  try { return await _v133Inf.apply(this, arguments); }
+  finally {
+    clearTimeout(tm);
+    cur.motores.delete(eng);
+    if (!cur.motores.size) { if (S.v133 === cur) S.v133 = null; v133Esconde(); }
+  }
+};
+let _v133Timer = null;
+function v133Mostra() {
+  const E = S.v133; if (!E) return;
+  const cv = $('canvas'); if (!cv) return;
+  if (document.querySelector('.app.view-dossier, .app.view-backend')) return;
+  $('v111Aviso')?.remove();
+  let a = $('v133Esp');
+  if (!a) {
+    a = document.createElement('div'); a.id = 'v133Esp'; cv.appendChild(a);
+    ['mousedown', 'pointerdown', 'wheel'].forEach(t => a.addEventListener(t, e => e.stopPropagation()));
+  }
+  const nomes = [...E.motores].map(m => m === 'drools' ? 'Drools' : 'SWI-Prolog');
+  // a estrutura é criada uma vez (senão a roda e a barra recomeçam a cada atualização); só o tempo muda
+  const titulo = `A inferir no ${nomes.join(' e no ')}…`;
+  if (a.dataset.t !== titulo) {
+    a.dataset.t = titulo;
+    a.innerHTML = `<span class="v133-sp"></span><b>${esc(titulo)}</b>
+      <p>O motor corre os ${E.n} passos do pedido. O grafo anima assim que chegar a resposta, etapa a etapa.</p>
+      <div class="v133-bar"><i></i></div><small class="v133-s">0.0 s</small>`;
+  }
+  const tempo = a.querySelector('.v133-s');
+  const atualiza = () => { if (S.v133 && tempo) tempo.textContent = ((performance.now() - E.t0) / 1000).toFixed(1) + ' s'; };
+  atualiza();
+  clearInterval(_v133Timer); _v133Timer = setInterval(atualiza, 100);
+  $('svg')?.classList.add('v133-scan');
+  try { v131Posiciona.call(null); } catch (e) {}
+  v133Pos();
+}
+function v133Pos() {
+  const a = $('v133Esp'), cv = $('canvas'); if (!a || !cv) return;
+  const c = cv.getBoundingClientRect();
+  const rs = [...gN.querySelectorAll('g.node:not(.sg-hide)')].map(g => g.getBoundingClientRect()).filter(r => r.width);
+  let x = c.width / 2 - 150, y = c.height / 2;
+  if (rs.length) { x = Math.max(...rs.map(r => r.right)) - c.left + 56; y = (Math.max(Math.min(...rs.map(r => r.top)), c.top) + Math.min(Math.max(...rs.map(r => r.bottom)), c.bottom)) / 2 - c.top; }
+  x = Math.max(16, Math.min(c.width - a.offsetWidth - 16, x));
+  a.style.left = Math.round(x) + 'px'; a.style.top = Math.round(y) + 'px';
+}
+function v133Esconde() {
+  clearInterval(_v133Timer); _v133Timer = null;
+  $('svg')?.classList.remove('v133-scan');
+  const a = $('v133Esp'); if (!a) return;
+  a.classList.add('sai'); setTimeout(() => a.remove(), 250);
+}
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    #v133Esp{position:absolute;z-index:30;width:300px;box-sizing:border-box;transform:translateY(-50%);display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center;
+      padding:18px 18px 16px;border-radius:16px;background:linear-gradient(180deg,rgba(8,16,24,.96),rgba(4,9,14,.96));border:1px solid rgba(34,211,238,.35);
+      box-shadow:0 18px 50px rgba(0,0,0,.6),0 0 40px rgba(34,211,238,.08);font:12px/1.5 var(--mono);color:var(--txt);transition:opacity .25s ease}
+    #v133Esp.sai{opacity:0}
+    #v133Esp b{color:#fff;font-size:13.5px}
+    #v133Esp p{grid-column:1/3;margin:0;color:var(--dim);font-size:11.5px}
+    #v133Esp small{grid-column:1/3;justify-self:end;color:var(--cyan);font-size:11px;margin-top:-4px}
+    .v133-sp{width:14px;height:14px;border-radius:50%;border:2px solid rgba(34,211,238,.25);border-top-color:var(--cyan);animation:v133r .8s linear infinite}
+    @keyframes v133r{to{transform:rotate(360deg)}}
+    .v133-bar{grid-column:1/3;height:3px;border-radius:2px;background:rgba(34,211,238,.12);overflow:hidden;margin-top:4px}
+    .v133-bar i{display:block;width:35%;height:100%;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:v133b 1.1s ease-in-out infinite}
+    @keyframes v133b{from{transform:translateX(-100%)}to{transform:translateX(290%)}}
+    #svg.v133-scan g.node .box{animation:v133onda 1.4s ease-in-out infinite}
+    @keyframes v133onda{0%,100%{stroke:rgba(34,211,238,.35)}50%{stroke:rgba(34,211,238,1);filter:drop-shadow(0 0 6px rgba(34,211,238,.6))}}
+    ${Array.from({ length: 12 }, (_, i) => `#svg.v133-scan g.node:nth-child(12n+${i + 1}) .box{animation-delay:${(i * 0.09).toFixed(2)}s}`).join('\n')}
+  `;
+  document.head.appendChild(st);
+  const _ut = updateTransform;
+  updateTransform = function() { const r = _ut.apply(this, arguments); try { v133Pos(); } catch (e) {} return r; };
+})();
+// o aviso "ainda não correu" não volta a aparecer por cima do "A inferir…"
+v111Aviso = (function(prev) { return function() { if (S.v133) { $('v111Aviso')?.remove(); return; } return prev.apply(this, arguments); }; })(v111Aviso);
+
+/* v135: no fim da inferência o grafo fica quieto. A consola recolhe e a área do grafo cresce;
+   antes isso refazia o layout (as colunas divididas juntavam-se: 10 → 8) e mexia a câmara.
+   Agora, nesse momento, o layout e a câmara ficam congelados; quem anima é a caixa da contagem. */
+S.v135 = 0;
+v62AfterRun = (function(prev) {
+  return function() {
+    const animou = S.v82 && S.v82.animou;
+    if (animou) S.v135 = performance.now() + 2600;
+    return prev.apply(this, arguments);
+  };
+})(v62AfterRun);
+const v135Congelado = () => performance.now() < S.v135;
+v66Layout = (function(prev) { return function() { if (v135Congelado() && NODES.length) return; return prev.apply(this, arguments); }; })(v66Layout);
+animateCameraToVisibleGraph = (function(prev) { return function() { if (v135Congelado()) return; return prev.apply(this, arguments); }; })(animateCameraToVisibleGraph);
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    #v102Cd{animation:v135in .55s cubic-bezier(.18,1.25,.4,1) both, v135brilho 2.4s ease-in-out .6s infinite !important}
+    @keyframes v135in{0%{opacity:0;transform:translate(-50%,24px) scale(.92)}100%{opacity:1;transform:translate(-50%,0) scale(1)}}
+    @keyframes v135brilho{0%,100%{box-shadow:0 0 24px rgba(34,211,238,.18),0 18px 40px rgba(0,0,0,.7)}50%{box-shadow:0 0 42px rgba(34,211,238,.42),0 18px 40px rgba(0,0,0,.7)}}
+    #v102Cd .v102-t b{animation:v135t .5s ease .15s both}
+    #v102Cd .v102-t span{animation:v135t .5s ease .3s both}
+    #v102Cd button{animation:v135t .45s ease .4s both}
+    @keyframes v135t{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+    #v102Cd.sai{animation:none !important}
+  `;
+  document.head.appendChild(st);
+})();
+
+/* v138 substituído pelo v141 (junções) */
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    #gA text.andtx,#gA path.andarc{display:none !important}
+    #gAnd .v138-arc{fill:none;stroke:#f5b945;stroke-width:2;stroke-linecap:round}
+    #gAnd .v136-b rect{fill:#0b0f14;stroke:#f5b945;stroke-width:1}
+    #gAnd .v136-b text{fill:#f5b945;font:700 9.5px var(--mono);letter-spacing:.2px}
+    #gAnd .v136-b.dim{opacity:.25}
+    #gAnd{pointer-events:none}
+  `;
+  document.head.appendChild(st);
+})();
+
+/* =====================================================================
+   v141: setas que se juntam antes da caixa (feixe → uma só seta)
+   - Todas as setas que chegam a uma caixa pela esquerda juntam-se num ponto
+     de junção, 30 px antes da caixa; da junção sai UMA seta para a caixa.
+   - Numa REGRA, a junção é o nó ∧: arco amarelo à volta da junção e selo por cima,
+     só quando há de facto 2 ou mais setas visíveis a juntar-se. O número é o das
+     setas que se juntam; "+KB" se a regra usa também a base (seta escondida).
+     Num FACTO (deduzido por várias regras: OU) a junção não leva ∧.
+   - Seta "para trás" (destino numa coluna anterior): sai pela direita, passa nos
+     intervalos livres entre caixas e entra pela esquerda (cantos arredondados).
+   - Mesma coluna: se a linha vertical não atravessa caixas, fica vertical (entra
+     por cima); se atravessa, contorna pela esquerda e vai à junção.
+   ===================================================================== */
+function v139Hash(t) { let h = 7; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return Math.abs(h); }
+const V141_J = 30;      // distância da junção à caixa
+const V141_RETO = 16;   // troço reto antes da ponta, quando não há junção
+let _v141Ent = new Map();
+function v141Vert(a, b) { const cx = Math.round(a.x + W / 2); return b.y >= a.y ? `M${cx},${a.y + H} L${cx},${b.y - 2}` : `M${cx},${a.y} L${cx},${b.y + H + 2}`; }
+function v141Entradas(b) {
+  if (_v141Ent.has(b.id)) return _v141Ent.get(b.id);
+  const visSet = getVisibleNodesForCurrentState();
+  const sc = S.scen && SCEN[S.scen];
+  const lista = (IN[b.id] || []).filter(e => visSet.has(e.id) && (!sc || sc.edges.includes(key(e.id, b.id))) && byId[e.id])
+    .filter(e => { const a = byId[e.id]; return !(Math.abs(a.x - b.x) < 18 && !v125Atravessa(v141Vert(a, b), a, b, v125Caixas())); })
+    .sort((p, q) => (byId[p.id].y - byId[q.id].y) || (byId[p.id].x - byId[q.id].x)).map(e => e.id);
+  _v141Ent.set(b.id, lista);
+  return lista;
+}
+function v141Saidas(a) {
+  const visSet = getVisibleNodesForCurrentState();
+  const sc = S.scen && SCEN[S.scen];
+  return (OUT[a.id] || []).filter(e => visSet.has(e.id) && (!sc || sc.edges.includes(key(a.id, e.id))) && e.id !== 'kb')
+    .sort((p, q) => (byId[p.id]?.y || 0) - (byId[q.id]?.y || 0));
+}
+function v141Leque(lista, id, max) {
+  const n = lista.length, i = lista.findIndex(e => e.id === id);
+  if (n < 2 || i < 0) return 0;
+  return (i - (n - 1) / 2) * Math.min(10, (2 * max) / (n - 1));
+}
+function v141Livre(colEsq, yAlvo) {
+  const vis = v125Vis();
+  const col = NODES.filter(n => Math.abs(n.x - colEsq) < 4 && (!vis || vis.has(n.id))).sort((p, q) => p.y - q.y);
+  if (!col.length) return yAlvo;
+  const gaps = [[-Infinity, col[0].y]];
+  for (let k = 0; k < col.length - 1; k++) gaps.push([col[k].y + H, col[k + 1].y]);
+  gaps.push([col[col.length - 1].y + H, Infinity]);
+  let best = yAlvo, bd = Infinity;
+  for (const [g0, g1] of gaps) {
+    if (g1 - g0 < 12) continue;
+    const lo = isFinite(g0) ? g0 + 6 : g1 - 26, hi = isFinite(g1) ? g1 - 6 : g0 + 26;
+    const y = Math.max(lo, Math.min(hi, yAlvo)), d = Math.abs(y - yAlvo);
+    if (d < bd) { bd = d; best = y; }
+  }
+  return best;
+}
+function v141Arredonda(pts, r) {
+  const P = [];
+  pts.forEach(p => { const l = P[P.length - 1]; if (!l || Math.abs(l[0] - p[0]) > 0.5 || Math.abs(l[1] - p[1]) > 0.5) P.push(p); });
+  const Q = [P[0]];
+  for (let i = 1; i < P.length - 1; i++) {
+    const [ax, ay] = Q[Q.length - 1], [bx, by] = P[i], [cx, cy] = P[i + 1];
+    if ((Math.abs(ax - bx) < .5 && Math.abs(bx - cx) < .5) || (Math.abs(ay - by) < .5 && Math.abs(by - cy) < .5)) continue;
+    Q.push(P[i]);
+  }
+  Q.push(P[P.length - 1]);
+  let d = `M${Q[0][0]},${Q[0][1]}`;
+  for (let i = 1; i < Q.length - 1; i++) {
+    const [ax, ay] = Q[i - 1], [bx, by] = Q[i], [cx, cy] = Q[i + 1];
+    const l1 = Math.hypot(bx - ax, by - ay), l2 = Math.hypot(cx - bx, cy - by);
+    const rr = Math.min(r, l1 / 2, l2 / 2);
+    d += ` L${(bx - (bx - ax) / l1 * rr).toFixed(1)},${(by - (by - ay) / l1 * rr).toFixed(1)} Q${bx},${by} ${(bx + (cx - bx) / l2 * rr).toFixed(1)},${(by + (cy - by) / l2 * rr).toFixed(1)}`;
+  }
+  const z = Q[Q.length - 1];
+  return d + ` L${z[0]},${z[1]}`;
+}
+edgePath = (function(prev) {
+  return function(a, b) {
+    if (!a || !b) return prev.apply(this, arguments);
+    const ent = v141Entradas(b);
+    const mesmaCol = Math.abs(a.x - b.x) < 18;
+    if (mesmaCol && !ent.includes(a.id)) return v141Vert(a, b); // vertical, entra por cima/baixo
+    const junta = ent.length >= 2;
+    const cy = Math.round(b.y + H / 2);
+    const fim = junta ? [b.x - V141_J, cy] : [b.x - 2, cy];
+    const off = v139Hash(a.id + '>' + b.id) % 3;
+    if (mesmaCol) {
+      // contorna pela esquerda: sai pela parte de baixo do lado esquerdo e vai à junção / entrada
+      const ya = Math.round(a.y + H - 12), gx = b.x - V141_J - 16 - off * 5;
+      return v141Arredonda([[a.x, ya], [gx, ya], [gx, cy], fim], 8);
+    }
+    const y1 = Math.round(a.y + H / 2 + v141Leque(v141Saidas(a), b.id, 14));
+    if (b.x > a.x + W) {
+      // para a frente: curvas com tangentes horizontais, a passar nos intervalos livres das colunas do meio
+      const cols = [...new Set(NODES.map(n => Math.round(n.x)))].filter(x => x > a.x + 4 && x < b.x - 4).sort((p, q) => p - q);
+      const pts = [[a.x + W + 4, y1]];
+      cols.forEach((cx, k) => {
+        const yi = k === cols.length - 1 ? cy : y1 + (cy - y1) * (k + 1) / (cols.length + 1);
+        const wy = Math.round(v141Livre(cx, yi));
+        pts.push([cx - 10, wy], [cx + W + 10, wy]);
+      });
+      pts.push(junta ? fim : [fim[0] - V141_RETO, cy]);
+      let d = `M${a.x + W},${y1} L${pts[0][0]},${pts[0][1]}`;
+      for (let k = 1; k < pts.length; k++) {
+        const [px, py] = pts[k - 1], [qx, qy] = pts[k];
+        if (Math.abs(qy - py) < 1) { d += ` L${qx},${qy}`; continue; }
+        const dx = Math.max(10, (qx - px) * 0.55);
+        d += ` C${(px + dx).toFixed(1)},${py} ${(qx - dx).toFixed(1)},${qy} ${qx},${qy}`;
+      }
+      if (!junta) d += ` L${fim[0]},${fim[1]}`;
+      return d;
+    }
+    // para trás: sai pela direita, atravessa as colunas (da de 'a' até à de 'b') nos intervalos livres
+    const cols = [...new Set(NODES.map(n => Math.round(n.x)))].filter(x => x >= b.x - 4 && x <= a.x + 4).sort((p, q) => q - p);
+    const pts = [[a.x + W, y1]];
+    let y = y1, laneX = a.x + W + 16 + off * 5;
+    cols.forEach((cx, k) => {
+      const wy = Math.round(v141Livre(cx, k === cols.length - 1 ? cy : y));
+      pts.push([laneX, y], [laneX, wy], [cx - 10, wy]);
+      y = wy;
+      const prox = cols[k + 1];
+      laneX = prox != null ? Math.round((prox + W + cx) / 2) + (off - 1) * 5 : b.x - V141_J - 16 - off * 5;
+    });
+    pts.push([laneX, y], [laneX, cy], fim);
+    return v141Arredonda(pts, 8);
+  };
+})(edgePath);
+// cache por desenho
+render = (function(prev) { return function() { _v141Ent = new Map(); return prev.apply(this, arguments); }; })(render);
+
+// ---- junções: uma seta da junção para a caixa; arco + selo ∧ nas regras ----
+const V141_FORA = ['sg-hide', 'v83-dim', 'dim', 'causal-fade', 'v114-off', 'v115-kb', 'v109-off'];
+function v141Junta() {
+  if (typeof gE === 'undefined' || !gE) return;
+  gE.querySelectorAll('.v141-stub').forEach(x => x.remove());
+  let g = document.getElementById('gAnd');
+  if (!g) { g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.id = 'gAnd'; gN.parentNode.insertBefore(g, gN.nextSibling); }
+  g.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg';
+  const prio = e => e.classList.contains('sel-edge') ? 4 : e.classList.contains('causal-path') ? 3 : e.classList.contains('lit') ? 2 : e.classList.contains('hl') ? 1 : 0;
+  NODES.forEach(b => {
+    const ent = _v141Ent.get(b.id) || v141Entradas(b);
+    if (ent.length < 2) return;
+    const els = ent.map(src => document.getElementById('e-' + key(src, b.id))).filter(Boolean);
+    els.forEach(e => e.classList.add('v141-j'));
+    const existe = els.filter(e => getComputedStyle(e).display !== 'none');
+    if (!existe.length) return;
+    const ativos = existe.filter(e => !V141_FORA.some(c => e.classList.contains(c)));
+    const ref = (ativos.length ? ativos : existe).slice().sort((p, q) => prio(q) - prio(p))[0];
+    const cy = Math.round(b.y + H / 2), jx = b.x - V141_J;
+    const st = document.createElementNS(ns, 'path');
+    st.setAttribute('d', `M${jx},${cy} L${b.x - 2},${cy}`);
+    st.setAttribute('class', [...ref.classList].filter(c => c !== 'v141-j').join(' ') + ' v141-stub');
+    st.setAttribute('marker-end', ref.getAttribute('marker-end') || 'url(#ar)');
+    gE.appendChild(st);
+    // ∧ só nas regras, só com 2+ setas visíveis a juntar-se, e só se a regra não está apagada
+    if (b.t !== 'rule' || ativos.length < 2) return;
+    const no = gN.querySelector(`g.node[data-id="${CSS.escape(b.id)}"]`);
+    if (!no || V141_FORA.some(c => no.classList.contains(c)) || +getComputedStyle(no).opacity < 0.5) return;
+    const nKb = ativos.filter(e => /^e-kb->/.test(e.id)).length;
+    const usaKb = (IN[b.id] || []).some(e => e.id === 'kb');
+    const txt = `∧${ativos.length - nKb}${usaKb ? '+KB' : ''}`;
+    const w = 12 + txt.length * 6, rr = 14, an = 0.9;
+    const cxA = jx + rr; // o arco passa pela junção
+    const p1 = [cxA - rr * Math.cos(an), cy - rr * Math.sin(an)], p2 = [cxA - rr * Math.cos(an), cy + rr * Math.sin(an)];
+    const bx = Math.round(jx - w / 2 + 6), by = Math.round(cy - rr * Math.sin(an) - 19);
+    const grp = document.createElementNS(ns, 'g');
+    grp.setAttribute('class', 'v136-b'); grp.setAttribute('data-id', b.id); grp.setAttribute('data-n', ativos.length - nKb);
+    grp.innerHTML = `<path class="v138-arc" d="M${p1[0].toFixed(1)},${p1[1].toFixed(1)} A${rr},${rr} 0 0 0 ${p2[0].toFixed(1)},${p2[1].toFixed(1)}"/>`
+      + `<g transform="translate(${bx},${by})"><rect width="${w}" height="14" rx="7"/><text x="${w / 2}" y="10.2" text-anchor="middle">${txt}</text></g>`;
+    g.appendChild(grp);
+  });
+}
+render = (function(prev) { return function() { const r = prev.apply(this, arguments); try { v141Junta(); } catch (e) { console.error(e); } return r; }; })(render);
+if (typeof v83Aplicar === 'function') v83Aplicar = (function(prev) { return function() { const r = prev.apply(this, arguments); try { v141Junta(); } catch (e) {} return r; }; })(v83Aplicar);
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `#gE path.edge.v141-j{marker-end:none !important}
+    #gAnd .v138-arc{stroke-width:2.2}`;
+  document.head.appendChild(st);
+})();
+
+
+/* =====================================================================
+   v142: setas a passar entre caixas a distância constante, e junção a meio da caixa
+   - Ao atravessar uma coluna, a seta passa num "canal" (intervalo entre duas caixas):
+     sozinha, vai a meio do canal (mesma distância às duas caixas); várias, ficam
+     espaçadas e centradas no canal. Acima da 1.ª / abaixo da última caixa: a 10 px.
+   - As setas que vão para a mesma caixa e atravessam a coluna anterior juntam-se
+     DENTRO desse canal, a meio da largura da caixa que contornam (J), e seguem como
+     uma só. Se não houver outras setas a chegar, essa linha única entra na caixa e
+     o ∧ fica em J; se houver, juntam-se de novo antes da caixa (M) e o ∧ fica em M.
+   ===================================================================== */
+let _v142P = null;
+render = (function(prev) { return function() { _v142P = null; return prev.apply(this, arguments); }; })(render);
+function v142Canal(cx, yi) {
+  const vis = v125Vis();
+  const col = NODES.filter(n => Math.abs(n.x - cx) < 4 && (!vis || vis.has(n.id))).sort((p, q) => p.y - q.y);
+  if (!col.length) return { k: 'v' + Math.round(yi), tipo: 'livre', lo: yi, hi: yi };
+  const ops = [{ k: 'c', tipo: 'cima', lo: col[0].y - 10, hi: col[0].y - 10 }];
+  for (let i = 0; i < col.length - 1; i++) { const g0 = col[i].y + H, g1 = col[i + 1].y; if (g1 - g0 >= 10) ops.push({ k: 'm' + i, tipo: 'meio', lo: g0 + 4, hi: g1 - 4 }); }
+  ops.push({ k: 'b', tipo: 'baixo', lo: col[col.length - 1].y + H + 10, hi: col[col.length - 1].y + H + 10 });
+  let best = ops[0], bd = Infinity;
+  ops.forEach(o => { const m = (o.lo + o.hi) / 2, d = Math.abs(m - yi); if (d < bd) { bd = d; best = o; } });
+  return best;
+}
+// v141Livre (setas para trás / contornos): também a meio do canal
+v141Livre = function(colEsq, yAlvo) { const c = v142Canal(colEsq, yAlvo); return Math.round((c.lo + c.hi) / 2); };
+function v142Plano() {
+  if (_v142P) return _v142P;
+  const P = { cross: new Map(), alvo: new Map() };
+  const visSet = getVisibleNodesForCurrentState();
+  const sc = S.scen && SCEN[S.scen];
+  const xs = [...new Set(NODES.map(n => Math.round(n.x)))].sort((p, q) => p - q);
+  const canais = new Map(); // cx|canal -> { ch, faixas: [ {grupo, alvoY, ordem, carregada, membros:[{c,kb}]} ] }
+  NODES.forEach(b => {
+    const cy = Math.round(b.y + H / 2);
+    const A = { far: [], near: [], farVis: 0, nearVis: 0, mJ: false, juncoes: [], cy };
+    P.alvo.set(b.id, A);
+    const longe = [];
+    (IN[b.id] || []).forEach(e => {
+      const a = byId[e.id];
+      if (!a || !visSet.has(e.id) || (sc && !sc.edges.includes(key(e.id, b.id)))) return;
+      const kb = e.id === 'kb';
+      if (Math.abs(a.x - b.x) < 18) {
+        if (!v125Atravessa(v141Vert(a, b), a, b, v125Caixas())) return;
+        A.near.push(a.id); if (!kb) A.nearVis++; return;
+      }
+      const inter = b.x > a.x + W ? xs.filter(x => x > a.x + 4 && x < b.x - 4) : [];
+      if (!inter.length) { A.near.push(a.id); if (!kb) A.nearVis++; return; }
+      A.far.push(a.id); if (!kb) A.farVis++;
+      const ek = key(a.id, b.id);
+      const cr = inter.map(cx => ({ cx, entry: null, exit: null }));
+      P.cross.set(ek, cr);
+      longe.push({ ek, kb, y1: Math.round(a.y + H / 2 + v141Leque(v141Saidas(a), b.id, 14)), cr });
+    });
+    if (!longe.length) return;
+    // cada coluna atravessada: um só canal por destino (o mais perto da altura do destino);
+    // as setas que já vinham juntas seguem numa só faixa, as que entram nessa coluna têm faixa própria
+    const colunas = [...new Set(longe.flatMap(m => m.cr.map(c => c.cx)))].sort((p, q) => p - q);
+    colunas.forEach((cx, k) => {
+      const ch = v142Canal(cx, cy), ck = cx + '|' + ch.k;
+      if (!canais.has(ck)) canais.set(ck, { ch, faixas: [] });
+      const aqui = longe.filter(m => m.cr.some(c => c.cx === cx));
+      const carregadas = aqui.filter(m => m.cr[0].cx < cx), novas = aqui.filter(m => m.cr[0].cx === cx);
+      const grupo = 'T:' + b.id + ':' + cx;
+      const F = canais.get(ck).faixas;
+      const reg = { grupo, alvoY: cy, cx, b: b.id, faixas: [] };
+      if (carregadas.length) { const f = { grupo, alvoY: cy, ordem: -1e9, carregada: true, membros: carregadas.map(m => ({ c: m.cr.find(c => c.cx === cx), kb: m.kb, ek: m.ek })) }; F.push(f); reg.faixas.push(f); }
+      novas.forEach(m => { const f = { grupo, alvoY: cy, ordem: m.y1, carregada: false, membros: [{ c: m.cr[0], kb: m.kb, ek: m.ek }] }; F.push(f); reg.faixas.push(f); });
+      A.juncoes.push(reg);
+    });
+  });
+  canais.forEach(({ ch, faixas }) => {
+    const ord = faixas.slice().sort((p, q) => (p.alvoY - q.alvoY) || (p.grupo < q.grupo ? -1 : p.grupo > q.grupo ? 1 : 0) || (p.ordem - q.ordem));
+    const vis = ord.filter(f => f.membros.some(m => !m.kb));
+    const T = vis.length;
+    let ys = [];
+    if (ch.tipo === 'meio') { const s = T > 1 ? Math.min(5, (ch.hi - ch.lo) / (T - 1)) : 0, c0 = (ch.lo + ch.hi) / 2 - (T - 1) * s / 2; ys = vis.map((_, i) => c0 + i * s); }
+    else if (ch.tipo === 'cima') ys = vis.map((_, i) => ch.hi - (T - 1 - i) * 5);
+    else if (ch.tipo === 'baixo') ys = vis.map((_, i) => ch.lo + i * 5);
+    else ys = vis.map(() => ch.lo);
+    vis.forEach((f, i) => { f.y = Math.round(ys[i] * 2) / 2; });
+    const porGrupo = new Map();
+    ord.forEach(f => { if (!porGrupo.has(f.grupo)) porGrupo.set(f.grupo, []); porGrupo.get(f.grupo).push(f); });
+    porGrupo.forEach(fs => {
+      const comY = fs.filter(f => f.y != null), carr = comY.find(f => f.carregada);
+      const ex = carr ? carr.y : comY.length ? Math.round(comY.reduce((t, f) => t + f.y, 0) / comY.length * 2) / 2 : Math.round((ch.lo + ch.hi) / 2);
+      fs.forEach(f => { f.exit = ex; f.membros.forEach(m => { m.c.entry = (!m.kb && f.y != null) ? f.y : ex; m.c.exit = ex; }); });
+    });
+  });
+  P.alvo.forEach(A => {
+    A.mJ = A.nearVis + (A.farVis ? 1 : 0) >= 2;
+    A.juncoes.forEach(r => { r.x = r.cx + W / 2; r.y = r.faixas.length ? r.faixas[0].exit : A.cy; });
+  });
+  _v142P = P;
+  return P;
+}
+edgePath = (function(prev) {
+  return function(a, b) {
+    if (!a || !b) return prev.apply(this, arguments);
+    const P = v142Plano(), A = P.alvo.get(b.id);
+    if (!A) return prev.apply(this, arguments);
+    const cy = A.cy, fim = A.mJ ? [b.x - V141_J, cy] : [b.x - 2, cy];
+    const off = v139Hash(a.id + '>' + b.id) % 3;
+    const mesmaCol = Math.abs(a.x - b.x) < 18;
+    if (mesmaCol) {
+      if (!A.near.includes(a.id)) return v141Vert(a, b);
+      const ya = Math.round(a.y + H - 12), gx = b.x - V141_J - 16 - off * 5;
+      return v141Arredonda([[a.x, ya], [gx, ya], [gx, cy], fim], 8);
+    }
+    const y1 = Math.round(a.y + H / 2 + v141Leque(v141Saidas(a), b.id, 14));
+    const curva = (px, py, qx, qy) => Math.abs(qy - py) < 0.6 ? ` L${qx},${qy}` : ` C${(px + (qx - px) * 0.55).toFixed(1)},${py} ${(qx - (qx - px) * 0.55).toFixed(1)},${qy} ${qx},${qy}`;
+    if (b.x > a.x + W) {
+      let d = `M${a.x + W},${y1} L${a.x + W + 4},${y1}`, px = a.x + W + 4, py = y1;
+      (P.cross.get(key(a.id, b.id)) || []).forEach(c => {
+        const ex = c.cx - 10, ey = c.entry ?? py;
+        d += curva(px, py, ex, ey);
+        const jx = c.cx + W / 2, jy = c.exit ?? ey;
+        d += curva(ex, ey, jx, jy);       // junção dentro do canal, a meio da caixa
+        d += ` L${c.cx + W + 10},${jy}`;
+        px = c.cx + W + 10; py = jy;
+      });
+      if (A.mJ) d += curva(px, py, fim[0], fim[1]);
+      else { d += curva(px, py, fim[0] - V141_RETO, cy); d += ` L${fim[0]},${cy}`; }
+      return d;
+    }
+    // para trás
+    const cols = [...new Set(NODES.map(n => Math.round(n.x)))].filter(x => x >= b.x - 4 && x <= a.x + 4).sort((p, q) => q - p);
+    const pts = [[a.x + W, y1]];
+    let y = y1, laneX = a.x + W + 16 + off * 5;
+    cols.forEach((cx, k) => {
+      const wy = v141Livre(cx, k === cols.length - 1 ? cy : y);
+      pts.push([laneX, y], [laneX, wy], [cx - 10, wy]);
+      y = wy;
+      const prox = cols[k + 1];
+      laneX = prox != null ? Math.round((prox + W + cx) / 2) + (off - 1) * 5 : b.x - V141_J - 16 - off * 5;
+    });
+    pts.push([laneX, y], [laneX, cy], fim);
+    return v141Arredonda(pts, 8);
+  };
+})(edgePath);
+// junções desenhadas: M (antes da caixa) e J (a meio da caixa contornada)
+v141Junta = function() {
+  if (typeof gE === 'undefined' || !gE) return;
+  gE.querySelectorAll('.v141-stub').forEach(x => x.remove());
+  gE.querySelectorAll('.v141-j').forEach(x => x.classList.remove('v141-j'));
+  let g = document.getElementById('gAnd');
+  if (!g) { g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.id = 'gAnd'; gN.parentNode.insertBefore(g, gN.nextSibling); }
+  g.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg', P = v142Plano();
+  const prio = e => e.classList.contains('sel-edge') ? 4 : e.classList.contains('causal-path') ? 3 : e.classList.contains('lit') ? 2 : e.classList.contains('hl') ? 1 : 0;
+  const ativo = e => e && getComputedStyle(e).display !== 'none' && !V141_FORA.some(c => e.classList.contains(c));
+  const selo = (b, n, x, y, arcoEm, centro) => {
+    const no = gN.querySelector(`g.node[data-id="${CSS.escape(b.id)}"]`);
+    if (b.t !== 'rule' || n < 2 || !no || V141_FORA.some(c => no.classList.contains(c)) || +getComputedStyle(no).opacity < 0.5) return;
+    const usaKb = (IN[b.id] || []).some(e => e.id === 'kb');
+    const txt = `∧${n}${usaKb ? '+KB' : ''}`, w = 12 + txt.length * 6;
+    const grp = document.createElementNS(ns, 'g');
+    grp.setAttribute('class', 'v136-b'); grp.setAttribute('data-id', b.id); grp.setAttribute('data-n', n);
+    grp.innerHTML = arcoEm + `<g transform="translate(${Math.round(centro ? x - w / 2 : x)},${Math.round(y)})"><rect width="${w}" height="14" rx="7"/><text x="${w / 2}" y="10.2" text-anchor="middle">${txt}</text></g>`;
+    g.appendChild(grp);
+  };
+  NODES.forEach(b => {
+    const A = P.alvo.get(b.id); if (!A) return;
+    const todos = [...A.far, ...A.near].map(s => document.getElementById('e-' + key(s, b.id))).filter(Boolean);
+    const vis = todos.filter(ativo).filter(e => !/^e-kb->/.test(e.id));
+    if (A.mJ) {
+      const els = todos;
+      els.forEach(e => e.classList.add('v141-j'));
+      const existe = els.filter(e => getComputedStyle(e).display !== 'none');
+      if (!existe.length) return;
+      const ativos = existe.filter(e => !V141_FORA.some(c => e.classList.contains(c)));
+      const ref = (ativos.length ? ativos : existe).slice().sort((p, q) => prio(q) - prio(p))[0];
+      const cy = A.cy, jx = b.x - V141_J;
+      const st = document.createElementNS(ns, 'path');
+      st.setAttribute('d', `M${jx},${cy} L${b.x - 2},${cy}`);
+      st.setAttribute('class', [...ref.classList].filter(c => c !== 'v141-j').join(' ') + ' v141-stub');
+      st.setAttribute('marker-end', ref.getAttribute('marker-end') || 'url(#ar)');
+      gE.appendChild(st);
+      // linhas visíveis que chegam a M (as que se juntaram em J contam como uma)
+      const farV = A.far.filter(s => s !== 'kb').some(s => ativo(document.getElementById('e-' + key(s, b.id))));
+      const nearV = A.near.filter(s => s !== 'kb' && ativo(document.getElementById('e-' + key(s, b.id)))).length;
+      if (nearV + (farV ? 1 : 0) < 2) return;
+      const rr = 14, an = 0.9, cxA = jx + rr;
+      const p1 = [cxA - rr * Math.cos(an), cy - rr * Math.sin(an)], p2 = [cxA - rr * Math.cos(an), cy + rr * Math.sin(an)];
+      selo(b, vis.length, jx + 6, cy - rr * Math.sin(an) - 19,
+        `<path class="v138-arc" d="M${p1[0].toFixed(1)},${p1[1].toFixed(1)} A${rr},${rr} 0 0 0 ${p2[0].toFixed(1)},${p2[1].toFixed(1)}"/>`, true);
+    }
+    // pontos de junção a meio das caixas atravessadas: onde 2+ linhas visíveis se juntam
+    const pontos = [];
+    A.juncoes.forEach(r => {
+      const linhas = r.faixas.filter(f => f.membros.some(m => !m.kb && ativo(document.getElementById('e-' + m.ek)))).length;
+      if (linhas >= 2) pontos.push({ x: r.x, y: r.y, n: linhas });
+    });
+    pontos.forEach((pt, i) => {
+      const ultimo = i === pontos.length - 1;
+      if (ultimo && !A.mJ) {
+        const rr = 7, an = 0.95, cxA = pt.x + rr;
+        const p1 = [cxA - rr * Math.cos(an), pt.y - rr * Math.sin(an)], p2 = [cxA - rr * Math.cos(an), pt.y + rr * Math.sin(an)];
+        const antes = g.children.length;
+        selo(b, vis.length, pt.x + 12, pt.y - 7, `<path class="v138-arc" d="M${p1[0].toFixed(1)},${p1[1].toFixed(1)} A${rr},${rr} 0 0 0 ${p2[0].toFixed(1)},${p2[1].toFixed(1)}"/>`);
+        if (g.children.length > antes) return;
+      }
+      const c = document.createElementNS(ns, 'circle');
+      c.setAttribute('cx', pt.x); c.setAttribute('cy', pt.y); c.setAttribute('r', 3.2);
+      c.setAttribute('class', 'v142-dot');
+      g.appendChild(c);
+    });
+  });
+};
+
+(function() { const st = document.createElement('style'); st.textContent = '#gAnd .v142-dot{fill:#3be3f7;stroke:#0b0f14;stroke-width:1.5}'; document.head.appendChild(st); })();
+/* v143: robustez ao trocar de motor e ao correr
+   1) animatePacket: se o browser deixar de dar frames (separador em segundo plano, painel
+      escondido), a onda acaba na mesma pelo relógio, em vez de ficar presa para sempre.
+   2) Cada execução tem um número; ao mudar de motor ou começar outra, as respostas que chegam
+      atrasadas de execuções antigas já não mexem no grafo nem param a animação nova.
+   3) Mudar de motor com uma animação a meio pára-a e limpa o estado (o ▶ volta a funcionar). */
+animatePacket = (function(prev) {
+  return function(k) {
+    const dur = 850 / (Math.max(0.01, S.speed) * (S.waveBoost || 1));
+    return Promise.race([prev.apply(this, arguments), new Promise(r => setTimeout(r, dur + 400))])
+      .then(() => { gP.querySelectorAll('.pkt,.pkt-trail').forEach(x => x.remove()); });
+  };
+})(animatePacket);
+S.v143 = 0;
+// (v67Run: o número da execução é verificado dentro da própria função)
+setEngineMode = (function(prev) {
+  return function(eng) {
+    if (eng !== S.engine) {
+      S.v143++; // invalida execuções em curso
+      if (R.playing) { R.playing = false; }
+      R.busy = false; R.flying && R.flying.clear && R.flying.clear();
+      try { gP.innerHTML = ''; } catch (e) {}
+      $('v102Cd')?.remove();
+    }
+    return prev.apply(this, arguments);
+  };
+})(setEngineMode);
+window.setEngineMode = setEngineMode;
+
+/* =====================================================================
+   v144: Comparador › Desempenho dos motores
+   Mede, no browser, o tempo de resposta da API para o MESMO pedido nos dois motores:
+   1 chamada de aquecimento (descartada) + N medições por motor, em série (nunca em paralelo),
+   e o custo fixo de cada motor (pedido só com a base). Mostra mediana, mín–máx, cada
+   medição, a escala logarítmica, o fator entre motores, deduções por segundo e a prova
+   de que os dois fizeram o mesmo trabalho. Tudo vem das chamadas reais à API.
+   ===================================================================== */
+S.v144 = { aberto: false, estado: 'parado', n: 5, r: null, prog: '', erro: null };
+const V144_M = [['prolog', 'SWI-Prolog', '#a78bfa'], ['drools', 'Drools', '#38bdf8']];
+function v144Passos() {
+  const c = typeof v76Comparar === 'function' ? v76Comparar() : null;
+  const p = c && c.pl && (c.pl._base || c.pl)._passos;
+  return p && p.length ? p : v61PassosDoCenario(S.scen || 'all');
+}
+async function v144Chamar(motor, passos) {
+  const corpo = JSON.stringify({ versaoKB: S.detectedKbVersion || S.backendHealth?.versaoKB || '6', passos });
+  for (let t = 0; t < 4; t++) {
+    const t0 = performance.now();
+    const r = await fetch(`${S.apiBaseUrl || ''}/api/${motor}/infer`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: corpo });
+    const j = await r.json().catch(() => null);
+    const ms = performance.now() - t0;
+    if (r.status === 503) { await new Promise(ok => setTimeout(ok, 600 * (t + 1))); continue; }
+    if (!r.ok || !j || j.estado === 'erro') throw new Error(`HTTP ${r.status} em /api/${motor}/infer${j && j.erro ? ': ' + j.erro : ''}`);
+    return { ms, j };
+  }
+  throw new Error(`/api/${motor}/infer: motor ocupado (503)`);
+}
+const v144Med = a => { const s = a.slice().sort((p, q) => p - q), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+function v144Fmt(ms) { return ms >= 1000 ? (ms / 1000).toFixed(2).replace('.', ',') + ' s' : ms >= 100 ? Math.round(ms) + ' ms' : ms.toFixed(1).replace('.', ',') + ' ms'; }
+async function v144Medir() {
+  if (S.v144.estado === 'a medir') return;
+  const passos = v144Passos(), n = S.v144.n;
+  const R0 = { passos: passos.length, cen: (S.scen || 'all'), quando: new Date(), m: {} };
+  S.v144.r = R0; S.v144.estado = 'a medir'; S.v144.erro = null; v144Render();
+  try {
+    for (const [m, nome] of V144_M) {
+      const M = R0.m[m] = { inf: [], base: [], ded: 0, tk: 0, pg: 0, fx: 0 };
+      S.v144.prog = `${nome}: chamada inicial (não conta)`; v144Render();
+      await v144Chamar(m, passos);
+      await v144Chamar(m, [{ id: 'base', factos: [] }]);
+      for (let i = 0; i < n; i++) {
+        S.v144.prog = `${nome}: medição ${i + 1} de ${n}`; v144Render();
+        const { ms, j } = await v144Chamar(m, passos);
+        M.inf.push(ms);
+        M.ded = j.factos.filter(f => f.origem === 'regra').length; M.tk = j.tickets.length; M.pg = j.perguntas.length; M.fx = j.factos.length;
+        M.reg = new Set(j.factos.filter(f => f.origem === 'regra').map(f => f.regra)).size;
+        v144Render();
+      }
+      for (let i = 0; i < 3; i++) { S.v144.prog = `${nome}: custo fixo ${i + 1} de 3`; v144Render(); M.base.push((await v144Chamar(m, [{ id: 'base', factos: [] }])).ms); }
+    }
+    S.v144.estado = 'feito';
+    try { log('desempenho', `Prolog ${v144Fmt(v144Med(R0.m.prolog.inf))} · Drools ${v144Fmt(v144Med(R0.m.drools.inf))} (mediana de ${n}, ${passos.length} passos)`, 'ok'); } catch (e) {}
+  } catch (e) { S.v144.estado = 'erro'; S.v144.erro = e.message; }
+  S.v144.prog = ''; v144Render();
+}
+function v144Html() {
+  const st = S.v144, R0 = st.r, a = st.estado === 'a medir';
+  const LMIN = 0, LMAX = Math.log10(20000);
+  const x = ms => Math.max(0, Math.min(100, (Math.log10(Math.max(1, ms)) - LMIN) / (LMAX - LMIN) * 100));
+  const ticks = [[1, '1 ms'], [10, '10 ms'], [100, '100 ms'], [1000, '1 s'], [10000, '10 s']];
+  const linha = ([m, nome, cor]) => {
+    const M = R0 && R0.m[m];
+    if (!M || !M.inf.length) return `<div class="v144-row"><div class="v144-nm" style="--c:${cor}"><b>${nome}</b><small>${a && st.prog.startsWith(nome) ? esc(st.prog) : 'à espera'}</small></div><div class="v144-tr">${a && st.prog.startsWith(nome) ? '<div class="v144-scan"></div>' : ''}</div><div class="v144-v">—</div></div>`;
+    const med = v144Med(M.inf), mn = Math.min(...M.inf), mx = Math.max(...M.inf);
+    const base = M.base.length ? v144Med(M.base) : null;
+    return `<div class="v144-row"><div class="v144-nm" style="--c:${cor}"><b>${nome}</b><small>${M.inf.length} medição(ões)${base != null ? ` · custo fixo ${v144Fmt(base)}` : ''}</small></div>
+      <div class="v144-tr">
+        ${base != null ? `<div class="v144-base" style="width:${x(base)}%" data-v129t="Custo fixo: pedido só com a base (${v144Fmt(base)}). No Prolog inclui lançar o processo swipl."></div>` : ''}
+        <div class="v144-bar" style="--c:${cor};width:${x(med)}%"></div>
+        <div class="v144-wh" style="left:${x(mn)}%;width:${Math.max(0.4, x(mx) - x(mn))}%"></div>
+        ${M.inf.map(v => `<i class="v144-pt" style="left:${x(v)}%;--c:${cor}" data-v129t="${v144Fmt(v)}"></i>`).join('')}
+      </div>
+      <div class="v144-v"><b style="color:${cor}">${v144Fmt(med)}</b><small>${v144Fmt(mn)} – ${v144Fmt(mx)}</small></div></div>`;
+  };
+  let resumo = '';
+  if (R0 && R0.m.prolog?.inf.length && R0.m.drools?.inf.length && st.estado === 'feito') {
+    const P = R0.m.prolog, D = R0.m.drools, mp = v144Med(P.inf), md = v144Med(D.inf);
+    const rapido = mp < md ? ['SWI-Prolog', md / mp] : ['Drools', mp / md];
+    const bp = v144Med(P.base), bd = v144Med(D.base);
+    const mesmo = P.ded === D.ded && P.tk === D.tk && P.pg === D.pg;
+    const cv = a => { const m = a.reduce((s, v) => s + v, 0) / a.length; return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length) / m * 100; };
+    resumo = `<div class="v144-hero">
+      <div class="v144-big"><span>mais rápido</span><b>${rapido[0]}</b><em>${rapido[1] >= 10 ? Math.round(rapido[1]) : rapido[1].toFixed(1).replace('.', ',')}×</em><small>mediana de ${P.inf.length} medições por motor</small></div>
+      <div class="v144-cards">
+        <div><span>inferência pura <small>(mediana − custo fixo)</small></span><b><i class="pl">${v144Fmt(Math.max(0, mp - bp))}</i><i class="dr">${v144Fmt(Math.max(0, md - bd))}</i></b></div>
+        <div><span>deduções por segundo</span><b><i class="pl">${Math.round(P.ded / (mp / 1000)).toLocaleString('pt-PT')}</i><i class="dr">${Math.round(D.ded / (md / 1000)).toLocaleString('pt-PT')}</i></b></div>
+        <div><span>variação entre medições <small>(coef. de variação)</small></span><b><i class="pl">${cv(P.inf).toFixed(1).replace('.', ',')}%</i><i class="dr">${cv(D.inf).toFixed(1).replace('.', ',')}%</i></b></div>
+        <div class="${mesmo ? 'ok' : 'bad'}"><span>mesmo trabalho?</span><b>${mesmo ? '✓ sim' : '✕ não'}</b><small>${P.ded} / ${D.ded} deduções · ${P.tk} / ${D.tk} tickets · ${P.pg} / ${D.pg} perguntas</small></div>
+      </div></div>`;
+  }
+  return `<div class="v144">
+    <div class="v144-h"><div><span class="v144-k">Desempenho dos motores</span><b>Mesmo pedido, dois motores: quanto tempo demora cada um?</b>
+      <small>${R0 ? `${R0.passos} passos · ${esc(v62ScenTitle(R0.cen))}` : `${v144Passos().length} passos · ${esc(v62ScenTitle(S.scen || 'all'))}`} · POST /api/{motor}/infer</small></div>
+      <div class="v144-ac">
+        <label>medições <select id="v144N" ${a ? 'disabled' : ''}>${[3, 5, 10].map(k => `<option ${k === st.n ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
+        <button type="button" class="v144-go" data-v144="medir" ${a ? 'disabled' : ''}>${a ? '<span class="v133-sp"></span> a medir…' : R0 ? '↻ Medir de novo' : '⏱ Medir'}</button>
+        ${st.estado === 'feito' ? '<button type="button" class="v144-sec" data-v144="copiar">Copiar tabela</button>' : ''}
+        <button type="button" class="v144-x" data-v144="fechar" aria-label="Fechar">✕</button>
+      </div></div>
+    ${st.erro ? `<div class="v120-err"><b>✖ A medição falhou</b>: ${esc(st.erro)}</div>` : ''}
+    ${resumo}
+    <div class="v144-chart">
+      <div class="v144-ax"><div></div><div class="v144-sc">${ticks.map(([v, l]) => `<span style="left:${x(v)}%">${l}</span>`).join('')}</div><div></div></div>
+      ${V144_M.map(linha).join('')}
+      <div class="v144-leg"><span><i class="b"></i>mediana</span><span><i class="w"></i>mín – máx</span><span><i class="p"></i>cada medição</span><span><i class="f"></i>custo fixo (pedido só com a base)</span><span>escala logarítmica</span></div>
+    </div>
+    <details class="v144-met"><summary>Como se mede (para o relatório)</summary>
+      <ul>
+        <li>Tempo medido no browser com <code>performance.now()</code>, do envio do pedido até a resposta JSON estar lida: inclui HTTP local, validação, motor e serialização. É o tempo que o utilizador sente, igual para os dois motores.</li>
+        <li>O servidor não guarda estado: cada pedido corre <b>todos</b> os passos desde o início, por isso cada medição é uma inferência completa.</li>
+        <li>Por motor, a primeira chamada não conta: é sempre mais lenta, porque a JVM ainda está a otimizar o código do Drools e os ficheiros da base ainda não estão em memória. Depois fazem-se N medições <b>uma de cada vez</b> (nunca em simultâneo, para os motores não disputarem o processador). Mostra-se a mediana, porque um valor isolado anormal não a altera.</li>
+        <li><b>Custo fixo</b>: um pedido só com a base (sem telemetria), mediana de 3. No SWI-Prolog inclui lançar o processo <code>swipl</code> e carregar a base; no Drools a sessão corre dentro da JVM do backend.</li>
+        <li><b>Mesmo trabalho</b>: compara deduções, tickets e perguntas das respostas medidas. Se forem iguais, a diferença de tempo é só do motor.</li>
+      </ul></details>
+  </div>`;
+}
+function v144Render() {
+  const host = $('v112P');
+  let el = $('v144');
+  if (!S.v144.aberto || !host) { el?.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'v144'; host.appendChild(el); }
+  const h = v144Html();
+  if (el._h !== h) { el._h = h; el.innerHTML = h; }
+}
+v112Html = (function(prev) {
+  return function() {
+    const h = prev.apply(this, arguments);
+    const i = h.indexOf('Regras disparadas'); if (i < 0) return h;
+    const j = h.indexOf('</span></div>', i) + '</span></div>'.length;
+    const R0 = S.v144.r, ok = S.v144.estado === 'feito' && R0;
+    const txt = ok ? `${v144Fmt(v144Med(R0.m.prolog.inf))} · ${v144Fmt(v144Med(R0.m.drools.inf))}` : 'medir tempos';
+    const btn = `<button type="button" class="v112-k v144-k1" data-v144="abrir"><span class="v112-l">⏱ Desempenho</span><span class="v112-n">${txt}</span></button>`;
+    return h.slice(0, j) + btn + h.slice(j);
+  };
+})(v112Html);
+v112Render = (function(prev) { return function() { const r = prev.apply(this, arguments); try { v144Render(); } catch (e) {} return r; }; })(v112Render);
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-v144]'); if (!b) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  const a = b.dataset.v144;
+  if (a === 'abrir') { S.v144.aberto = true; v144Render(); if (!S.v144.r) v144Medir(); }
+  else if (a === 'fechar') { S.v144.aberto = false; v144Render(); try { v112Render(); } catch (er) {} }
+  else if (a === 'medir') v144Medir();
+  else if (a === 'copiar') {
+    const R0 = S.v144.r, P = R0.m.prolog, D = R0.m.drools;
+    const l = (nome, M) => `| ${nome} | ${v144Fmt(v144Med(M.inf))} | ${v144Fmt(Math.min(...M.inf))} – ${v144Fmt(Math.max(...M.inf))} | ${v144Fmt(v144Med(M.base))} | ${M.ded} | ${M.tk} | ${M.pg} |`;
+    const t = `Pedido: ${R0.passos} passos (${v62ScenTitle(R0.cen)}), mediana de ${P.inf.length} medições, sem contar a primeira chamada\n\n| Motor | Mediana | Mín – máx | Custo fixo | Deduções | Tickets | Perguntas |\n|---|---|---|---|---|---|---|\n${l('SWI-Prolog', P)}\n${l('Drools', D)}\n`;
+    navigator.clipboard?.writeText(t).then(() => { b.textContent = '✓ copiado'; setTimeout(() => v144Render(), 1500); });
+  }
+}, true);
+document.addEventListener('change', e => { if (e.target && e.target.id === 'v144N') S.v144.n = +e.target.value; });
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    .v112-bar{grid-template-columns:1.7fr repeat(6,minmax(0,1fr)) !important}
+    .v144-k1{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:3px;padding:10px 14px;cursor:pointer;background:linear-gradient(180deg,rgba(245,185,69,.10),rgba(245,185,69,.03));border-left:1px solid #3a2f12}
+    .v144-k1 .v112-l{color:#fcd34d}
+    .v144-k1 .v112-n{font-size:12px;color:#fde68a;white-space:nowrap}
+    .v144-k1:hover{background:rgba(245,185,69,.16)}
+    #v144{position:absolute;inset:0;z-index:5;background:radial-gradient(900px 500px at 50% -10%,rgba(245,185,69,.07),transparent 60%),#060b11ee;backdrop-filter:blur(3px);overflow:auto;animation:v144in .3s ease}
+    @keyframes v144in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .v144{max-width:1100px;margin:0 auto;padding:22px 26px 40px;display:flex;flex-direction:column;gap:16px}
+    .v144-h{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+    .v144-h > div:first-child{display:flex;flex-direction:column;gap:4px}
+    .v144-k{font-size:10.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#fcd34d}
+    .v144-h b{font-size:17px;color:#fff}
+    .v144-h small{color:var(--dim);font-size:11.5px}
+    .v144-ac{display:flex;gap:8px;align-items:center;flex-shrink:0}
+    .v144-ac label{font-size:11px;color:var(--dim);display:flex;gap:6px;align-items:center}
+    .v144-ac select{background:#0b141c;color:var(--txt);border:1px solid var(--line2);border-radius:6px;padding:4px 6px;font:12px var(--mono)}
+    .v144-go{display:flex;align-items:center;gap:8px;padding:9px 16px;border-radius:9px;border:1px solid #f5b945;background:rgba(245,185,69,.14);color:#fde68a;font:700 12.5px var(--mono);cursor:pointer}
+    .v144-go:disabled{opacity:.8;cursor:default}
+    .v144-go:not(:disabled):hover{background:rgba(245,185,69,.25);box-shadow:0 0 18px rgba(245,185,69,.25)}
+    .v144-go .v133-sp{border-color:rgba(245,185,69,.25);border-top-color:#f5b945}
+    .v144-sec,.v144-x{padding:8px 12px;border-radius:9px;border:1px solid var(--line2);background:none;color:var(--dim);font:12px var(--mono);cursor:pointer}
+    .v144-sec:hover,.v144-x:hover{color:var(--txt);border-color:var(--cyan)}
+    .v144-hero{display:grid;grid-template-columns:260px 1fr;gap:14px}
+    .v144-big{border:1px solid rgba(245,185,69,.45);border-radius:14px;padding:16px 18px;background:linear-gradient(160deg,rgba(245,185,69,.12),rgba(245,185,69,.02));display:flex;flex-direction:column;gap:2px}
+    .v144-big span{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim)}
+    .v144-big b{font-size:22px;color:#fff}
+    .v144-big em{font-style:normal;font-size:46px;font-weight:800;line-height:1.05;color:#fcd34d;text-shadow:0 0 24px rgba(245,185,69,.35)}
+    .v144-big small{color:var(--dim);font-size:11px}
+    .v144-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .v144-cards > div{border:1px solid var(--line2);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:4px}
+    .v144-cards span{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+    .v144-cards span small{text-transform:none;letter-spacing:0}
+    .v144-cards b{display:flex;gap:14px;font-size:15px}
+    .v144-cards i{font-style:normal}
+    .v144-cards i.pl{color:#a78bfa}.v144-cards i.dr{color:#38bdf8}
+    .v144-cards i.pl:before{content:'● ';font-size:10px}.v144-cards i.dr:before{content:'● ';font-size:10px}
+    .v144-cards .ok b{color:#86efac}.v144-cards .bad b{color:#fda4af}
+    .v144-cards > div small{font-size:10.5px;color:var(--dim)}
+    .v144-chart{border:1px solid var(--line2);border-radius:14px;padding:14px 16px 12px;background:rgba(3,8,13,.6);display:flex;flex-direction:column;gap:10px}
+    .v144-ax,.v144-row{display:grid;grid-template-columns:170px 1fr 120px;gap:14px;align-items:center}
+    .v144-sc{position:relative;height:16px;border-bottom:1px solid var(--line2)}
+    .v144-sc span{position:absolute;transform:translateX(-50%);font-size:10px;color:var(--dim)}
+    .v144-nm{display:flex;flex-direction:column;gap:2px;border-left:3px solid var(--c);padding-left:10px}
+    .v144-nm b{font-size:13.5px}.v144-nm small{font-size:10.5px;color:var(--dim)}
+    .v144-tr{position:relative;height:30px;border-radius:6px;background:repeating-linear-gradient(90deg,transparent 0 calc(25% - 1px),rgba(255,255,255,.05) calc(25% - 1px) 25%);overflow:hidden}
+    .v144-bar{position:absolute;left:0;top:7px;height:16px;border-radius:0 8px 8px 0;background:linear-gradient(90deg,transparent,var(--c));opacity:.85;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+    .v144-base{position:absolute;left:0;top:7px;height:16px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.28) 0 3px,transparent 3px 6px);z-index:1;border-right:1px solid rgba(255,255,255,.5)}
+    .v144-wh{position:absolute;top:14px;height:2px;background:#fff;opacity:.7}
+    .v144-pt{position:absolute;top:9px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--c);border:2px solid #050a0f;z-index:2;animation:v144pt .35s ease}
+    @keyframes v144pt{from{transform:scale(0)}to{transform:scale(1)}}
+    .v144-scan{position:absolute;inset:7px 0;width:30%;background:linear-gradient(90deg,transparent,rgba(245,185,69,.5),transparent);animation:v133b 1.1s ease-in-out infinite}
+    .v144-v{display:flex;flex-direction:column;align-items:flex-end}
+    .v144-v b{font-size:17px}.v144-v small{font-size:10.5px;color:var(--dim)}
+    .v144-leg{display:flex;flex-wrap:wrap;gap:16px;font-size:10.5px;color:var(--dim);padding-left:184px}
+    .v144-leg i{display:inline-block;width:14px;height:8px;margin-right:5px;vertical-align:middle;border-radius:2px}
+    .v144-leg i.b{background:linear-gradient(90deg,transparent,#94a3b8)}.v144-leg i.w{height:2px;background:#fff}.v144-leg i.p{width:9px;height:9px;border-radius:50%;background:#94a3b8}
+    .v144-leg i.f{background:repeating-linear-gradient(135deg,rgba(255,255,255,.4) 0 3px,transparent 3px 6px)}
+    .v144-met{border:1px solid var(--line2);border-radius:12px;padding:10px 14px;font-size:12px;color:var(--dim)}
+    .v144-met summary{cursor:pointer;color:var(--txt)}
+    .v144-met ul{margin:8px 0 2px;padding-left:18px;line-height:1.6}
+    @media (max-width:900px){.v144-hero{grid-template-columns:1fr}.v144-ax,.v144-row{grid-template-columns:110px 1fr 90px}.v144-leg{padding-left:0}}
+  `;
+  document.head.appendChild(st);
+})();
 
 // Arrancar a verificação inicial após todos os handlers estarem declarados
 verifyAndRetrieveFromApi(false);
