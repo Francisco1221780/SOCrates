@@ -12,7 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
         title = "SOCrates API",
         version = "0.0.1",
         description = "Analista virtual de SOC: o mesmo pedido em dois motores de inferencia, SWI-Prolog e Drools, "
-                + "com a mesma base de conhecimento (v6) e o mesmo formato de resposta."))
+                + "com a mesma base de conhecimento e o mesmo formato de resposta."))
 public class SocratesApplication {
 
     public static void main(String[] args) {

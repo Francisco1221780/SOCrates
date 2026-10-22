@@ -10,7 +10,7 @@
 ![Jackson](https://img.shields.io/badge/Jackson-2.18.2-5E5E5E)
 ![Tests](https://img.shields.io/badge/tests-JUnit%205-5E5E5E)
 ![OpenAPI](https://img.shields.io/badge/API-OpenAPI%20(springdoc)-85EA2D?logo=swagger&logoColor=black)
-![KB](https://img.shields.io/badge/knowledge%20base-v6-informational)
+![KB](https://img.shields.io/badge/knowledge%20base-v6.1-informational)
 ![Architecture](https://img.shields.io/badge/architecture-two%20engines%2C%20one%20contract-informational)
 ![GitFlow](https://img.shields.io/badge/branching-GitFlow-05122A)
 ![Conventional Commits](https://img.shields.io/badge/commits-Conventional-FE5196?logo=conventionalcommits&logoColor=white)
@@ -44,9 +44,9 @@ A tabela separa o que existe do que está previsto, para ninguém assumir uma pe
 | Peça | Estado |
 | :--- | :--- |
 | Build Maven multi-módulo (`pom.xml` na raiz) | Feito; `.\mvnw.cmd verify` corre os dois módulos |
-| Base de conhecimento v6 (`base_conhecimento/`) | Feito: 314 factos fixos, 92 regras, 67 cenários e `soc_cenarios.pl` |
+| Base de conhecimento v6.1 (`base_conhecimento/`) | Feito: 390 factos fixos, 107 regras, 57 cenários e `soc_cenarios.pl` |
 | Motor Prolog (`soc_motor.pl`) e `wrapper.pl` | Feito: corre a v6; resultados de referência em `motores/prolog/referencia_prolog/`; o wrapper recebe e devolve JSON (issue #9) |
-| Módulo `motores/drools` com `MotorDrools` | Feito: as 92 regras (grupos A a N) e as condições calculadas, factos numerados, justificação por facto, resposta no formato do `wrapper.pl`, estado "pronto". As regras A a G e N dão o mesmo que o Prolog nas 10 variantes de cenários; as diferenças conhecidas nas regras H a M estão em [`docs/changes/features/F0002-drools-regras-a-g-n/PENDENTES_H_M.md`](docs/changes/features/F0002-drools-regras-a-g-n/PENDENTES_H_M.md) |
+| Módulo `motores/drools` com `MotorDrools` | Feito: as 107 regras (grupos A a O) e as condições calculadas, factos numerados, justificação por facto, resposta no formato do `wrapper.pl`, estado "pronto". As regras A a G e N dão o mesmo que o Prolog nas 10 variantes de cenários; as diferenças conhecidas nas regras H a M estão em [`docs/changes/features/F0002-drools-regras-a-g-n/PENDENTES_H_M.md`](docs/changes/features/F0002-drools-regras-a-g-n/PENDENTES_H_M.md) |
 | Consola dos motores | Feito: o Drools tem o menu do Prolog (opções 0 a 13, os mesmos textos) com "como?", "porque não?" e o "porque?" das perguntas ao analista |
 | Backend: adaptadores `DroolsAdapter` e `PrologAdapter` | Feito: o `PrologAdapter` lança o `wrapper.pl` num processo `swipl` por pedido, com timeout, limite de processos e cópia dos ficheiros Prolog dentro do jar (`PrologInstaller`, issue #11) |
 | Backend: API REST | Feito: `/api/{motor}/infer`, `/como`, `/porque`, `/porque-pergunta`, `/api/cenarios` e `/api/health`, com Swagger UI. Falta o `whynot` (depende do "porque não?" estruturado no Prolog) |
@@ -168,7 +168,7 @@ O endpoint `POST /api/{motor}/porque` devolve a árvore de um facto com a regra 
 .
 ├── pom.xml                       agregador Maven: motores/drools e backend/socrates
 ├── mvnw, mvnw.cmd, .mvn/         Maven Wrapper (Maven 3.10.0), partilhado por todos os módulos
-├── base_conhecimento/            fonte única da base v6: soc_factos/regras/suporte.txt, cenarios/
+├── base_conhecimento/            fonte única da base v6.1: soc_factos/regras/suporte.txt, cenarios/
 ├── motores/
 │   ├── drools/                   módulo Maven sem Spring: MotorDrools, regras DRL, consola, kmodule.xml, testes
 │   └── prolog/                   motor SWI-Prolog, wrapper, ferramentas, referencia_prolog/, testes/
@@ -195,10 +195,10 @@ O código organiza-se por **motor**: cada motor é um projeto com os seus testes
 - **`motores/drools`** — `MotorDrools.infere(String)` abre uma `KieSession` nova por pedido, insere os factos iniciais e corre as regras sobre eles, depois insere os factos de cada passo, corre `fireAllRules()` e faz `dispose()` no fim. A resposta tem o formato do `wrapper.pl`, com justificação por facto. As regras estão em `src/main/resources/regras/` (um `.drl` por grupo, de `A_afetado.drl` a `N_catalogo.drl`) e são carregadas por `META-INF/kmodule.xml`. O módulo traz também as explicações (`como`, `porque`, `porqueNao`, `porquePergunta`) e a `ConsolaDrools`.
 - **`ferramentas` e `testes/ui`** — `paridade.py` envia o mesmo pedido aos dois motores e compara as respostas pelo conteúdo; `testes/ui/` verifica que o UI mostra exatamente o que o motor devolve (nós e setas do grafo, tickets, perguntas, "Como?").
 - **`motores/prolog`** — o núcleo (`soc_motor.pl`) faz encadeamento direto com metaconhecimento, todas as instanciações e ponto fixo. O `wrapper.pl` lê o pedido do `stdin` e escreve um único documento JSON no `stdout`.
-- **`base_conhecimento`** — 314 factos fixos, 92 regras e 67 cenários; é o que os dois motores têm de reproduzir de forma igual.
+- **`base_conhecimento`** — 390 factos fixos, 107 regras e 57 cenários; é o que os dois motores têm de reproduzir de forma igual.
 - **`backend/socrates`** — `SocratesApplication` e os pacotes da tabela de arquitetura: os controllers, o `InferenceService`, a interface `MotorInferencia`, o `DroolsAdapter`, o `PrologAdapter` (um processo `swipl` por pedido, configurado por `socrates.prolog.*` em `PrologProperties`) e o `PrologInstaller`. Sem `socrates.prolog.home`, o `PrologInstaller` copia o `wrapper.pl`, o `soc_motor.pl` e a `base_conhecimento/` que o Maven pôs no jar (`prolog-dist/`) para uma pasta temporária, apagada quando a aplicação termina; com ele, usa essa pasta (por exemplo, a raiz do repositório).
 
-> **Motor Prolog e base v6.** A v6 pede ao motor que reavalie uma regra quando chega um facto lido por uma condição calculada (`condicao_le/2`, em `soc_suporte.txt`). O `soc_motor.pl` faz essa reavaliação; os resultados das 10 variantes estão em `motores/prolog/referencia_prolog/`.
+> **Motor Prolog e base v6.** A v6 pede ao motor que reavalie uma regra quando chega um facto lido por uma condição calculada (`condicao_le/2`, em `soc_suporte.txt`). O `soc_motor.pl` faz essa reavaliação; os resultados das 14 variantes estão em `motores/prolog/referencia_prolog/`.
 
 ---
 
@@ -292,7 +292,7 @@ node testes/ui/correr.js
 | Suite | Path | Expectation |
 | :--- | :--- | :--- |
 | `MotorDroolsTest` | `motores/drools/src/test/java/socrates/motores/drools/` | Factos, perguntas, tickets, estado "pronto" e erros do pedido como no `wrapper.pl` |
-| `ParidadeTest` | `motores/drools/src/test/java/socrates/motores/drools/` | Paridade com o Prolog nas 10 variantes de cenários (AC14/AC15): só regras A–G+N contra `referencia_agn/`, e as 92 contra `motores/prolog/referencia_prolog/` (diferenças H–M listadas) |
+| `ParidadeTest` | `motores/drools/src/test/java/socrates/motores/drools/` | Paridade com o Prolog nas 14 variantes de cenários (AC14/AC15): as 107 regras contra `motores/prolog/referencia_prolog/` (diferenças H–M listadas) |
 | `MotorDroolsExplicacoesTest` | `motores/drools/src/test/java/socrates/motores/drools/` | `como`, `porque`, `porquePergunta` e os erros do pedido na API do motor |
 | `TermosJsonTest`, `RespostaTest` | `motores/drools/src/test/java/socrates/motores/drools/json/` | Termos JSON ↔ Java; premissas no formato do wrapper, com os nomes das variáveis |
 | `BaseFactosTest`, `CondicoesCalculadasTest` | `motores/drools/src/test/java/socrates/motores/drools/sessao/` | Numeração, origem, passo, factos repetidos e marcas; os resultados da `origem_evidencia` |
@@ -330,7 +330,7 @@ CI: em cada PR e em cada push para `develop` e `main` correm três GitHub Action
 | [`motores/README.md`](motores/README.md) | Um projeto por motor e como cada um corre |
 | [`motores/drools/README.md`](motores/drools/README.md) | Módulo Drools: contrato, regras, consola e testes |
 | [`motores/prolog/README.md`](motores/prolog/README.md) | Lado Prolog: núcleo, menu, wrapper e regras do wrapper |
-| [`base_conhecimento/README.md`](base_conhecimento/README.md) | A base v6 e as regras de a manter |
+| [`base_conhecimento/README.md`](base_conhecimento/README.md) | A base v6.1 e as regras de a manter |
 | [`backend/socrates/src/main/java/socrates/backend/api/README.md`](backend/socrates/src/main/java/socrates/backend/api/README.md) | Os controllers, os endpoints e os códigos HTTP |
 | [`backend/socrates/src/main/java/socrates/backend/engine/prolog/README.md`](backend/socrates/src/main/java/socrates/backend/engine/prolog/README.md) | Critérios que o `PrologAdapter` tem de cumprir (processo, UTF-8, timeout) |
 | [`docs/changes/features/README.md`](docs/changes/features/README.md) | O registo das features F0001 a F0007: o plano e o resultado de cada uma |

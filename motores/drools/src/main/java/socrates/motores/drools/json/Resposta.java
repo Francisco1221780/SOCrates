@@ -50,7 +50,10 @@ public final class Resposta {
         return r;
     }
 
-    /** Perguntas ao analista sem resposta e sem pergunta_retirada, com o texto e as opcoes que estao na base. */
+    /**
+     * Perguntas ao analista sem resposta e sem pergunta_retirada, com o texto e as opcoes que estao na base. Uma
+     * resposta "nao sei" nao fecha a pergunta (pode ser respondida mais tarde), como no wrapper.pl.
+     */
     private static ArrayNode perguntas(BaseFactos base, List<Facto> factos) {
         ArrayNode l = JSON.arrayNode();
         for (Facto f : factos) {
@@ -61,7 +64,8 @@ public final class Resposta {
             Object evento = f.arg(1);
             Object pergunta = f.arg(2);
             boolean respondida = factos.stream().anyMatch(x -> x.getFunctor().equals("resposta_analista/4")
-                    && x.arg(0).equals(ativo) && x.arg(1).equals(evento) && x.arg(2).equals(pergunta));
+                    && x.arg(0).equals(ativo) && x.arg(1).equals(evento) && x.arg(2).equals(pergunta)
+                    && !"nao_sei".equals(x.arg(3)));
             boolean retirada = factos.stream().anyMatch(x -> x.getFunctor().equals("pergunta_retirada/3")
                     && x.getArgs().equals(f.getArgs()));
             if (respondida || retirada) {

@@ -49,7 +49,7 @@ desatualizado. Os fins de linha não contam (o git pode convertê-los no Windows
   formato do contrato (`{"predicado", "args"}`, termos compostos como `{"f", "args"}`, tabela da issue #6).
 - `regras.json`: `{"versaoKB", "regras", "calculadas"}`. Cada regra é `{"id", "se": [condição...], "entao": [termo...]}`; uma condição é um termo, `{"nao": termo}` ou `{"avalia": termo}`, e uma variável é `{"var": "Nome"}` (cada `_` é `{"var": "_"}`). `calculadas` são as condições do `condicao_calculada/1` do `soc_suporte.txt` (`"depois/3"`, …). Os operadores das regras só se usam ao ler o `soc_regras.txt`.
 - `cenarios.json` (as duas cópias são iguais; o `--verificar` vê as duas): `{"versaoKB", "cenarios", "sequencias"}`. Cada cenário tem `id`, `ordem`, `grupo` (`telemetria`,
-  `atualizacao`, `normal` ou `resposta`), `descricao`, `ficheiro`, `depende`, `alternativas` e o `passo` pronto a
+  `atualizacao`, `normal` ou `alternativa`; `resposta` nas bases que ainda tinham respostas do analista como cenários), `descricao`, `ficheiro`, `depende`, `alternativas` e o `passo` pronto a
   enviar (`{"id", "factos"}`). As `sequencias` (`base`, `atualizacoes`, `normal`) vêm do `soc_cenarios.pl`.
 
 A `versaoKB` vem do cabeçalho do `soc_factos.txt`. A ordem, o grupo, as dependências e as alternativas vêm do
@@ -57,10 +57,10 @@ A `versaoKB` vem do cabeçalho do `soc_factos.txt`. A ordem, o grupo, as depend�
 
 | Grupo | Dependências |
 | --- | --- |
-| Telemetria | Correm-se pela ordem da lista: cada cenário depende do anterior que não é alternativa de outro (o 35 depende do 29, não do 29b). |
+| Telemetria | Correm-se pela ordem da lista: cada cenário depende do anterior que não é alternativa de outro (o 35 depende do 29, não do 29a). |
 | Atualizações | "carregam-se depois do cenário 39". |
 | Atividade normal | Independentes, salvo "o 34 só faz sentido depois do 4". |
-| Respostas | O cenário a que respondem, citado no texto; "(em alternativa ao N)" e "(só UM)" dão as alternativas. |
+| Alternativas | O cenário citado no texto; "(em alternativa ao N)" dá a alternativa. (Na base v6 havia também a secção "Respostas", com a mesma regra e "(só UM)".) |
 
 O id e a descrição de cada cenário vêm do `soc_cenarios.pl`, e os factos de cada passo vêm do ficheiro do cenário. Se
 o índice tiver uma linha que o script não percebe, ou não bater certo com a pasta `cenarios/` ou com o

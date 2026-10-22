@@ -1,5 +1,5 @@
 #### vetor_aberto(ev_f1,web_srv_05,web_srv_05_apache,cve_2021_41773)
-O facto vetor_aberto(ev_f1,web_srv_05,web_srv_05_apache,cve_2021_41773) nao e falso! (facto n. 441)
+O facto vetor_aberto(ev_f1,web_srv_05,web_srv_05_apache,cve_2021_41773) nao e falso! (facto n. 522)
 #### alerta_ids(ev_zz,web_srv_01,sig_x)
 Porque: o facto alerta_ids(ev_zz,web_srv_01,sig_x) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
 #### ataque_dirigido(ev_e1,web_srv_04)
@@ -19,6 +19,14 @@ Porque pela regra 6:
                     Porque: o facto versao(web_srv_05_apache,A) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
                A condicao calculada versao_cmp(A,>=,v(2,4,49)) e falsa
                A condicao calculada versao_cmp(A,=<,v(2,4,49)) e falsa
+          Porque pela regra 104:
+               A premissa resposta_analista(A,B,versao_afetada,sim) e falsa
+                    Porque: o facto resposta_analista(A,B,versao_afetada,sim) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+          Porque pela regra 106:
+               A premissa resposta_analista(A,B,catalogo_afetado,sim) e falsa
+                    Porque: o facto resposta_analista(A,B,catalogo_afetado,sim) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+               A premissa motivo(inc(catalogo_incompleto,A),sem_intervalos(cve_2021_41773)) e falsa
+                    (... para ver mais fundo: define_opcao(profundidade_whynot, N))
 #### impacto_confirmado(web_srv_04,ev_e1,execucao_remota)
 Porque pela regra 20:
      A premissa evento_host(A,web_srv_04,shell_iniciada) e falsa
@@ -75,7 +83,7 @@ Porque pela regra 43:
                A premissa vulneravel(web_srv_05_apache,cve_2021_41773) e falsa
                     (... para ver mais fundo: define_opcao(profundidade_whynot, N))
                A premissa configuracao(web_srv_05_apache,cgi_ativo,sim) e falsa
-                    Porque: o facto configuracao(web_srv_05_apache,cgi_ativo,sim) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+                    (... para ver mais fundo: define_opcao(profundidade_whynot, N))
           Porque pela regra 19:
                A premissa vulneravel(web_srv_05_apache,cve_2021_41773) e falsa
                     (... para ver mais fundo: define_opcao(profundidade_whynot, N))
@@ -87,7 +95,11 @@ Porque pela regra 49:
 Porque pela regra 5:
      A condicao calculada sem_servico_acessivel(ev_f1,web_srv_05,apache_httpd,internet) e falsa
      A premissa cobertura(web_srv_05,sbom,completa) e falsa
-          Porque: o facto cobertura(web_srv_05,sbom,completa) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+          Porque pela regra 98:
+               A premissa resposta_analista(web_srv_05,A,sbom_completo,sim) e falsa
+                    Porque: o facto resposta_analista(web_srv_05,A,sbom_completo,sim) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+               A premissa incidente(inc(sbom_incompleto,A),sbom_incompleto,web_srv_05,B) e falsa
+                    (... para ver mais fundo: define_opcao(profundidade_whynot, N))
 Porque pela regra 10:
      A premissa nao_afetado(web_srv_05_apache,cve_2021_41773) e falsa
           Porque pela regra 2:
@@ -97,15 +109,39 @@ Porque pela regra 10:
           Porque pela regra 3:
                A premissa corrigido_backport(web_srv_05_apache,cve_2021_41773) e falsa
                     Porque: o facto corrigido_backport(web_srv_05_apache,cve_2021_41773) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+          Porque pela regra 105:
+               A premissa resposta_analista(A,B,versao_afetada,nao) e falsa
+                    Porque: o facto resposta_analista(A,B,versao_afetada,nao) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+          Porque pela regra 107:
+               A premissa resposta_analista(A,B,catalogo_afetado,nao) e falsa
+                    Porque: o facto resposta_analista(A,B,catalogo_afetado,nao) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+               A premissa motivo(inc(catalogo_incompleto,A),sem_intervalos(cve_2021_41773)) e falsa
+                    (... para ver mais fundo: define_opcao(profundidade_whynot, N))
      A condicao calculada todas_ao_alcance_nao_afetadas(ev_f1,web_srv_05,cve_2021_41773) e falsa
 Porque pela regra 11:
      A premissa nao componente(A,web_srv_05,apache_httpd) e falsa
           Porque: o facto componente(A,web_srv_05,apache_httpd) e verdadeiro (facto n. 86)
      A premissa cobertura(web_srv_05,sbom,completa) e falsa
-          Porque: o facto cobertura(web_srv_05,sbom,completa) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+          (cobertura(web_srv_05,sbom,completa): ja explicado acima)
 #### vulneravel(web_srv_02_apache,cve_2021_41773)
 Porque pela regra 1:
      A condicao calculada versao_cmp(v(2,4,52),=<,v(2,4,49)) e falsa
+Porque pela regra 104:
+     A premissa resposta_analista(A,B,versao_afetada,sim) e falsa
+          Porque: o facto resposta_analista(A,B,versao_afetada,sim) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+     A premissa motivo(inc(versao_por_confirmar,A),instalacao_sem_versao_valida(web_srv_02_apache)) e falsa
+          Porque pela regra 7:
+               A premissa nao versao(web_srv_02_apache,A) e falsa
+                    Porque: o facto versao(web_srv_02_apache,A) e verdadeiro (facto n. 100)
+          Porque pela regra 8:
+               A condicao calculada versao_invalida(v(2,4,52)) e falsa
+Porque pela regra 106:
+     A premissa resposta_analista(A,B,catalogo_afetado,sim) e falsa
+          Porque: o facto resposta_analista(A,B,catalogo_afetado,sim) nao esta na base e nenhuma regra o conclui (e um dado de entrada)
+     A premissa motivo(inc(catalogo_incompleto,A),sem_intervalos(cve_2021_41773)) e falsa
+          Porque pela regra 9:
+               A premissa nao intervalo_afetado(cve_2021_41773,A,B) e falsa
+                    Porque: o facto intervalo_afetado(cve_2021_41773,A,B) e verdadeiro (facto n. 163)
 #### sem_evidencia_observada(ev_e1,web_srv_04)
 Porque pela regra 33:
      A premissa resposta_analista(web_srv_04,ev_e1,A,nao) e falsa

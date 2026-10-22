@@ -21,7 +21,7 @@ facto_dispara_regras(classe_impacto(_, _), [22, 23, 24, 25, 26, 27, 28, 43, 50, 
 facto_dispara_regras(cobertura(_, _, _), [5, 11, 60, 61]).
 facto_dispara_regras(cobertura_politica(_, _, _), [38]).
 facto_dispara_regras(componente(_, _, _), [1, 2, 3]).
-facto_dispara_regras(compromisso_confirmado(_, _), [29, 41, 52, 63]).
+facto_dispara_regras(compromisso_confirmado(_, _), [29, 41, 52, 63, 95]).
 facto_dispara_regras(compromisso_provavel(_, _), [47, 49]).
 facto_dispara_regras(comunicacao_c2(_, _, _), [43, 44, 45, 46]).
 facto_dispara_regras(confianca(_, _), [76, 77]).
@@ -39,29 +39,31 @@ facto_dispara_regras(exploracao_possivel(_, _, _), [13, 30, 33, 34, 44, 64, 67])
 facto_dispara_regras(exposto(_, _, _, _), [4]).
 facto_dispara_regras(falhas_janela(_, _), [35]).
 facto_dispara_regras(falhas_login(_, _), [35]).
+facto_dispara_regras(fecho_por_acao(_), [94]).
 facto_dispara_regras(gravidade(_, _), [80, 83]).
 facto_dispara_regras(impacto(_, _), [81, 82]).
 facto_dispara_regras(impacto_confirmado(_, _, _), [25, 26, 55]).
 facto_dispara_regras(impacto_excluido(_, _, _, _, _), [24, 33]).
 facto_dispara_regras(impacto_possivel(_, _, _, _), [20, 21, 22, 23, 31, 32, 43]).
 facto_dispara_regras(impacto_provavel(_, _, _), [27, 28, 50]).
-facto_dispara_regras(incidente(_, _, _, _), [48, 51, 53, 54, 55, 56, 60, 61, 62, 68, 76, 77, 78, 79, 80, 83, 84]).
+facto_dispara_regras(incidente(_, _, _, _), [48, 51, 53, 54, 55, 56, 60, 61, 62, 68, 76, 77, 78, 79, 80, 83, 84, 93, 94, 96, 97, 98, 99, 100, 101, 102]).
 facto_dispara_regras(instancia_processo(_, _), [20, 21, 22, 23, 43]).
 facto_dispara_regras(intervalo_afetado(_, _, _), [1, 2, 59]).
 facto_dispara_regras(ioc(_, _), [42]).
 facto_dispara_regras(janela(_, _), [20, 21, 22, 23, 24, 35, 37, 41, 43, 44, 45, 46]).
-facto_dispara_regras(login_ok(_, _, _, _), [37, 38, 39, 62]).
+facto_dispara_regras(login_ok(_, _, _, _), [37, 38, 39, 62, 99, 100]).
 facto_dispara_regras(matriz_prioridade(_, _, _), [80]).
-facto_dispara_regras(motivo(_, _), [52, 54, 57, 58, 59, 69, 70, 71, 72]).
+facto_dispara_regras(motivo(_, _), [52, 54, 57, 58, 59, 69, 70, 71, 72, 96, 101, 102, 104, 105, 106, 107]).
 facto_dispara_regras(movimento_lateral(_, _, _), [41]).
 facto_dispara_regras(nao_afetado(_, _), [10]).
 facto_dispara_regras(nivel_abaixo(_, _), [77]).
 facto_dispara_regras(origem(_, _), [12, 13, 37]).
 facto_dispara_regras(origem_hostil(_, _), [13]).
 facto_dispara_regras(origem_zona(_, _), [4, 5, 14, 15]).
-facto_dispara_regras(pergunta_analista(_, _, _), [87, 88]).
+facto_dispara_regras(pergunta_analista(_, _, _), [87, 88, 103]).
 facto_dispara_regras(pergunta_confirmacao(_, _), [48, 50, 51, 87]).
 facto_dispara_regras(pergunta_evidencia(_, _), [31, 32, 33, 34, 88]).
+facto_dispara_regras(pergunta_fecho(_, _), [93, 94, 103]).
 facto_dispara_regras(permitido(_, _, _), [62]).
 facto_dispara_regras(portos_sondados(_, _), [35]).
 facto_dispara_regras(prioridade(_, _), [83, 84]).
@@ -73,7 +75,7 @@ facto_dispara_regras(recuperado(_, _), [63]).
 facto_dispara_regras(requer_condicao(_, _, _), [17, 18, 19]).
 facto_dispara_regras(resolvido(_, _), [86]).
 facto_dispara_regras(resposta(_, _), [83]).
-facto_dispara_regras(resposta_analista(_, _, _, _), [32, 33, 34, 49, 50, 51]).
+facto_dispara_regras(resposta_analista(_, _, _, _), [32, 33, 34, 49, 50, 51, 94, 95, 96, 97, 98, 99, 100, 101, 102, 104, 105, 106, 107]).
 facto_dispara_regras(revisto(_, _), [67, 68, 70, 71, 73]).
 facto_dispara_regras(sem_evidencia_observada(_, _), [56]).
 facto_dispara_regras(servico(_, _, _, _, _), [4]).
@@ -84,11 +86,11 @@ facto_dispara_regras(suspeita(_, _), [36, 37]).
 facto_dispara_regras(tempo(_, _), [13, 20, 21, 22, 23, 24, 37, 41, 43, 44, 45, 46, 69]).
 facto_dispara_regras(tentativa_sem_impacto(_, _, _), [12, 65]).
 facto_dispara_regras(ticket(_, _, _, _, _, _), [85, 86]).
-facto_dispara_regras(ticket_fechado(_, _), [87, 88]).
+facto_dispara_regras(ticket_fechado(_, _), [87, 88, 103]).
 facto_dispara_regras(tipo_provavel(_, _), [22, 23, 24, 50]).
 facto_dispara_regras(trafego_saida(_, _, _), [42]).
 facto_dispara_regras(versao(_, _), [1, 2, 8, 58]).
-facto_dispara_regras(vetor_aberto(_, _, _, _), [6, 7, 8, 9, 10, 16, 17, 18, 19, 20, 21, 22, 23, 43, 66]).
+facto_dispara_regras(vetor_aberto(_, _, _, _), [6, 7, 8, 9, 10, 16, 17, 18, 19, 20, 21, 22, 23, 43, 66, 104, 105, 106, 107]).
 facto_dispara_regras(violacao_politica(_, _, _), [40]).
 facto_dispara_regras(vuln_afeta(_, _), [1, 2, 3, 4, 5, 11, 14, 15, 43]).
 facto_dispara_regras(vuln_impacto(_, _), [16, 17, 18, 19, 89, 90, 91, 92]).

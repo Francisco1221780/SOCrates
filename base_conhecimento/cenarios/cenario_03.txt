@@ -1,6 +1,6 @@
 % Cenario 3 - Movimento lateral: login SSH na BD a partir de web_srv_01, 100 s depois do compromisso.
 %   Revogam-se as credenciais e cortam-se as sessoes. A BD fica com compromisso PROVAVEL (login vindo de uma maquina
-%   comprometida): confirmar na BD antes de a isolar. O resultado dessa confirmacao regista-se no cenario 3b.
+%   comprometida): confirmar na BD antes de a isolar. O resultado dessa confirmacao e a resposta do analista a pergunta compromisso_no_host.
 %   O segundo login, vindo da jumpbox, e permitido e nao gera nada (controlo negativo).
 
 :- novo_facto(login_ok(ev_i1,db_srv_01,web_srv_01,ssh)).

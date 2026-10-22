@@ -29,11 +29,14 @@ import tools.jackson.databind.node.ObjectNode;
 
 class InferenceServiceTest {
 
+    /** A versao da base do repositorio, do cenarios.json gerado (que a tira do cabecalho do soc_factos.txt). */
+    private static final String VERSAO = new BaseCarregada(tools.jackson.databind.json.JsonMapper.builder().build()).versaoKB();
+
     private static final String PEDIDO = """
-            {"versaoKB":"6","passos":[{"id":"cenario_07","factos":[
+            {"versaoKB":"%s","passos":[{"id":"cenario_07","factos":[
               {"predicado":"alerta_ids","args":["ev_e1","web_srv_04","sig_apache_path_traversal"]}]}]}
-            """;
-    private static final String CONCLUIDO = "{\"estado\":\"concluido\",\"motor\":\"prolog\",\"versaoKB\":\"6\"}";
+            """.formatted(VERSAO);
+    private static final String CONCLUIDO = "{\"estado\":\"concluido\",\"motor\":\"prolog\",\"versaoKB\":\"" + VERSAO + "\"}";
 
     private final JsonMapper json = JsonMapper.builder().build();
 
@@ -49,7 +52,7 @@ class InferenceServiceTest {
         private final List<String> porqueNao = new ArrayList<>();
 
         MotorFalso(String nome, boolean pronto, String resposta) {
-            this(nome, pronto, resposta, "6");
+            this(nome, pronto, resposta, VERSAO);
         }
 
         MotorFalso(String nome, boolean pronto, String resposta, String versaoKB) {
@@ -106,7 +109,7 @@ class InferenceServiceTest {
      * @return
      */
     private InferenceService servico(MotorInferencia... motores) {
-        BaseCarregada base = new BaseCarregada(json, "{\"versaoKB\":\"6\",\"cenarios\":[]}");
+        BaseCarregada base = new BaseCarregada(json, "{\"versaoKB\":\"" + VERSAO + "\",\"cenarios\":[]}");
         return new InferenceService(Arrays.asList(motores), new RequestValidator(), base, new ExplicadorDrools(), json);
     }
 
@@ -120,7 +123,7 @@ class InferenceServiceTest {
         JsonNode n = json.readTree(r.jsonResultado());
         assertEquals("erro", n.path("estado").asString(), r.jsonResultado());
         assertEquals(motor, n.path("motor").asString(), r.jsonResultado());
-        assertEquals("6", n.path("versaoKB").asString(), r.jsonResultado());
+        assertEquals(VERSAO, n.path("versaoKB").asString(), r.jsonResultado());
         return n.path("erro").asString();
     }
 
@@ -208,9 +211,9 @@ class InferenceServiceTest {
     @Test
     void versaoErradaNuncaChegaAoMotor() {
         MotorFalso prolog = motor("prolog", CONCLUIDO);
-        Resultado r = servico(prolog).infere("prolog", PEDIDO.replace("\"6\"", "\"5\""));
+        Resultado r = servico(prolog).infere("prolog", PEDIDO.replace("\"" + VERSAO + "\"", "\"5\""));
         assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado());
-        assertTrue(assertErro(r, "prolog").contains("versaoKB desconhecida: 5 (carregada: 6)"), r.jsonResultado());
+        assertTrue(assertErro(r, "prolog").contains("versaoKB desconhecida: 5 (carregada: " + VERSAO + ")"), r.jsonResultado());
         assertTrue(prolog.pedidos.isEmpty(), "o motor nao devia ter sido chamado");
     }
 
@@ -233,7 +236,7 @@ class InferenceServiceTest {
     @Test
     void pedidoValidoChegaAoMotorTalComoVeio() {
         MotorFalso prolog = motor("prolog", CONCLUIDO);
-        String corpo = "{ \"passos\" : [{\"factos\":[{\"args\":[1, 2.50],\"predicado\":\"x\"}]}], \"versaoKB\":\"6\" }";
+        String corpo = "{ \"passos\" : [{\"factos\":[{\"args\":[1, 2.50],\"predicado\":\"x\"}]}], \"versaoKB\":\"" + VERSAO + "\" }";
         Resultado r = servico(prolog).infere("prolog", corpo);
         assertEquals(TipoResultado.OK, r.tipoResultado());
         assertEquals(List.of(corpo), prolog.pedidos);
@@ -305,7 +308,7 @@ class InferenceServiceTest {
                 "o pedido tem de ser um objeto JSON",
                 "versaoKB desconhecida: \\\"5\\\" (carregada: 6)",
                 "pedido JSON invalido: x")) {
-            String resposta = "{\"estado\":\"erro\",\"motor\":\"prolog\",\"versaoKB\":\"6\",\"erro\":\"" + mensagem + "\"}";
+            String resposta = "{\"estado\":\"erro\",\"motor\":\"prolog\",\"versaoKB\":\"" + VERSAO + "\",\"erro\":\"" + mensagem + "\"}";
             Resultado r = servico(motor("prolog", resposta)).infere("prolog", PEDIDO);
             assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado(), mensagem);
             assertEquals(resposta, r.jsonResultado());
@@ -323,8 +326,8 @@ class InferenceServiceTest {
         InferenceService s = servico(new DroolsAdapter(),
                 new PrologAdapter(props, json, new PrologInstaller(props)));
         String termoInvalido = """
-                {"versaoKB":"6","passos":[{"id":"p1","factos":[{"predicado":"nota","args":[{"f":"x"}]}]}]}
-                """;
+                {"versaoKB":"%s","passos":[{"id":"p1","factos":[{"predicado":"nota","args":[{"f":"x"}]}]}]}
+                """.formatted(VERSAO);
         for (String m : List.of("drools", "prolog")) {
             Resultado r = s.infere(m, termoInvalido);
             assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado(), m + ": " + r.jsonResultado());
@@ -341,11 +344,11 @@ class InferenceServiceTest {
     void errosDeLeituraSemDetalhesInternos() {
         InferenceService s = servico(motor("prolog", CONCLUIDO));
         String[][] casos = {
-                {"{\"versaoKB\": \"6\", \"passos\": [", "pedido JSON invalido na linha 1, coluna"},
+                {"{\"versaoKB\": \"" + VERSAO + "\", \"passos\": [", "pedido JSON invalido na linha 1, coluna"},
                 {"[1, 2]", "o pedido tem de ser um objeto JSON"},
                 {"\"texto\"", "o pedido tem de ser um objeto JSON"},
-                {"{\"versaoKB\":\"6\",\"passos\":\"x\"}", "o campo passos tem o tipo errado"},
-                {"{\"versaoKB\":\"6\",\"passos\":[{\"factos\":[{\"predicado\":\"x\",\"args\":\"y\"}]}]}",
+                {"{\"versaoKB\":\"" + VERSAO + "\",\"passos\":\"x\"}", "o campo passos tem o tipo errado"},
+                {"{\"versaoKB\":\"" + VERSAO + "\",\"passos\":[{\"factos\":[{\"predicado\":\"x\",\"args\":\"y\"}]}]}",
                         "o campo passos[0].factos[0].args tem o tipo errado"},
                 {"", "pedido JSON invalido: o corpo esta vazio"},
                 {"   ", "pedido JSON invalido: o corpo esta vazio"}};
@@ -369,7 +372,7 @@ class InferenceServiceTest {
     void saudeProntaComTodosOsMotoresProntos() {
         SaudeSistema s = servico(motor("prolog", CONCLUIDO), motor("drools", CONCLUIDO)).saude();
         assertTrue(s.pronto());
-        assertEquals("6", s.versaoKB());
+        assertEquals(VERSAO, s.versaoKB());
         assertEquals(List.of("drools", "prolog"), s.motores().stream().map(SaudeMotor::motor).toList());
     }
 
@@ -404,7 +407,7 @@ class InferenceServiceTest {
         SaudeMotor prolog = s.motores().get(1);
         assertFalse(prolog.pronto());
         assertEquals("5", prolog.versaoKB());
-        assertEquals(List.of("o motor tem a versaoKB 5 e o catalogo de cenarios a 6"), prolog.erros());
+        assertEquals(List.of("o motor tem a versaoKB 5 e o catalogo de cenarios a " + VERSAO), prolog.erros());
         assertTrue(s.motores().get(0).pronto());
     }
 
@@ -424,12 +427,12 @@ class InferenceServiceTest {
      * Uma resposta do infere com um dado de entrada (1) e uma conclusao da regra 7 (2) e uma pergunta pendente.
      */
     private static final String COM_FACTOS = """
-            {"estado":"aguarda_resposta","motor":"prolog","versaoKB":"6",
+            {"estado":"aguarda_resposta","motor":"prolog","versaoKB":"%s",
              "perguntas":[{"ativo":"a1","evento":"e1","pergunta":"shell_servico","facto":1}],
              "factos":[{"numero":1,"predicado":"x","args":["a"],"regra":null,"premissas":[]},
                        {"numero":2,"predicado":"y","args":["a"],"regra":7,"premissas":[1]}],
              "erro":null}
-            """;
+            """.formatted(VERSAO);
 
     /**
      * O PEDIDO com os campos da explicacao dados (texto JSON sem chavetas, ex.: "\"facto\":{\"numero\":2}").
@@ -471,9 +474,9 @@ class InferenceServiceTest {
      */
     @Test
     void errosDoPedidoEDaExplicacaoVemJuntos() {
-        Resultado r = servico(motor("prolog", COM_FACTOS)).como("prolog", PEDIDO.replace("\"6\"", "\"5\""), true);
+        Resultado r = servico(motor("prolog", COM_FACTOS)).como("prolog", PEDIDO.replace("\"" + VERSAO + "\"", "\"5\""), true);
         assertEquals(TipoResultado.PEDIDO_INVALIDO, r.tipoResultado());
-        assertEquals(List.of("versaoKB desconhecida: 5 (carregada: 6)", "falta o facto"),
+        assertEquals(List.of("versaoKB desconhecida: 5 (carregada: " + VERSAO + ")", "falta o facto"),
                 List.of(assertErro(r, "prolog").split("; ")));
     }
 
@@ -536,7 +539,7 @@ class InferenceServiceTest {
      */
     @Test
     void respostaDeOutraVersaoDaFalhaMotor() {
-        Resultado r = servico(motor("prolog", COM_FACTOS.replace("\"versaoKB\":\"6\"", "\"versaoKB\":\"5\"")))
+        Resultado r = servico(motor("prolog", COM_FACTOS.replace("\"versaoKB\":\"" + VERSAO + "\"", "\"versaoKB\":\"5\"")))
                 .como("prolog", comCampos("\"facto\":{\"numero\":2}"), false);
         assertEquals(TipoResultado.FALHA_MOTOR, r.tipoResultado());
         assertTrue(json.readTree(r.jsonResultado()).path("erro").asString().contains("versaoKB 5"), r.jsonResultado());
@@ -568,7 +571,7 @@ class InferenceServiceTest {
                 }
             }
         }
-        return "{\"versaoKB\":\"6\",\"passos\":[" + passos + "]," + campos + "}";
+        return "{\"versaoKB\":\"" + VERSAO + "\",\"passos\":[" + passos + "]," + campos + "}";
     }
 
     /**
@@ -643,7 +646,7 @@ class InferenceServiceTest {
             JsonNode n = json.readTree(r.jsonResultado());
             assertEquals(m, n.path("motor").asString());
             assertEquals(31, n.path("geradaPor").path("regraCompleta").path("id").asInt(), m);
-            assertEquals(json.readTree("[32,33,34,50,51]"), n.path("regrasQueUsamAResposta"), m);
+            assertEquals(json.readTree("[32,33,34,50,51,94]"), n.path("regrasQueUsamAResposta"), m);
         }
     }
 

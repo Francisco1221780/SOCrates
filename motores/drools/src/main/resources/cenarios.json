@@ -1,5 +1,5 @@
 {
-  "versaoKB":"6",
+  "versaoKB":"6.1",
   "cenarios": [
     {
       "id":"c1",
@@ -194,15 +194,15 @@
       }
     },
     {
-      "id":"c10b",
+      "id":"c10a",
       "ordem":11,
       "grupo":"telemetria",
       "descricao":"acesso depois do reconhecimento",
-      "ficheiro":"cenarios/cenario_10b.txt",
+      "ficheiro":"cenarios/cenario_10a.txt",
       "depende": ["c10" ],
       "alternativas": [],
       "passo": {
-        "id":"c10b",
+        "id":"c10a",
         "factos": [
           {"predicado":"login_ok","args": ["ev_j2", "web_srv_02", "ip_192_0_2_77", "ssh" ]},
           {"predicado":"tempo","args": ["ev_j2", 6300 ]}
@@ -210,15 +210,15 @@
       }
     },
     {
-      "id":"c10c",
+      "id":"c10b",
       "ordem":12,
       "grupo":"telemetria",
       "descricao":"C2 depois de um acesso suspeito",
-      "ficheiro":"cenarios/cenario_10c.txt",
-      "depende": ["c10b" ],
+      "ficheiro":"cenarios/cenario_10b.txt",
+      "depende": ["c10a" ],
       "alternativas": [],
       "passo": {
-        "id":"c10c",
+        "id":"c10b",
         "factos": [
           {"predicado":"trafego_saida","args": ["ev_j3", "web_srv_02", "c2_198_51_100_7" ]},
           {"predicado":"tempo","args": ["ev_j3", 7500 ]}
@@ -231,7 +231,7 @@
       "grupo":"telemetria",
       "descricao":"C2 sem ligacao conhecida ao ataque",
       "ficheiro":"cenarios/cenario_11.txt",
-      "depende": ["c10c" ],
+      "depende": ["c10b" ],
       "alternativas": [],
       "passo": {
         "id":"c11",
@@ -242,14 +242,14 @@
       }
     },
     {
-      "id":"c11b",
+      "id":"c11a",
       "ordem":14,
       "grupo":"telemetria",
       "descricao":"a ligacao aparece: C2 feito pelo processo atacado",
-      "ficheiro":"cenarios/cenario_11b.txt",
+      "ficheiro":"cenarios/cenario_11a.txt",
       "depende": ["c11" ],
       "alternativas": [],
-      "passo": {"id":"c11b","factos": [ {"predicado":"evento_processo","args": ["ev_k1", "java_loja" ]} ]}
+      "passo": {"id":"c11a","factos": [ {"predicado":"evento_processo","args": ["ev_k1", "java_loja" ]} ]}
     },
     {
       "id":"c12",
@@ -257,7 +257,7 @@
       "grupo":"telemetria",
       "descricao":"shell de outro programa: impacto ambiguo",
       "ficheiro":"cenarios/cenario_12.txt",
-      "depende": ["c11b" ],
+      "depende": ["c11a" ],
       "alternativas": [],
       "passo": {
         "id":"c12",
@@ -414,14 +414,14 @@
       }
     },
     {
-      "id":"c20b",
+      "id":"c20a",
       "ordem":24,
       "grupo":"telemetria",
       "descricao":"a telemetria do processo chega depois",
-      "ficheiro":"cenarios/cenario_20b.txt",
+      "ficheiro":"cenarios/cenario_20a.txt",
       "depende": ["c20" ],
       "alternativas": [],
-      "passo": {"id":"c20b","factos": [ {"predicado":"evento_processo","args": ["ev_u2", "httpd" ]} ]}
+      "passo": {"id":"c20a","factos": [ {"predicado":"evento_processo","args": ["ev_u2", "httpd" ]} ]}
     },
     {
       "id":"c21",
@@ -429,7 +429,7 @@
       "grupo":"telemetria",
       "descricao":"catalogo sem intervalos de versoes",
       "ficheiro":"cenarios/cenario_21.txt",
-      "depende": ["c20b" ],
+      "depende": ["c20a" ],
       "alternativas": [],
       "passo": {
         "id":"c21",
@@ -500,15 +500,15 @@
       }
     },
     {
-      "id":"c24b",
+      "id":"c24a",
       "ordem":29,
       "grupo":"telemetria",
       "descricao":"shell num servidor sem CGI",
-      "ficheiro":"cenarios/cenario_24b.txt",
+      "ficheiro":"cenarios/cenario_24a.txt",
       "depende": ["c24" ],
       "alternativas": [],
       "passo": {
-        "id":"c24b",
+        "id":"c24a",
         "factos": [
           {"predicado":"evento_host","args": ["ev_z3", "web_srv_09", "shell_iniciada" ]},
           {"predicado":"evento_processo","args": ["ev_z3", "httpd" ]},
@@ -522,7 +522,7 @@
       "grupo":"telemetria",
       "descricao":"configuracao desconhecida",
       "ficheiro":"cenarios/cenario_25.txt",
-      "depende": ["c24b" ],
+      "depende": ["c24a" ],
       "alternativas": [],
       "passo": {
         "id":"c25",
@@ -535,14 +535,14 @@
       }
     },
     {
-      "id":"c25b",
+      "id":"c25a",
       "ordem":31,
       "grupo":"telemetria",
       "descricao":"a configuracao chega depois",
-      "ficheiro":"cenarios/cenario_25b.txt",
+      "ficheiro":"cenarios/cenario_25a.txt",
       "depende": ["c25" ],
       "alternativas": [],
-      "passo": {"id":"c25b","factos": [ {"predicado":"configuracao","args": ["web_srv_10_apache", "cgi_ativo", "nao" ]} ]}
+      "passo": {"id":"c25a","factos": [ {"predicado":"configuracao","args": ["web_srv_10_apache", "cgi_ativo", "nao" ]} ]}
     },
     {
       "id":"c26",
@@ -550,7 +550,7 @@
       "grupo":"telemetria",
       "descricao":"C2 numa maquina ja comprometida",
       "ficheiro":"cenarios/cenario_26.txt",
-      "depende": ["c25b" ],
+      "depende": ["c25a" ],
       "alternativas": [],
       "passo": {
         "id":"c26",
@@ -615,14 +615,14 @@
       }
     },
     {
-      "id":"c29b",
+      "id":"c29a",
       "ordem":36,
       "grupo":"telemetria",
-      "descricao":"a telemetria do processo chega depois (em alternativa ao 29c)",
-      "ficheiro":"cenarios/cenario_29b.txt",
+      "descricao":"a telemetria do processo chega depois",
+      "ficheiro":"cenarios/cenario_29a.txt",
       "depende": ["c29" ],
-      "alternativas": ["c29c" ],
-      "passo": {"id":"c29b","factos": [ {"predicado":"evento_processo","args": ["ev_ab2", "java_loja" ]} ]}
+      "alternativas": [],
+      "passo": {"id":"c29a","factos": [ {"predicado":"evento_processo","args": ["ev_ab2", "java_loja" ]} ]}
     },
     {
       "id":"c35",
@@ -630,7 +630,7 @@
       "grupo":"telemetria",
       "descricao":"duas instalacoes ao alcance, uma corrigida e outra vulneravel",
       "ficheiro":"cenarios/cenario_35.txt",
-      "depende": ["c29" ],
+      "depende": ["c29a" ],
       "alternativas": [],
       "passo": {
         "id":"c35",
@@ -643,15 +643,15 @@
       }
     },
     {
-      "id":"c35b",
+      "id":"c35a",
       "ordem":38,
       "grupo":"telemetria",
       "descricao":"shell de um httpd sem se saber de que instancia",
-      "ficheiro":"cenarios/cenario_35b.txt",
+      "ficheiro":"cenarios/cenario_35a.txt",
       "depende": ["c35" ],
       "alternativas": [],
       "passo": {
-        "id":"c35b",
+        "id":"c35a",
         "factos": [
           {"predicado":"evento_host","args": ["ev_ac2", "web_srv_08", "shell_iniciada" ]},
           {"predicado":"evento_processo","args": ["ev_ac2", "httpd" ]},
@@ -660,14 +660,14 @@
       }
     },
     {
-      "id":"c35c",
+      "id":"c35b",
       "ordem":39,
       "grupo":"telemetria",
-      "descricao":"a instancia e a atacada (em alternativa ao 35d)",
-      "ficheiro":"cenarios/cenario_35c.txt",
-      "depende": ["c35b" ],
-      "alternativas": ["c35d" ],
-      "passo": {"id":"c35c","factos": [ {"predicado":"evento_instancia","args": ["ev_ac2", "web_srv_08_httpd_consola" ]} ]}
+      "descricao":"a instancia e a atacada (em alternativa ao 35c)",
+      "ficheiro":"cenarios/cenario_35b.txt",
+      "depende": ["c35a" ],
+      "alternativas": ["c35c" ],
+      "passo": {"id":"c35b","factos": [ {"predicado":"evento_instancia","args": ["ev_ac2", "web_srv_08_httpd_consola" ]} ]}
     },
     {
       "id":"c36",
@@ -675,7 +675,7 @@
       "grupo":"telemetria",
       "descricao":"acesso com a politica incompleta: politica por confirmar",
       "ficheiro":"cenarios/cenario_36.txt",
-      "depende": ["c35b" ],
+      "depende": ["c35a" ],
       "alternativas": [],
       "passo": {
         "id":"c36",
@@ -686,14 +686,14 @@
       }
     },
     {
-      "id":"c36b",
+      "id":"c36a",
       "ordem":41,
       "grupo":"telemetria",
-      "descricao":"a politica fica completa: violacao (em alternativa ao 36c)",
-      "ficheiro":"cenarios/cenario_36b.txt",
+      "descricao":"a politica fica completa: violacao (em alternativa ao 36b)",
+      "ficheiro":"cenarios/cenario_36a.txt",
       "depende": ["c36" ],
-      "alternativas": ["c36c" ],
-      "passo": {"id":"c36b","factos": [ {"predicado":"cobertura_politica","args": ["db_srv_01", "postgresql", "completa" ]} ]}
+      "alternativas": ["c36b" ],
+      "passo": {"id":"c36a","factos": [ {"predicado":"cobertura_politica","args": ["db_srv_01", "postgresql", "completa" ]} ]}
     },
     {
       "id":"c37",
@@ -714,14 +714,14 @@
       }
     },
     {
-      "id":"c37b",
+      "id":"c37a",
       "ordem":43,
       "grupo":"telemetria",
       "descricao":"o porto de destino chega depois",
-      "ficheiro":"cenarios/cenario_37b.txt",
+      "ficheiro":"cenarios/cenario_37a.txt",
       "depende": ["c37" ],
       "alternativas": [],
-      "passo": {"id":"c37b","factos": [ {"predicado":"destino","args": ["ev_ae1", 80, "tcp" ]} ]}
+      "passo": {"id":"c37a","factos": [ {"predicado":"destino","args": ["ev_ae1", 80, "tcp" ]} ]}
     },
     {
       "id":"c38",
@@ -729,7 +729,7 @@
       "grupo":"telemetria",
       "descricao":"shell sem hora",
       "ficheiro":"cenarios/cenario_38.txt",
-      "depende": ["c37b" ],
+      "depende": ["c37a" ],
       "alternativas": [],
       "passo": {
         "id":"c38",
@@ -744,14 +744,14 @@
       }
     },
     {
-      "id":"c38b",
+      "id":"c38a",
       "ordem":45,
       "grupo":"telemetria",
       "descricao":"a hora chega depois",
-      "ficheiro":"cenarios/cenario_38b.txt",
+      "ficheiro":"cenarios/cenario_38a.txt",
       "depende": ["c38" ],
       "alternativas": [],
-      "passo": {"id":"c38b","factos": [ {"predicado":"tempo","args": ["ev_af2", 17815 ]} ]}
+      "passo": {"id":"c38a","factos": [ {"predicado":"tempo","args": ["ev_af2", 17815 ]} ]}
     },
     {
       "id":"c39",
@@ -759,30 +759,30 @@
       "grupo":"telemetria",
       "descricao":"maquina recuperada",
       "ficheiro":"cenarios/cenario_39.txt",
-      "depende": ["c38b" ],
+      "depende": ["c38a" ],
       "alternativas": [],
       "passo": {"id":"c39","factos": [ {"predicado":"recuperado","args": ["web_srv_01", "ev_a1" ]} ]}
     },
     {
-      "id":"c6b",
+      "id":"c6a",
       "ordem":47,
       "grupo":"atualizacao",
       "descricao":"versao de web_srv_05 (corrigida): fecha a duvida do cenario 6 e o provavel do cenario 17",
-      "ficheiro":"cenarios/cenario_06b.txt",
+      "ficheiro":"cenarios/cenario_06a.txt",
       "depende": ["c39" ],
       "alternativas": [],
-      "passo": {"id":"c6b","factos": [ {"predicado":"versao","args": ["web_srv_05_apache",  {"f":"v","args": [2, 4, 52 ]} ]} ]}
+      "passo": {"id":"c6a","factos": [ {"predicado":"versao","args": ["web_srv_05_apache",  {"f":"v","args": [2, 4, 52 ]} ]} ]}
     },
     {
-      "id":"c13b",
+      "id":"c13a",
       "ordem":48,
       "grupo":"atualizacao",
       "descricao":"inventario de web_srv_07: fecha os dois incidentes de inventario do cenario 13",
-      "ficheiro":"cenarios/cenario_13b.txt",
+      "ficheiro":"cenarios/cenario_13a.txt",
       "depende": ["c39" ],
       "alternativas": [],
       "passo": {
-        "id":"c13b",
+        "id":"c13a",
         "factos": [
           {"predicado":"cobertura","args": ["web_srv_07", "rede", "completa" ]},
           {"predicado":"cobertura","args": ["web_srv_07", "sbom", "completa" ]}
@@ -790,15 +790,15 @@
       }
     },
     {
-      "id":"c21b",
+      "id":"c21a",
       "ordem":49,
       "grupo":"atualizacao",
       "descricao":"intervalos da falha de upload: fecha o catalogo incompleto do cenario 21",
-      "ficheiro":"cenarios/cenario_21b.txt",
+      "ficheiro":"cenarios/cenario_21a.txt",
       "depende": ["c39" ],
       "alternativas": [],
       "passo": {
-        "id":"c21b",
+        "id":"c21a",
         "factos": [
           {
             "predicado":"intervalo_afetado",
@@ -808,14 +808,14 @@
       }
     },
     {
-      "id":"c27b",
+      "id":"c27a",
       "ordem":50,
       "grupo":"atualizacao",
       "descricao":"versao valida de web_srv_11: fecha a duvida do cenario 27",
-      "ficheiro":"cenarios/cenario_27b.txt",
+      "ficheiro":"cenarios/cenario_27a.txt",
       "depende": ["c39" ],
       "alternativas": [],
-      "passo": {"id":"c27b","factos": [ {"predicado":"versao","args": ["web_srv_11_apache",  {"f":"v","args": [2, 4, 49 ]} ]} ]}
+      "passo": {"id":"c27a","factos": [ {"predicado":"versao","args": ["web_srv_11_apache",  {"f":"v","args": [2, 4, 49 ]} ]} ]}
     },
     {
       "id":"c30",
@@ -904,154 +904,24 @@
       }
     },
     {
-      "id":"c7b_sim",
+      "id":"c35c",
       "ordem":56,
-      "grupo":"resposta",
-      "descricao":"Analista: resposta \"sim\" a pergunta do cenario 7",
-      "ficheiro":"cenarios/cenario_07b_sim.txt",
-      "depende": ["c7" ],
-      "alternativas": ["c7b_nao", "c7b_nao_sei" ],
-      "passo": {
-        "id":"c7b_sim",
-        "factos": [ {"predicado":"resposta_analista","args": ["web_srv_04", "ev_e1", "shell_servico", "sim" ]} ]
-      }
+      "grupo":"alternativa",
+      "descricao":"a shell do 35a veio da outra instancia (em alternativa ao 35b): impacto ambiguo",
+      "ficheiro":"cenarios/cenario_35c.txt",
+      "depende": ["c35a" ],
+      "alternativas": ["c35b" ],
+      "passo": {"id":"c35c","factos": [ {"predicado":"evento_instancia","args": ["ev_ac2", "web_srv_08_httpd_site" ]} ]}
     },
     {
-      "id":"c7b_nao",
+      "id":"c36b",
       "ordem":57,
-      "grupo":"resposta",
-      "descricao":"Analista: resposta \"nao\" a pergunta do cenario 7",
-      "ficheiro":"cenarios/cenario_07b_nao.txt",
-      "depende": ["c7" ],
-      "alternativas": ["c7b_nao_sei", "c7b_sim" ],
-      "passo": {
-        "id":"c7b_nao",
-        "factos": [ {"predicado":"resposta_analista","args": ["web_srv_04", "ev_e1", "shell_servico", "nao" ]} ]
-      }
-    },
-    {
-      "id":"c7b_nao_sei",
-      "ordem":58,
-      "grupo":"resposta",
-      "descricao":"Analista: resposta \"nao sei\" a pergunta do cenario 7",
-      "ficheiro":"cenarios/cenario_07b_nao_sei.txt",
-      "depende": ["c7" ],
-      "alternativas": ["c7b_nao", "c7b_sim" ],
-      "passo": {
-        "id":"c7b_nao_sei",
-        "factos": [ {"predicado":"resposta_analista","args": ["web_srv_04", "ev_e1", "shell_servico", "nao_sei" ]} ]
-      }
-    },
-    {
-      "id":"c19b_sim",
-      "ordem":59,
-      "grupo":"resposta",
-      "descricao":"Analista: resposta \"sim\" a pergunta do cenario 19",
-      "ficheiro":"cenarios/cenario_19b_sim.txt",
-      "depende": ["c19" ],
-      "alternativas": ["c19b_nao", "c19b_nao_sei" ],
-      "passo": {
-        "id":"c19b_sim",
-        "factos": [ {"predicado":"resposta_analista","args": ["app_srv_03", "ev_w1", "resposta_volumosa_servico", "sim" ]} ]
-      }
-    },
-    {
-      "id":"c19b_nao",
-      "ordem":60,
-      "grupo":"resposta",
-      "descricao":"Analista: resposta \"nao\" a pergunta do cenario 19",
-      "ficheiro":"cenarios/cenario_19b_nao.txt",
-      "depende": ["c19" ],
-      "alternativas": ["c19b_nao_sei", "c19b_sim" ],
-      "passo": {
-        "id":"c19b_nao",
-        "factos": [ {"predicado":"resposta_analista","args": ["app_srv_03", "ev_w1", "resposta_volumosa_servico", "nao" ]} ]
-      }
-    },
-    {
-      "id":"c19b_nao_sei",
-      "ordem":61,
-      "grupo":"resposta",
-      "descricao":"Analista: resposta \"nao sei\" a pergunta do cenario 19",
-      "ficheiro":"cenarios/cenario_19b_nao_sei.txt",
-      "depende": ["c19" ],
-      "alternativas": ["c19b_nao", "c19b_sim" ],
-      "passo": {
-        "id":"c19b_nao_sei",
-        "factos": [ {"predicado":"resposta_analista","args": ["app_srv_03", "ev_w1", "resposta_volumosa_servico", "nao_sei" ]} ]
-      }
-    },
-    {
-      "id":"c3b",
-      "ordem":62,
-      "grupo":"resposta",
-      "descricao":"o analista confirma o compromisso do cenario 3: propagacao",
-      "ficheiro":"cenarios/cenario_03b.txt",
-      "depende": ["c3" ],
-      "alternativas": [],
-      "passo": {
-        "id":"c3b",
-        "factos": [ {"predicado":"resposta_analista","args": ["db_srv_01", "ev_i1", "compromisso_no_host", "sim" ]} ]
-      }
-    },
-    {
-      "id":"c10d",
-      "ordem":63,
-      "grupo":"resposta",
-      "descricao":"o analista descarta o compromisso provavel do cenario 10c",
-      "ficheiro":"cenarios/cenario_10d.txt",
-      "depende": ["c10c" ],
-      "alternativas": [],
-      "passo": {
-        "id":"c10d",
-        "factos": [ {"predicado":"resposta_analista","args": ["web_srv_02", "ev_j3", "compromisso_no_host", "nao" ]} ]
-      }
-    },
-    {
-      "id":"c17b",
-      "ordem":64,
-      "grupo":"resposta",
-      "descricao":"o analista ainda nao conseguiu verificar o cenario 17",
-      "ficheiro":"cenarios/cenario_17b.txt",
-      "depende": ["c17" ],
-      "alternativas": [],
-      "passo": {
-        "id":"c17b",
-        "factos": [ {"predicado":"resposta_analista","args": ["web_srv_05", "ev_s1", "compromisso_no_host", "nao_sei" ]} ]
-      }
-    },
-    {
-      "id":"c29c",
-      "ordem":65,
-      "grupo":"resposta",
-      "descricao":"o analista confirma a exposicao do cenario 29 (em alternativa ao 29b)",
-      "ficheiro":"cenarios/cenario_29c.txt",
-      "depende": ["c29" ],
-      "alternativas": ["c29b" ],
-      "passo": {
-        "id":"c29c",
-        "factos": [ {"predicado":"resposta_analista","args": ["app_srv_01", "ev_ab1", "exposicao_no_host", "sim" ]} ]
-      }
-    },
-    {
-      "id":"c35d",
-      "ordem":66,
-      "grupo":"resposta",
-      "descricao":"a shell do 35b veio da outra instancia (em alternativa ao 35c): impacto ambiguo",
-      "ficheiro":"cenarios/cenario_35d.txt",
-      "depende": ["c35b" ],
-      "alternativas": ["c35c" ],
-      "passo": {"id":"c35d","factos": [ {"predicado":"evento_instancia","args": ["ev_ac2", "web_srv_08_httpd_site" ]} ]}
-    },
-    {
-      "id":"c36c",
-      "ordem":67,
-      "grupo":"resposta",
-      "descricao":"a politica autoriza o acesso do cenario 36 (em alternativa ao 36b)",
-      "ficheiro":"cenarios/cenario_36c.txt",
+      "grupo":"alternativa",
+      "descricao":"a politica autoriza o acesso do cenario 36 (em alternativa ao 36a)",
+      "ficheiro":"cenarios/cenario_36b.txt",
       "depende": ["c36" ],
-      "alternativas": ["c36b" ],
-      "passo": {"id":"c36c","factos": [ {"predicado":"permitido","args": ["db_srv_01", "postgresql", "web_srv_04" ]} ]}
+      "alternativas": ["c36a" ],
+      "passo": {"id":"c36b","factos": [ {"predicado":"permitido","args": ["db_srv_01", "postgresql", "web_srv_04" ]} ]}
     }
   ],
   "sequencias": {
@@ -1066,10 +936,10 @@
       "c8",
       "c9",
       "c10",
+      "c10a",
       "c10b",
-      "c10c",
       "c11",
-      "c11b",
+      "c11a",
       "c12",
       "c13",
       "c14",
@@ -1079,31 +949,88 @@
       "c18",
       "c19",
       "c20",
-      "c20b",
+      "c20a",
       "c21",
       "c22",
       "c23",
       "c24",
-      "c24b",
+      "c24a",
       "c25",
-      "c25b",
+      "c25a",
       "c26",
       "c27",
       "c28",
       "c29",
-      "c29b",
+      "c29a",
       "c35",
+      "c35a",
       "c35b",
-      "c35c",
       "c36",
-      "c36b",
+      "c36a",
       "c37",
-      "c37b",
+      "c37a",
       "c38",
-      "c38b",
+      "c38a",
       "c39"
     ],
-    "atualizacoes": ["c6b", "c13b", "c21b", "c27b" ],
-    "normal": ["c30", "c31", "c32", "c33", "c34" ]
+    "atualizacoes": ["c6a", "c13a", "c21a", "c27a" ],
+    "normal": ["c30", "c31", "c32", "c33", "c34" ],
+    "completa": [
+      "c1",
+      "c2",
+      "c3",
+      "c4",
+      "c5",
+      "c6",
+      "c7",
+      "c8",
+      "c9",
+      "c10",
+      "c10a",
+      "c10b",
+      "c11",
+      "c11a",
+      "c12",
+      "c13",
+      "c14",
+      "c15",
+      "c16",
+      "c17",
+      "c18",
+      "c19",
+      "c20",
+      "c20a",
+      "c21",
+      "c22",
+      "c23",
+      "c24",
+      "c24a",
+      "c25",
+      "c25a",
+      "c26",
+      "c27",
+      "c28",
+      "c29",
+      "c29a",
+      "c35",
+      "c35a",
+      "c35b",
+      "c36",
+      "c36a",
+      "c37",
+      "c37a",
+      "c38",
+      "c38a",
+      "c39",
+      "c6a",
+      "c13a",
+      "c21a",
+      "c27a",
+      "c30",
+      "c31",
+      "c32",
+      "c33",
+      "c34"
+    ]
   }
 }

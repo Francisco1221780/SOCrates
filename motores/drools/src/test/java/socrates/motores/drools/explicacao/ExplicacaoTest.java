@@ -53,7 +53,7 @@ class ExplicacaoTest {
                 "shell_servico"));
         assertEquals("concluido", r.get("estado").asText(), r.toString());
         assertTrue(r.get("geradaPor").isNull());
-        assertEquals(json.readTree("[32,33,34,50,51]"), r.get("regrasQueUsamAResposta"));
+        assertEquals(json.readTree("[32,33,34,50,51,94]"), r.get("regrasQueUsamAResposta"));
     }
 
     /**

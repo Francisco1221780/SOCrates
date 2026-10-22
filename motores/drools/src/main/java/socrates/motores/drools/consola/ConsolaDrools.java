@@ -401,14 +401,18 @@ public final class ConsolaDrools {
         return null;
     }
 
-    /** Como o injeta_todos do Prolog: volta a carregar a base e injeta as sequencias base e normal, sem respostas. */
+    /**
+     * Como o injeta_todos do Prolog: volta a carregar a base e injeta a sequencia completa do cenarios.json (telemetria,
+     * atualizacoes e atividade normal), sem respostas; num catalogo sem ela, as sequencias base e normal.
+     */
     private void injetaTodos() {
         if (!carregaBase(motor)) {
             return;
         }
         List<JsonNode> passos = new ArrayList<>();
         Map<String, String> cabecalhos = new LinkedHashMap<>();
-        for (String seq : List.of("base", "normal")) {
+        List<String> seqs = cenarios.sequencia("completa").isEmpty() ? List.of("base", "normal") : List.of("completa");
+        for (String seq : seqs) {
             for (String id : cenarios.sequencia(seq)) {
                 Cenarios.Cenario c = cenarios.cenario(id);
                 passos.add(c.passo());

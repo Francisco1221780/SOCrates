@@ -6,7 +6,7 @@
 %   swipl wrapper.pl <pasta da base>  < pedido.json  > resposta.json
 %   ex.: swipl motores/prolog/wrapper.pl base_conhecimento < pedido.json
 %
-% Pedido:   {"versaoKB": "6", "passos": [{"id": "cenario_07", "factos": [{"predicado": "...", "args": [...]}]}, ...]}
+% Pedido:   {"versaoKB": "6.1", "passos": [{"id": "cenario_07", "factos": [{"predicado": "...", "args": [...]}]}, ...]}
 % Resposta: {"estado", "motor", "versaoKB", "perguntas", "incidentes", "tickets", "factos", "erro"}
 %           estado: "concluido", "aguarda_resposta" (ha perguntas por responder) ou "erro"
 %
@@ -43,8 +43,13 @@
 
 :- dynamic passo_intervalo/3.        % passo_intervalo(Id, UltimoAntes, UltimoDepois)
 
-% Versao da base que este wrapper aceita. Muda junto com o cabecalho do soc_factos.txt e MotorDrools.VERSAO_KB.
-versao_kb('6').
+% Versao da base que este wrapper aceita: a da base carregada, lida do cabecalho do soc_factos.txt (versao_base/1).
+% Antes de a base estar carregada (ex.: a pasta nao existe) nao ha versao, e a resposta de erro leva null.
+versao_kb(Versao) :-
+	(   catch(versao_base(V), _, fail)
+	->  Versao = V
+	;   Versao = @(null)
+	).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -260,10 +265,11 @@ monta_resposta(infere, UltimoInicial, json([ estado = Estado,
 	factos_json(UltimoInicial, Factos).
 
 % Perguntas ao analista sem resposta e sem pergunta_retirada, com o texto e as opcoes que estao na base.
+% Uma resposta "nao sei" nao fecha a pergunta (pode ser respondida mais tarde), como o pergunta_pendente/4 do motor.
 perguntas_json(L) :-
 	findall(json([ facto = N, ativo = A, evento = Ev, pergunta = P, texto = Texto, opcoes = Opcoes ]),
 		( facto(N, pergunta_analista(A, Ev, P)),
-		  \+ facto(_, resposta_analista(A, Ev, P, _)),
+		  \+ ( facto(_, resposta_analista(A, Ev, P, R)), R \== nao_sei ),
 		  \+ facto(_, pergunta_retirada(A, Ev, P)),
 		  ( facto(_, texto_pergunta(P, Texto)) -> true ; Texto = @(null) ),
 		  findall(json([valor = V, texto = TV]), facto(_, opcao_resposta(P, V, TV)), Opcoes) ),

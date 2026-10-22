@@ -2,9 +2,9 @@
 
 `soc_motor.pl` é o motor de inferência em SWI-Prolog que corre a base de conhecimento v5.1 (`soc_factos.txt`, `soc_regras.txt`, `soc_suporte.txt`). Parte do `sp_exp2.pl` da UC e acrescenta o que a v5.1 exige (alterações M1 a M4 da issue #3), a injeção dos ficheiros de cenário, explicações melhoradas e um menu de texto.
 
-> **Base v6.** A base em `base_conhecimento/` é a v6 (314 factos, 92 regras). A v6 pede que uma regra seja reavaliada
+> **Base v6.1.** A base em `base_conhecimento/` é a v6.1 (390 factos, 107 regras). Desde a v6 a base pede que uma regra seja reavaliada
 > quando chega um facto lido por uma condição calculada (`condicao_le/2`); o motor faz essa reavaliação (ver a tabela
-> "O que mudou em relação ao `sp_exp2.pl`"). Os resultados de referência da v6 estão abaixo e em
+> "O que mudou em relação ao `sp_exp2.pl`"). Os resultados de referência da v6.1 estão abaixo e em
 > [`referencia_prolog/`](referencia_prolog/).
 
 ## Ficheiros e onde ficam
@@ -44,7 +44,7 @@ Abre o SWI-Prolog na pasta `motores/prolog/` (por exemplo, `cd motores/prolog &&
 ?- working_directory(_, '/caminho/para/SOCrates/motores/prolog/').
 ?- consult('soc_motor.pl').
 ?- carrega_bc('../../base_conhecimento/soc_factos.txt').
-Base carregada: 314 factos e 92 regras.
+Base carregada: 390 factos e 107 regras.
 ?- arranca_motor.
 29 factos novos (n. 315 a 343).
 ```
@@ -63,21 +63,21 @@ Cada cenário é a telemetria que chega num momento (alertas, eventos dos hosts,
 | --- | --- |
 | `injeta_cenario(c2).` | Injeta um cenário pelo nome e corre o motor. |
 | `injeta_cenarios([c1,c2,c3]).` | Vários cenários, por ordem, com o motor a correr entre cada um. |
-| `injeta_todos.` | Recomeça do estado inicial (recarrega a base) e injeta os cenários da sequência base (1 a 29b e 35 a 39) e os de atividade normal 30 a 34, por ordem. No fim mostra o estado. |
+| `injeta_todos.` | Recomeça do estado inicial (recarrega a base) e injeta a `sequencia_completa` do `soc_cenarios.pl`, por ordem: a telemetria (1 a 29a e 35 a 39), as atualizações do inventário e do catálogo (06a, 13a, 21a, 27a) e a atividade normal (30 a 34). É o mesmo que a opção 13 da consola Drools e a vista global da UI. No fim mostra o estado. |
 | `injeta_cenario('cenarios/cenario_30.txt').` ou `injeta_ficheiro(...)` | Injeta um ficheiro pelo nome. Um caminho relativo procura-se primeiro na pasta de trabalho e depois na pasta do `soc_factos.txt`. |
 | `lista_cenarios.` | Mostra os nomes dos cenários e o que cada um faz. |
 
 A ordem importa, porque os cenários contam uma história seguida. Por exemplo, o 2 só dá "ataque dirigido" porque a mesma origem já atacou no 1, e o 3 precisa do 2. A ordem é a do `cenarios/indice.txt`.
 
-O `injeta_todos` não injeta as respostas do analista (7b, 19b, 3b, 10d, 17b, 29c), porque algumas são alternativas umas às outras. Injetam-se depois, uma de cada vez:
+As respostas do analista não são cenários: o motor faz as perguntas (`pergunta_analista`) e a resposta entra como um facto, pela opção 5 do menu ou à mão:
 
 ```prolog
 ?- injeta_todos.
-947 factos (520 concluidos pelo motor) | 50 incidentes | 50 tickets: 36 abertos, 14 fechados | 9 perguntas por responder
-?- injeta_cenario(c7b_nao).
+1319 factos (… concluidos pelo motor) | 65 incidentes | 65 tickets: 39 abertos, 26 fechados | 39 perguntas por responder
+?- introduz_facto(resposta_analista(web_srv_04, ev_e1, shell_servico, nao)), arranca_motor.
 ```
 
-Nos cenários 7b e 19b usa-se só uma das três respostas (`_sim`, `_nao` ou `_nao_sei`). O 29c, o 35d e o 36c usam-se em vez do 29b, do 35c e do 36b.
+O 35c e o 36b usam-se em vez do 35b e do 36a.
 
 ### Factos à mão
 
@@ -218,15 +218,17 @@ O motor continua a funcionar com as bases da UC (por exemplo, `veiculos2.txt`). 
 
 ## Resultados de referência
 
-Com a base v6:
+Com a base v6.1:
 
 | Sequência | Resultado |
 | --- | --- |
-| Estado inicial + sequência base (cenários 1 a 29b e 35 a 39), sem respostas | 1110 factos, 61 incidentes, 61 tickets (41 abertos, 20 fechados) |
-| `injeta_todos` (sequência base + 30 a 34) | 1126 factos, com as mesmas 633 conclusões: os cenários 30 a 34 não acrescentam nenhuma |
-| Sequência base + respostas 3b, 10d e 17b | 1136 factos, 63 incidentes, 40 tickets abertos, 23 fechados, e o incidente "propagação" com dois ativos |
+| Estado inicial + sequência base (cenários 1 a 29a e 35 a 39), sem respostas | 1234 factos, 61 incidentes, 61 tickets (41 abertos, 20 fechados), 41 perguntas por responder (uma por ticket aberto) |
+| Sequência base + 30 a 34 | 1250 factos, com as mesmas conclusões: os cenários 30 a 34 não acrescentam nenhuma |
+| `injeta_todos` (`sequencia_completa`: base, atualizações e 30 a 34) | 1319 factos, 65 incidentes, 65 tickets (39 abertos, 26 fechados), 39 perguntas por responder |
+| Sequência base + respostas às perguntas de confirmação dos cenários 3 (sim), 10b (não) e 17 (não sei) | 1261 factos, 63 incidentes, 40 tickets abertos, 23 fechados, e o incidente "propagação" com dois ativos |
+| Sequência base sem o 25a e o 36a + "sim" às perguntas de fecho (`fecho_sim`) | 1325 factos, 66 incidentes, 37 tickets abertos, 29 fechados |
 
-Estes valores foram confirmados com a organização atual das pastas (motor em `motores/prolog/`, base em `base_conhecimento/`). As outras variantes (respostas 7b e 19b, alternativas 29c, 35d e 36c, e as atualizações 06b, 13b, 21b e 27b) estão em [`referencia_prolog/`](referencia_prolog/), com um ficheiro JSON por variante (`base.json`, `respostas_3b_10d_17b.json`, …), gerado pelo `ferramentas/gera_referencias.pl`. Cada ficheiro tem os cenários da variante e a resposta do `wrapper.pl`, no formato do contrato JSON. Servem de referência para o Drools e para o comparador.
+Estes valores foram confirmados com a organização atual das pastas (motor em `motores/prolog/`, base em `base_conhecimento/`). As outras variantes (respostas às perguntas dos cenários 7, 19 e 29, alternativas 35c e 36b, atualizações 06a, 13a, 21a e 27a, e respostas às perguntas de fecho) estão em [`referencia_prolog/`](referencia_prolog/), com um ficheiro JSON por variante (`base.json`, `respostas_3_10b_17.json`, `fecho_sim.json`, …), gerado pelo `ferramentas/gera_referencias.pl`. Cada ficheiro tem os cenários da variante e a resposta do `wrapper.pl`, no formato do contrato JSON. Servem de referência para o Drools e para o comparador.
 
 ## Notas
 

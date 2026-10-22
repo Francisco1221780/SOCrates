@@ -1,5 +1,0 @@
-% Cenario 35d - em vez do 35c: o sensor diz que a shell do cenario 35b veio do httpd do SITE, a instalacao corrigida.
-%   E o mesmo programa, mas outra instancia, que o ataque nao podia explorar -> impacto ambiguo: inspecionar os processos,
-%   sem isolar. Depende do 35b.
-
-:- novo_facto(evento_instancia(ev_ac2,web_srv_08_httpd_site)).

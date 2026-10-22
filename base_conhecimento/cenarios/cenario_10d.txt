@@ -1,3 +1,0 @@
-% Cenario 10d - o analista foi ver web_srv_02 (cenario 10c) e nao ha compromisso: o compromisso provavel fica descartado.
-
-:- novo_facto(resposta_analista(web_srv_02,ev_j3,compromisso_no_host,nao)).

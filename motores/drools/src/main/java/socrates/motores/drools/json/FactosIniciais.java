@@ -41,6 +41,23 @@ public final class FactosIniciais {
         }
     }
 
+    /**
+     * A versao da base no ficheiro de factos iniciais do classpath. O gera_json.pl tira-a do cabecalho do
+     * soc_factos.txt, por isso e a unica fonte da versao. Devolve "" se o ficheiro faltar ou nao a tiver: o erro
+     * aparece quando o motor carregar os factos.
+     */
+    public static String versao(String recurso) {
+        try (InputStream in = FactosIniciais.class.getClassLoader().getResourceAsStream(recurso)) {
+            if (in == null) {
+                return "";
+            }
+            JsonNode raiz = new ObjectMapper().readTree(in);
+            return raiz == null ? "" : raiz.path("versaoKB").asText("");
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
     /** O mesmo, a partir de um ficheiro (a opcao 1 da consola: outra base de factos iniciais). */
     public static FactosIniciais carrega(Path ficheiro, String versaoKB, ObjectMapper json) {
         try (InputStream in = Files.newInputStream(ficheiro)) {

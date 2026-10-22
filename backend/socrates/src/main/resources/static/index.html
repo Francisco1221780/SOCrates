@@ -6652,13 +6652,14 @@ function showV61Error(msg) {
   t.style.display = 'block';
   clearTimeout(t._h); t._h = setTimeout(() => { t.style.display = 'none'; }, 7000);
 }
-// passos de um cenario a partir do catalogo: a cadeia do campo "depende"; vista global = as sequencias da base
+// passos de um cenario a partir do catalogo: a cadeia do campo "depende"; vista global = a sequencia completa (a mesma
+// do "injetar todos" das consolas; num catalogo sem ela, todas as sequencias)
 function v61PassosDoCenario(key) {
   const lista = window._LAST_CENARIOS_LIST || [];
   const byId = new Map(lista.map(c => [c.id, c]));
   if (key === 'all') {
     const seqs = window._LAST_SEQUENCIAS || {};
-    const ids = [...new Set(Object.values(seqs).flat())];
+    const ids = seqs.completa ? [...seqs.completa] : [...new Set(Object.values(seqs).flat())];
     return ids.map(id => byId.get(id)?.passo).filter(Boolean);
   }
   const out = [], seen = new Set();

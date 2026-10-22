@@ -57,9 +57,9 @@ class ConsolaDroolsTest {
     @Test
     void menuIgualAoDoPrologComABaseJaCarregada() {
         String s = consola("0.");
-        assertTrue(s.contains("Base carregada: 314 factos e 92 regras."), s);
+        assertTrue(s.contains("Base carregada: 390 factos e 107 regras."), s);
         assertTrue(s.contains("========== ANALISTA VIRTUAL DE SOC =========="), s);
-        assertTrue(s.matches("(?s).*\\d+ factos novos \\(n\\. 315 a \\d+\\)\\..*"), s);
+        assertTrue(s.matches("(?s).*\\d+ factos novos \\(n\\. 391 a \\d+\\)\\..*"), s);
         for (String opcao : new String[] {" 1. Carregar a base de conhecimento", " 2. Correr o motor",
                 "10. Explicar porque nao se concluiu um facto (porque nao?)", "12. Opcoes do motor",
                 "13. Injetar todos os cenarios de uma vez", " 0. Sair"}) {
@@ -79,7 +79,7 @@ class ConsolaDroolsTest {
     @Test
     void listaDeCenariosEFicheiros(@TempDir Path pasta) throws Exception {
         Path pedido = pasta.resolve("pedido.json");
-        Files.writeString(pedido, "{\"versaoKB\":\"6\",\"passos\":[{\"id\":\"meu\",\"factos\":["
+        Files.writeString(pedido, "{\"versaoKB\":\"" + MotorDrools.VERSAO_KB + "\",\"passos\":[{\"id\":\"meu\",\"factos\":["
                 + "{\"predicado\":\"tempo\",\"args\":[\"ev_x\",10]}]}]}");
         String s = consola("3", "[c1,c2]", "3", "'base_conhecimento/cenarios/cenario_06.txt'.", "3", pedido.toString(), "0");
         assertTrue(s.contains("=== Cenario c1: tentativa sem impacto (versao corrigida)"), s);
@@ -96,9 +96,9 @@ class ConsolaDroolsTest {
 
     @Test
     void cenarioAlternativoERepetidoSaoRecusados() {
-        String s = consola("3", "c7", "3", "c7b_sim", "3", "c7b_nao", "3", "c7", "0");
-        assertTrue(s.contains("O cenario c7b_nao e alternativa de c7b_sim, que ja entrou: nao foi injetado."), s);
-        assertTrue(s.contains("O cenario c7 ja foi injetado."), s);
+        String s = consola("3", "c35", "3", "c35a", "3", "c35b", "3", "c35c", "3", "c35", "0");
+        assertTrue(s.contains("O cenario c35c e alternativa de c35b, que ja entrou: nao foi injetado."), s);
+        assertTrue(s.contains("O cenario c35 ja foi injetado."), s);
     }
 
     @Test
@@ -106,9 +106,10 @@ class ConsolaDroolsTest {
         String s = consola("3", "c7", "5", "1", "porque.", "sim.", "0", "0");
         assertTrue(s.contains("Pergunto porque a regra 31 pediu esta verificacao em web_srv_04"), s);
         assertTrue(s.contains("nao se verifica resposta_analista(web_srv_04, ev_e1, shell_servico, B)"), s);
-        assertTrue(s.contains("A resposta vai ser usada pelas regras [32,33,34,50,51]."), s);
+        assertTrue(s.contains("A resposta vai ser usada pelas regras [32,33,34,50,51,94]."), s);
         assertTrue(s.contains("   sim - Sim, ha uma shell lancada pelo servico"), s);
-        assertTrue(s.contains("Nao ha perguntas por responder."), s);
+        // v6.1: depois da resposta fica a pergunta de fecho da exploracao possivel do mesmo ataque
+        assertTrue(s.contains("vulnerabilidade_tratada"), s);
     }
 
     @Test
@@ -213,29 +214,28 @@ class ConsolaDroolsTest {
         assertFalse(s.contains("14."), s);
     }
 
-    /** A opcao 13 da a mesma resposta que o pedido com as sequencias base e normal enviado direto ao motor. */
+    /** A opcao 13 da a mesma resposta que o pedido com a sequencia completa enviado direto ao motor. */
     @Test
     void injetarTodosEOMesmoQueOPedidoDireto() throws Exception {
         String s = consola("13", "0");
         assertTrue(s.contains("=== Cenario c39: maquina recuperada"), s);
         assertTrue(s.contains("=== Cenario c34: "), s);
+        assertTrue(s.contains("=== Cenario c6a: "), s);
         JsonNode c = json.readTree(ConsolaDroolsTest.class.getResourceAsStream("/cenarios.json"));
-        ObjectNode pedido = json.createObjectNode().put("versaoKB", "6");
+        ObjectNode pedido = json.createObjectNode().put("versaoKB", MotorDrools.VERSAO_KB);
         var passos = pedido.putArray("passos");
-        for (String seq : new String[] {"base", "normal"}) {
-            c.get("sequencias").get(seq).forEach(id -> c.get("cenarios").forEach(x -> {
-                if (x.get("id").equals(id)) {
-                    passos.add(x.get("passo"));
-                }
-            }));
-        }
+        c.get("sequencias").get("completa").forEach(id -> c.get("cenarios").forEach(x -> {
+            if (x.get("id").equals(id)) {
+                passos.add(x.get("passo"));
+            }
+        }));
         int factos = json.readTree(MOTOR.infere(pedido.toString())).get("factos").size();
         assertTrue(s.contains("\n" + factos + " factos ("), s);
     }
 
     @Test
     void recuperacaoDeUmaMaquina() {
-        // web_srv_01/ev_a1 ja vem recuperado no cenario 39; app_srv_01/ev_k1 (c11b) nao
+        // web_srv_01/ev_a1 ja vem recuperado no cenario 39; app_srv_01/ev_k1 (c11a) nao
         String s = consola("13", "8", "app_srv_01.", "ev_k1.", "0");
         assertTrue(s.contains("   app_srv_01 (evento ev_k1)"), s);
         Matcher m = Pattern.compile("Evento do compromisso: (\\d+) factos novos").matcher(s);
@@ -245,8 +245,8 @@ class ConsolaDroolsTest {
     @Test
     void carregarABaseDoModuloOuOutroFicheiro() {
         String s = consola("1", "base.", "1", "'src/test/resources/factos_iniciais_r7.json'.", "1", "nao_existe.json", "0");
-        assertEquals(3, s.split("Base carregada: 314 factos e 92 regras\\.", -1).length, s);
-        assertTrue(s.contains("Base carregada: 2 factos e 92 regras."), s);
+        assertEquals(3, s.split("Base carregada: 390 factos e 107 regras\\.", -1).length, s);
+        assertTrue(s.contains("Base carregada: 2 factos e 107 regras."), s);
         assertTrue(s.contains("Nao foi possivel carregar a base: factos iniciais: nao existe nao_existe.json"), s);
     }
 

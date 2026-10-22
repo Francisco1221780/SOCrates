@@ -1,5 +1,5 @@
-% Cenario 10b - Acesso apos reconhecimento: login da mesma origem 5 min depois (janela de 15 min) -> acesso suspeito:
-%   revogar credenciais e cortar sessoes, sem isolar a maquina.
+% Cenario 10b - C2 depois de um acesso suspeito: 20 min depois, web_srv_02 fala com um C2 catalogado. Coincidem no ativo
+%   e no tempo, mas nada liga o login ao trafego -> compromisso provavel, sem isolar.
 
-:- novo_facto(login_ok(ev_j2,web_srv_02,ip_192_0_2_77,ssh)).
-:- novo_facto(tempo(ev_j2,6300)).
+:- novo_facto(trafego_saida(ev_j3,web_srv_02,c2_198_51_100_7)).
+:- novo_facto(tempo(ev_j3,7500)).

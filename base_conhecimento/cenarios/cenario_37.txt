@@ -1,5 +1,5 @@
 % Cenario 37 - Porto de destino que chega depois: outro exploit de Apache contra web_srv_08 vindo da rede interna, sem o
-%   porto. Como no cenario 35, a consola vulneravel esta ao alcance -> exploracao possivel. O porto chega no 37b.
+%   porto. Como no cenario 35, a consola vulneravel esta ao alcance -> exploracao possivel. O porto chega no 37a.
 
 :- novo_facto(alerta_ids(ev_ae1,web_srv_08,sig_apache_path_traversal)).
 :- novo_facto(origem(ev_ae1,ip_192_0_2_160)).

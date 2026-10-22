@@ -1,5 +1,5 @@
 {
-  "versaoKB":"6",
+  "versaoKB":"6.1",
   "factos": [
     {"predicado":"zona","args": ["web_srv_01", "dmz" ]},
     {"predicado":"zona","args": ["web_srv_02", "dmz" ]},
@@ -416,6 +416,172 @@
     {"predicado":"prioridade_acima","args": ["p1", "p1" ]},
     {"predicado":"prioridade_acima","args": ["p2", "p1" ]},
     {"predicado":"prioridade_acima","args": ["p3", "p2" ]},
-    {"predicado":"prioridade_acima","args": ["p4", "p3" ]}
+    {"predicado":"prioridade_acima","args": ["p4", "p3" ]},
+    {"predicado":"pergunta_fecho","args": ["compromisso", "maquina_recuperada" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "maquina_recuperada",
+        "O ticket pede para isolar a maquina comprometida. A maquina ja foi recuperada (limpa ou reinstalada) e pode voltar a ligar-se a rede?"
+      ]
+    },
+    {"predicado":"opcao_resposta","args": ["maquina_recuperada", "sim", "Sim, a maquina esta recuperada" ]},
+    {"predicado":"opcao_resposta","args": ["maquina_recuperada", "nao_sei", "Ainda nao" ]},
+    {"predicado":"pergunta_fecho","args": ["propagacao", "maquinas_recuperadas" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "maquinas_recuperadas",
+        "O ticket pede para isolar a origem e o destino do ataque. As duas maquinas ja foram recuperadas (limpas ou reinstaladas)?"
+      ]
+    },
+    {"predicado":"opcao_resposta","args": ["maquinas_recuperadas", "sim", "Sim, as duas maquinas estao recuperadas" ]},
+    {"predicado":"opcao_resposta","args": ["maquinas_recuperadas", "nao_sei", "Ainda nao" ]},
+    {"predicado":"pergunta_fecho","args": ["inventario_rede_incompleto", "inventario_rede_completo" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "inventario_rede_completo",
+        "O ticket pede para recolher o inventario de rede deste ativo (portos e servicos abertos). O inventario ja esta completo?"
+      ]
+    },
+    {
+      "predicado":"opcao_resposta",
+      "args": ["inventario_rede_completo", "sim", "Sim, o inventario de rede esta completo" ]
+    },
+    {"predicado":"opcao_resposta","args": ["inventario_rede_completo", "nao_sei", "Ainda nao" ]},
+    {"predicado":"pergunta_fecho","args": ["sbom_incompleto", "sbom_completo" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "sbom_completo",
+        "O ticket pede para recolher o inventario de software deste ativo. O inventario ja esta completo?"
+      ]
+    },
+    {"predicado":"opcao_resposta","args": ["sbom_completo", "sim", "Sim, o inventario de software esta completo" ]},
+    {"predicado":"opcao_resposta","args": ["sbom_completo", "nao_sei", "Ainda nao" ]},
+    {"predicado":"pergunta_fecho","args": ["politica_por_confirmar", "acesso_autorizado" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "acesso_autorizado",
+        "Houve um login da DMZ para a rede interna e a politica deste servico esta incompleta. Depois de verificar a politica de acesso, este acesso esta autorizado?"
+      ]
+    },
+    {"predicado":"opcao_resposta","args": ["acesso_autorizado", "sim", "Sim, o acesso esta autorizado" ]},
+    {"predicado":"opcao_resposta","args": ["acesso_autorizado", "nao", "Nao, o acesso nao esta autorizado" ]},
+    {"predicado":"opcao_resposta","args": ["acesso_autorizado", "nao_sei", "Nao sei, ainda nao consegui verificar" ]},
+    {"predicado":"pergunta_fecho","args": ["configuracao_por_confirmar", "configuracao_ativa" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "configuracao_ativa",
+        "Falta saber uma configuracao do servico atacado (a indicada no motivo do ticket). Depois de verificar, a configuracao esta ativa?"
+      ]
+    },
+    {"predicado":"opcao_resposta","args": ["configuracao_ativa", "sim", "Sim, a configuracao esta ativa" ]},
+    {"predicado":"opcao_resposta","args": ["configuracao_ativa", "nao", "Nao, a configuracao nao esta ativa" ]},
+    {"predicado":"opcao_resposta","args": ["configuracao_ativa", "nao_sei", "Nao sei, ainda nao consegui verificar" ]},
+    {"predicado":"pergunta_fecho","args": ["versao_por_confirmar", "versao_afetada" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "versao_afetada",
+        "Nao se sabe a versao do programa atacado nesta maquina (ou nao esta num formato reconhecido). Depois de verificar a versao instalada, ela esta afetada pela vulnerabilidade do ataque?"
+      ]
+    },
+    {"predicado":"opcao_resposta","args": ["versao_afetada", "sim", "Sim, a versao instalada esta afetada" ]},
+    {"predicado":"opcao_resposta","args": ["versao_afetada", "nao", "Nao, a versao instalada nao esta afetada" ]},
+    {"predicado":"opcao_resposta","args": ["versao_afetada", "nao_sei", "Nao sei, ainda nao consegui verificar" ]},
+    {"predicado":"pergunta_fecho","args": ["catalogo_incompleto", "catalogo_afetado" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "catalogo_afetado",
+        "O catalogo ainda nao diz que versoes a vulnerabilidade do ataque afeta. Depois de consultar o fabricante, a versao instalada nesta maquina esta afetada?"
+      ]
+    },
+    {"predicado":"opcao_resposta","args": ["catalogo_afetado", "sim", "Sim, a versao instalada esta afetada" ]},
+    {"predicado":"opcao_resposta","args": ["catalogo_afetado", "nao", "Nao, a versao instalada nao esta afetada" ]},
+    {"predicado":"opcao_resposta","args": ["catalogo_afetado", "nao_sei", "Nao sei, ainda nao consegui verificar" ]},
+    {"predicado":"pergunta_fecho","args": ["exploracao_possivel", "vulnerabilidade_tratada" ]},
+    {"predicado":"fecho_por_acao","args": ["exploracao_possivel" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "vulnerabilidade_tratada",
+        "O ticket pede para verificar o host e corrigir a vulnerabilidade. O host foi verificado e a vulnerabilidade corrigida?"
+      ]
+    },
+    {"predicado":"opcao_resposta","args": ["vulnerabilidade_tratada", "sim", "Sim, esta verificado e corrigido" ]},
+    {"predicado":"opcao_resposta","args": ["vulnerabilidade_tratada", "nao_sei", "Ainda nao" ]},
+    {"predicado":"pergunta_fecho","args": ["exposicao_de_dados", "exposicao_tratada" ]},
+    {"predicado":"fecho_por_acao","args": ["exposicao_de_dados" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "exposicao_tratada",
+        "O ticket pede para conter o ataque e avaliar os dados expostos. A origem foi contida e os dados expostos foram avaliados?"
+      ]
+    },
+    {"predicado":"opcao_resposta","args": ["exposicao_tratada", "sim", "Sim, esta contido e avaliado" ]},
+    {"predicado":"opcao_resposta","args": ["exposicao_tratada", "nao_sei", "Ainda nao" ]},
+    {"predicado":"pergunta_fecho","args": ["movimento_lateral", "credenciais_revogadas" ]},
+    {"predicado":"fecho_por_acao","args": ["movimento_lateral" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": ["credenciais_revogadas", "O ticket pede para revogar as credenciais e cortar as sessoes. Isso ja foi feito?" ]
+    },
+    {"predicado":"opcao_resposta","args": ["credenciais_revogadas", "sim", "Sim, ja foi feito" ]},
+    {"predicado":"opcao_resposta","args": ["credenciais_revogadas", "nao_sei", "Ainda nao" ]},
+    {"predicado":"pergunta_fecho","args": ["acesso_suspeito", "acesso_verificado" ]},
+    {"predicado":"fecho_por_acao","args": ["acesso_suspeito" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "acesso_verificado",
+        "O ticket pede para revogar as credenciais e verificar o acesso. Isso ja foi feito e o acesso esta esclarecido?"
+      ]
+    },
+    {"predicado":"opcao_resposta","args": ["acesso_verificado", "sim", "Sim, esta feito e esclarecido" ]},
+    {"predicado":"opcao_resposta","args": ["acesso_verificado", "nao_sei", "Ainda nao" ]},
+    {"predicado":"pergunta_fecho","args": ["impacto_ambiguo", "processos_inspecionados" ]},
+    {"predicado":"fecho_por_acao","args": ["impacto_ambiguo" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "processos_inspecionados",
+        "O ticket pede para inspecionar os processos do host. A inspecao ja foi feita e o caso esta esclarecido?"
+      ]
+    },
+    {"predicado":"opcao_resposta","args": ["processos_inspecionados", "sim", "Sim, esta inspecionado e esclarecido" ]},
+    {"predicado":"opcao_resposta","args": ["processos_inspecionados", "nao_sei", "Ainda nao" ]},
+    {"predicado":"pergunta_fecho","args": ["vigilancia", "vigilancia_concluida" ]},
+    {"predicado":"fecho_por_acao","args": ["vigilancia" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": ["vigilancia_concluida", "O ativo esta em vigilancia ativa. Ja se pode terminar a vigilancia?" ]
+    },
+    {"predicado":"opcao_resposta","args": ["vigilancia_concluida", "sim", "Sim, pode terminar" ]},
+    {"predicado":"opcao_resposta","args": ["vigilancia_concluida", "nao_sei", "Ainda nao" ]},
+    {"predicado":"pergunta_fecho","args": ["comunicacao_c2", "trafego_c2_investigado" ]},
+    {"predicado":"fecho_por_acao","args": ["comunicacao_c2" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": [
+        "trafego_c2_investigado",
+        "O ticket pede para investigar o trafego para o endereco de C2. A investigacao ja terminou?"
+      ]
+    },
+    {"predicado":"opcao_resposta","args": ["trafego_c2_investigado", "sim", "Sim, a investigacao terminou" ]},
+    {"predicado":"opcao_resposta","args": ["trafego_c2_investigado", "nao_sei", "Ainda nao" ]},
+    {"predicado":"pergunta_fecho","args": ["tentativa_sem_impacto", "origem_registada" ]},
+    {"predicado":"fecho_por_acao","args": ["tentativa_sem_impacto" ]},
+    {
+      "predicado":"texto_pergunta",
+      "args": ["origem_registada", "O ticket pede para registar a tentativa e vigiar a origem. Isso ja foi feito?" ]
+    },
+    {"predicado":"opcao_resposta","args": ["origem_registada", "sim", "Sim, ja foi feito" ]},
+    {"predicado":"opcao_resposta","args": ["origem_registada", "nao_sei", "Ainda nao" ]}
   ]
 }

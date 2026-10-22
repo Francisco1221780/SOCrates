@@ -4,6 +4,8 @@ import socrates.backend.application.InferenceService;
 import socrates.backend.domain.Resultado;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,13 +41,25 @@ public class ExplicacaoController {
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponse(responseCode = "400", description = "Pedido invalido: JSON, versaoKB, passos, factos, termos ou os "
-            + "campos da explicacao")
-    @ApiResponse(responseCode = "404", description = "Motor desconhecido")
-    @ApiResponse(responseCode = "415", description = "O Content-Type nao e application/json")
+            + "campos da explicacao",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = @ExampleObject(name = "versaoKB errada", value = ExemplosResposta.ERRO_400)))
+    @ApiResponse(responseCode = "404", description = "Motor desconhecido",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = @ExampleObject(name = "Motor desconhecido", value = ExemplosResposta.ERRO_404)))
+    @ApiResponse(responseCode = "415", description = "O Content-Type nao e application/json",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = @ExampleObject(name = "Content-Type errado", value = ExemplosResposta.ERRO_415)))
     @ApiResponse(responseCode = "500", description = "O motor falhou (no como e no porque da pergunta, tambem uma "
-            + "resposta de outra versaoKB que as regras)")
-    @ApiResponse(responseCode = "503", description = "Todos os processos do motor estao ocupados; tentar mais tarde")
-    @ApiResponse(responseCode = "504", description = "O motor nao respondeu dentro do timeout")
+            + "resposta de outra versaoKB que as regras)",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = @ExampleObject(name = "swipl nao arrancou", value = ExemplosResposta.ERRO_500)))
+    @ApiResponse(responseCode = "503", description = "Todos os processos do motor estao ocupados; tentar mais tarde",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = @ExampleObject(name = "Ocupado", value = ExemplosResposta.ERRO_503)))
+    @ApiResponse(responseCode = "504", description = "O motor nao respondeu dentro do timeout",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = @ExampleObject(name = "Timeout", value = ExemplosResposta.ERRO_504)))
     @interface RespostasDeErro {
     }
 
@@ -54,7 +68,9 @@ public class ExplicacaoController {
      */
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
-    @ApiResponse(responseCode = "422", description = "O facto ou a pergunta pedidos nao estao na resposta do motor")
+    @ApiResponse(responseCode = "422", description = "O facto ou a pergunta pedidos nao estao na resposta do motor",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = @ExampleObject(name = "Facto que nao esta na resposta", value = ExemplosResposta.ERRO_422)))
     @interface SemAlvoNaResposta {
     }
 
@@ -78,7 +94,9 @@ public class ExplicacaoController {
                     + "premissa {tipo: facto, no}, {tipo: nao, termo} ou {tipo: calculada, termo}. Com regras=true, "
                     + "cada no concluido por uma regra traz tambem regraCompleta: {id, se, entao}, com os nomes das "
                     + "variaveis do soc_regras.txt (o mesmo formato de cada regra do GET /api/regras).")
-    @ApiResponse(responseCode = "200", description = "A arvore do facto")
+    @ApiResponse(responseCode = "200", description = "A arvore do facto",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = @ExampleObject(name = "Pergunta do cenario 7", value = ExemplosResposta.COMO_200)))
     @RespostasDeErro
     @SemAlvoNaResposta
     @PostMapping(path = "/{motor}/como",
@@ -89,7 +107,9 @@ public class ExplicacaoController {
             @PathVariable String motor,
             @Parameter(description = "Se cada no concluido traz a regra completa (regraCompleta)")
             @RequestParam(defaultValue = "false") boolean regras,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "versaoKB, passos e facto")
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "versaoKB, passos e facto",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = {@ExampleObject(name = "Arvore de uma pergunta do cenario 7", value = ExemplosPedido.COMO)}))
             @RequestBody(required = false) String corpo) {
         return responde((m, c) -> inferenceService.como(m, c, regras), motor, corpo);
     }
@@ -105,7 +125,9 @@ public class ExplicacaoController {
                     + "resposta. A resposta e {estado, motor, versaoKB, pergunta, geradaPor, regrasQueUsamAResposta, "
                     + "erro}: geradaPor e a arvore (com regras) do facto que gerou a pergunta, ou null se foi "
                     + "introduzida a mao; regrasQueUsamAResposta sao os numeros das regras que usam a resposta.")
-    @ApiResponse(responseCode = "200", description = "A explicacao da pergunta")
+    @ApiResponse(responseCode = "200", description = "A explicacao da pergunta",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = @ExampleObject(name = "Pergunta shell_servico do cenario 7", value = ExemplosResposta.PORQUE_PERGUNTA_200)))
     @RespostasDeErro
     @SemAlvoNaResposta
     @PostMapping(path = "/{motor}/porque-pergunta",
@@ -114,8 +136,9 @@ public class ExplicacaoController {
     public ResponseEntity<String> porquePergunta(
             @Parameter(description = "Motor de inferencia", schema = @Schema(allowableValues = {"drools", "prolog"}))
             @PathVariable String motor,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "versaoKB, passos, ativo, evento e "
-                    + "pergunta")
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "versaoKB, passos, ativo, evento e pergunta",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = {@ExampleObject(name = "Pergunta shell_servico do cenario 7", value = ExemplosPedido.PORQUE_PERGUNTA)}))
             @RequestBody(required = false) String corpo) {
         return responde(inferenceService::porquePergunta, motor, corpo);
     }
@@ -133,7 +156,9 @@ public class ExplicacaoController {
                     + "erro}: explicacao e uma lista de linhas {nivel, tipo, termo?, regra?, numero?}; as linhas regra "
                     + "trazem o se (cada condicao com verificada) e o entao. Os dois motores dao as mesmas linhas; so os "
                     + "numeros dos factos mudam.")
-    @ApiResponse(responseCode = "200", description = "As linhas da explicacao")
+    @ApiResponse(responseCode = "200", description = "As linhas da explicacao",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = @ExampleObject(name = "Compromisso de web_srv_04 no cenario 7", value = ExemplosResposta.WHYNOT_200)))
     @ApiResponse(responseCode = "501", description = "O motor nao tem o porque nao")
     @RespostasDeErro
     @PostMapping(path = "/{motor}/whynot",
@@ -142,8 +167,9 @@ public class ExplicacaoController {
     public ResponseEntity<String> porqueNao(
             @Parameter(description = "Motor de inferencia", schema = @Schema(allowableValues = {"drools", "prolog"}))
             @PathVariable String motor,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "versaoKB, passos, facto e "
-                    + "profundidade")
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "versaoKB, passos, facto e profundidade",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(type = "object"),
+                    examples = {@ExampleObject(name = "Compromisso de web_srv_04 no cenario 7", value = ExemplosPedido.WHYNOT)}))
             @RequestBody(required = false) String corpo) {
         return responde(inferenceService::porqueNao, motor, corpo);
     }

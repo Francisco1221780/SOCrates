@@ -1,0 +1,4 @@
+% Cenario 25a - A configuracao chega depois: o inventario passa a dizer que web_srv_10 tem o CGI desligado.
+%   A execucao de comandos fica excluida (deixa de ser investigada) e o ticket "configuracao por confirmar" fecha.
+
+:- novo_facto(configuracao(web_srv_10_apache,cgi_ativo,nao)).

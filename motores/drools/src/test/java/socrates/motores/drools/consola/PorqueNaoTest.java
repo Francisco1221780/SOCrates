@@ -71,7 +71,7 @@ class PorqueNaoTest {
         JsonNode c = JSON.readTree(le("/cenarios.json"));
         Map<String, JsonNode> porId = new LinkedHashMap<>();
         c.get("cenarios").forEach(x -> porId.put(x.get("id").asText(), x.get("passo")));
-        ObjectNode pedido = JSON.createObjectNode().put("versaoKB", "6");
+        ObjectNode pedido = JSON.createObjectNode().put("versaoKB", MotorDrools.VERSAO_KB);
         var passos = pedido.putArray("passos");
         for (String seq : new String[] {"base", "normal"}) {
             c.get("sequencias").get(seq).forEach(id -> passos.add(porId.get(id.asText())));

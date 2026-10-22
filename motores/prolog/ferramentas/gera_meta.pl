@@ -13,6 +13,11 @@
 % O padrao so distingue o nome e o numero de argumentos do facto (ex.: alerta_ids(_,_,_)).
 % O --verificar compara os termos, nao o texto: a ordem e a formatacao das linhas no soc_suporte.txt nao contam.
 
+% Um erro ao ler este ficheiro (ex.: um erro de sintaxe) faz o swipl sair com codigo 1, e nao 0, mesmo que o main corra.
+% Quem chama o --verificar tambem so conta como em dia o codigo 0 com a linha "O metaconhecimento esta atualizado.":
+% um ficheiro que nao seja este (sem main) sai com 0 sem a escrever.
+:- set_prolog_flag(on_error, status).
+
 % Os operadores das regras, os mesmos do soc_motor.pl (para este ficheiro se ler antes ou sem o motor).
 :- op(220, xfx, entao).
 :- op(35, xfy, se).

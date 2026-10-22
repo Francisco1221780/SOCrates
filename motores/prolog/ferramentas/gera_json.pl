@@ -18,13 +18,15 @@
 %   factos        facto(N, F) do soc_factos.txt, por ordem de numero
 %   cenarios      ordem, grupo e dependencias: cenarios/indice.txt; id e descricao: soc_cenarios.pl (cenario/3);
 %                 factos de cada passo: o ficheiro do cenario (linhas novo_facto(F)), pela ordem do ficheiro
-%   sequencias    sequencia_base/1, sequencia_atualizacoes/1 e sequencia_normal/1 do soc_cenarios.pl
+%   sequencias    sequencia_base/1, sequencia_atualizacoes/1, sequencia_normal/1 e sequencia_completa/1 do soc_cenarios.pl
+%                 (a completa e uma regra: corre-se sobre as outras; sem ela, e a base, as atualizacoes e a normal)
 %
 % Dependencias, como o indice as descreve:
 %   telemetria    correm-se pela ordem da lista: cada cenario depende do anterior que nao e alternativa de outro
 %   atualizacoes  "carregam-se depois do cenario N" (cabecalho da seccao)
 %   normal        independentes ("ou sozinhos so com o estado inicial"), salvo "O X so faz sentido depois do Y"
-%   respostas     "carregam-se depois do cenario a que respondem": o cenario citado no texto ("do cenario N", "do Nb")
+%   alternativas  seccao "Alternativas": dependem do cenario citado no texto ("do cenario N", "do Na"), como as antigas
+%                 respostas do analista (seccao "Respostas", que a base v6.1 ja nao tem)
 %   alternativas  "(em alternativa ao N)" e as linhas com varios ficheiros e "(so UM)"
 % Se o indice tiver uma linha que nao se percebe, ou faltar um ficheiro, para com erro em vez de gerar dados errados.
 
@@ -221,19 +223,32 @@ termo_var_json(X, X).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CENARIOS
 
-cenarios(Base, Cenarios, json([base=SB, atualizacoes=SA, normal=SN])) :-
+cenarios(Base, Cenarios, json([base=SB, atualizacoes=SA, normal=SN, completa=SC])) :-
 	directory_file_path(Base, 'soc_cenarios.pl', FC),
 	le_termos(FC, TC),
 	findall(c(Id, Desc, Fich), member(cenario(Id, Desc, Fich), TC), Catalogo),
 	( member(sequencia_base(SB), TC) -> true ; SB = [] ),
 	( member(sequencia_atualizacoes(SA), TC) -> true ; SA = [] ),
 	( member(sequencia_normal(SN), TC) -> true ; SN = [] ),
+	sequencia_completa(TC, SB, SA, SN, SC),
 	directory_file_path(Base, 'cenarios/indice.txt', FI),
 	le_linhas(FI, Linhas),
 	entradas_indice(Linhas, Entradas),
 	verifica_indice(Base, Entradas, Catalogo),
 	dependencias(Entradas, Catalogo, ComDeps),
 	findall(J, ( nth1(Ordem, ComDeps, E), cenario_json(Base, Catalogo, Ordem, E, J) ), Cenarios).
+
+% A sequencia completa: a regra sequencia_completa/1 do soc_cenarios.pl, corrida sobre as sequencias lidas; sem a regra,
+% a base, as atualizacoes e a normal, por esta ordem.
+sequencia_completa(TC, SB, SA, SN, SC) :-
+	(   member((sequencia_completa(L) :- Corpo), TC)
+	->  copy_term((L :- Corpo), (SC :- C)),
+	    setup_call_cleanup(
+		( assertz(gj_seq:sequencia_base(SB)), assertz(gj_seq:sequencia_atualizacoes(SA)), assertz(gj_seq:sequencia_normal(SN)) ),
+		( gj_seq:C -> true ; throw(erro_base('a regra sequencia_completa/1 do soc_cenarios.pl falhou')) ),
+		( retractall(gj_seq:sequencia_base(_)), retractall(gj_seq:sequencia_atualizacoes(_)), retractall(gj_seq:sequencia_normal(_)) ))
+	;   append([SB, SA, SN], SC)
+	).
 
 % Le o indice: as seccoes (cabecalho e texto) e as entradas e(Grupo, Ficheiros, Texto, TextoDaSeccao).
 % Um cabecalho de seccao comeca com 3 espacos depois do "%"; uma entrada comeca com 5 espacos e "cenario_".
@@ -264,6 +279,7 @@ grupo_seccao(Cab, telemetria)  :- sub_string(Cab, 0, _, _, "Telemetria").
 grupo_seccao(Cab, atualizacao) :- sub_string(Cab, 0, _, _, "Atualizacoes").
 grupo_seccao(Cab, normal)      :- sub_string(Cab, 0, _, _, "Atividade normal").
 grupo_seccao(Cab, resposta)    :- sub_string(Cab, 0, _, _, "Respostas").
+grupo_seccao(Cab, alternativa) :- sub_string(Cab, 0, _, _, "Alternativas").
 
 % "cenario_07b_sim.txt, cenario_07b_nao.txt   texto" -> ficheiros e texto.
 entrada(Resto, Fichs, Texto) :-
@@ -359,6 +375,8 @@ depende(atualizacao, Cat, _, Cab, _, _, [Id]) :- !,
 	).
 depende(normal, Cat, _, Cab, Id, _, Deps) :- !,
 	findall(D, ( so_faz_sentido_depois(Cab, X, Y), id_numero(Cat, X, IdX), IdX == Id, id_numero(Cat, Y, D) ), Deps).
+depende(alternativa, Cat, Texto, Cab, Id0, Ant, Deps) :- !,
+	depende(resposta, Cat, Texto, Cab, Id0, Ant, Deps).
 depende(resposta, Cat, Texto, _, _, _, [Id]) :-
 	(   antes_de_alternativa(Texto, T1), cenario_citado(T1, Num) -> id_numero(Cat, Num, Id)
 	;   format(atom(M), 'indice.txt: nao percebo a que cenario responde "~w"', [Texto]), throw(erro_base(M))

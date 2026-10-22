@@ -1,5 +1,5 @@
-% Cenario 35c - O sensor diz depois de que instancia veio a shell do cenario 35b: do httpd da consola, a instalacao
-%   vulneravel que o ataque alcancou -> compromisso confirmado; o provavel fica superado.
-%   Em alternativa ao 35d (usa-se um dos dois). Depende do 35b.
+% Cenario 35c - em vez do 35b: o sensor diz que a shell do cenario 35a veio do httpd do SITE, a instalacao corrigida.
+%   E o mesmo programa, mas outra instancia, que o ataque nao podia explorar -> impacto ambiguo: inspecionar os processos,
+%   sem isolar. Depende do 35a.
 
-:- novo_facto(evento_instancia(ev_ac2,web_srv_08_httpd_consola)).
+:- novo_facto(evento_instancia(ev_ac2,web_srv_08_httpd_site)).
