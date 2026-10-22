@@ -3,7 +3,6 @@ package socrates.backend.engine.drools;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import socrates.backend.domain.Metaconhecimento;
 import socrates.backend.domain.SaudeMotor;
 import org.junit.jupiter.api.Test;
 
@@ -35,7 +34,6 @@ class DroolsAdapterTest {
         assertTrue(e.pronto(), e.toString());
         assertEquals("6", e.versaoKB());
         assertTrue(e.baseCarregada(), e.toString());
-        assertEquals(Metaconhecimento.NAO_APLICAVEL, e.metaconhecimento());
         assertTrue(e.erros().isEmpty(), e.toString());
     }
 

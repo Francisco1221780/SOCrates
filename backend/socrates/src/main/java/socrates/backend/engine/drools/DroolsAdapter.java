@@ -1,7 +1,6 @@
 package socrates.backend.engine.drools;
 
 import socrates.backend.application.MotorInferencia;
-import socrates.backend.domain.Metaconhecimento;
 import socrates.backend.domain.SaudeMotor;
 import socrates.motores.drools.EstadoMotor;
 import socrates.motores.drools.MotorDrools;
@@ -31,7 +30,6 @@ public class DroolsAdapter implements MotorInferencia {
     public SaudeMotor estado() {
         EstadoMotor estado = motor.estado();
         boolean baseCarregada = estado.regrasCarregadas() && estado.factosIniciais() > 0;
-        return new SaudeMotor(nome(), estado.pronto(), MotorDrools.VERSAO_KB, baseCarregada,
-                Metaconhecimento.NAO_APLICAVEL, estado.erros());
+        return new SaudeMotor(nome(), estado.pronto(), MotorDrools.VERSAO_KB, baseCarregada, estado.erros());
     }
 }

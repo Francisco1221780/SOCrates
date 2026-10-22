@@ -25,8 +25,7 @@ O `--verificar` é o teste do AC13: carrega o motor, as regras e o suporte, calc
 do `soc_suporte.txt`. Compara os termos, não o texto (a ordem e a formatação das linhas não contam). Não escreve nada
 no `stdout`; no `stderr` diz o que está mal, por tipo de facto: `Falta`, `A mais`, `Repetido` ou `Desatualizado`
 (com as regras que estão e as que as regras dão). Se a base não carregar (ex.: um erro de sintaxe nas regras), também
-sai com código 1. Corre na CI em cada PR (teste `ac13_meta_em_dia`) e é o que o health do backend usa para
-dizer se o metaconhecimento está em dia (`PrologAdapter.estado()`; o script vai no jar do backend).
+sai com código 1. Corre na CI em cada PR (teste `ac13_meta_em_dia`).
 
 ## Regenerar os JSON (`gera_json.pl`)
 
