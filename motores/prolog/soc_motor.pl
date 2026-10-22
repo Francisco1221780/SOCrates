@@ -8,8 +8,9 @@
 %      verificam o seu LHS e em que entra o facto que a acionou (o sp_exp2 so disparava a primeira).
 %      Quando chega um facto que uma condicao calculada da regra le (condicao_le/2 da base, v6), a regra
 %      avalia-se por inteiro, sem exigir que esse facto seja uma das premissas.
-%   3. PONTO FIXO: o arranca_motor percorre os factos por ordem, incluindo os que vai criando,
-%      e repete a passagem ate nao haver conclusoes novas (no sp_exp2 era preciso chama-lo varias vezes).
+%   3. PONTO FIXO: o arranca_motor percorre os factos por ordem, incluindo os que vai criando, ate nao haver
+%      conclusoes novas (no sp_exp2 era preciso chama-lo varias vezes). Os factos ja processados numa corrida
+%      anterior so voltam a tentar as regras que leem algum tipo de facto novo (ver passagens/0).
 %   4. SEM PAUSA NEM ESCRITA no cria_facto (o get0 e o write do sp_exp2). As duas passam a ser opcoes,
 %      desligadas por omissao: define_opcao(mostrar_conclusoes, sim) / define_opcao(passo_a_passo, sim).
 %   5. EXPLICACOES adaptadas: o "como" mostra uma arvore e nao repete o que ja explicou;
@@ -29,6 +30,7 @@
 %   ?- whynot(ataque_dirigido(ev_e1,web_srv_04)).
 % =====================================================================================
 
+:- dynamic processado_ate/1, functor_novo/2, regra_le_cache/2, calculada_cache/3, lidos_cache/2.
 :-op(220,xfx,entao).
 :-op(35,xfy,se).
 :-op(240,fx,regra).
@@ -65,6 +67,10 @@ carrega_bc :-
 
 % Volta a carregar do zero: apaga os factos da execucao anterior (concluidos e injetados) e as justificacoes.
 carrega_bc(NBC) :-
+	retractall(processado_ate(_)),
+	retractall(regra_le_cache(_, _)),
+	retractall(calculada_cache(_, _, _)),
+	retractall(lidos_cache(_, _)),
 	retractall(justifica(_,_,_)),
 	retractall(ja_explicado(_)),
 	( current_predicate(facto/2) -> retractall(facto(_,_)) ; true ),
@@ -123,25 +129,73 @@ arranca_motor :-
 	;   format('~w factos novos (n. ~w a ~w).~n', [Novos, Primeiro, Fim])
 	).
 
-% Uma passagem percorre todos os factos por ordem, incluindo os que vai criando.
-% Repete-se ate uma passagem inteira nao criar nada: assim uma condicao calculada que so passa a ser
-% verdadeira com um facto que nao e premissa da regra (ex.: o tempo de um evento) tambem e apanhada.
+% Uma passagem percorre todos os factos por ordem, incluindo os que vai criando, ate ao ponto fixo.
+% Uma condicao calculada que passa a ser verdadeira com um facto que nao e premissa da regra (ex.: o tempo de um
+% evento) e apanhada pela reavaliacao do condicao_le/2 (dispara_regra/3), como no Drools.
+% Otimizacao (sem mudar o resultado): os factos que ja tinham sido processados numa corrida anterior (numero ate
+% processado_ate/1) so voltam a tentar as regras que leem algum tipo de facto novo desde essa corrida (functor_novo/2).
+% Uma regra sem nenhum desses tipos nao pode ter instanciacoes novas: os factos so se acrescentam, por isso uma negacao
+% so pode passar de verdadeira a falsa, e uma condicao calculada so passa a verdadeira com um facto do condicao_le/2.
+% A ordem pela qual as conclusoes aparecem (e por isso a numeracao e as justificacoes) fica igual.
 passagens :-
-	ultimo_facto(Antes),
-	processa_factos_desde(1),
-	ultimo_facto(Depois),
-	( Depois > Antes -> passagens ; true ).
+	( processado_ate(W) -> true ; W = 0 ),
+	retractall(functor_novo(_, _)),
+	forall(( facto(N, F), N > W ), regista_functor_novo(F)),
+	processa_factos_desde(1, W),
+	ultimo_facto(U),
+	retractall(processado_ate(_)),
+	assertz(processado_ate(U)).
 
-processa_factos_desde(N) :-
+regista_functor_novo(F) :-
+	functor(F, Nome, A),
+	( functor_novo(Nome, A) -> true ; assertz(functor_novo(Nome, A)) ).
+
+processa_factos_desde(N, _) :-
 	ultimo_facto(U), N > U, !.
-processa_factos_desde(N) :-
-	( facto(N, Facto) -> processa_facto(N, Facto) ; true ),
+processa_factos_desde(N, W) :-
+	( facto(N, Facto) -> processa_facto(N, Facto, W) ; true ),
 	N1 is N + 1,
-	processa_factos_desde(N1).
+	processa_factos_desde(N1, W).
 
-processa_facto(N, Facto) :-
+processa_facto(N, Facto, W) :-
 	facto_dispara_regras1(Facto, LRegras),
-	forall(member(ID, LRegras), dispara_regra(N, Facto, ID)).
+	(   N > W
+	->  forall(member(ID, LRegras), dispara_regra(N, Facto, ID))
+	;   forall(( member(ID, LRegras), regra_le_algo_novo(ID) ), dispara_regra(N, Facto, ID))
+	).
+
+% A regra ID le algum tipo de facto novo: numa condicao positiva, numa comparacao, ou atraves do condicao_le/2 de uma
+% condicao calculada. Uma regra com uma condicao calculada negada (nao C) avalia-se sempre.
+regra_le_algo_novo(ID) :-
+	tipos_lidos_pela_regra(ID, Tipos),
+	(   Tipos == sempre
+	->  true
+	;   member(Nome/A, Tipos), functor_novo(Nome, A)
+	->  true
+	).
+
+tipos_lidos_pela_regra(ID, Tipos) :-
+	regra_le_cache(ID, Tipos), !.
+tipos_lidos_pela_regra(ID, Tipos) :-
+	regra ID se LHS entao _, !,
+	findall(C, condicao_do_lhs(C, LHS), Cs),
+	(   member(nao C0, Cs), calculada(C0)
+	->  Tipos = sempre
+	;   findall(T, ( member(C, Cs), tipo_lido(C, T) ), Ts0),
+	    sort(Ts0, Tipos)
+	),
+	assertz(regra_le_cache(ID, Tipos)).
+
+tipo_lido(nao _, _) :- !, fail.
+tipo_lido(avalia(P), Nome/A) :- !, functor(P, Nome, A3), A is A3 - 1.
+tipo_lido(C, Nome/A) :-
+	calculada(C), !,
+	current_predicate(condicao_le/2),
+	functor(C, F, Ar), functor(C0, F, Ar),
+	condicao_le(C0, Lidos),
+	member(L, Lidos),
+	functor(L, Nome, A).
+tipo_lido(C, Nome/A) :- functor(C, Nome, A).
 
 % Metaconhecimento: que regras o facto pode disparar. Sem metaconhecimento na base, todas as regras.
 facto_dispara_regras1(Facto, LRegras) :-
@@ -164,9 +218,27 @@ dispara_regra(N, Facto, ID) :-
 		 memberchk(N, LFactos) ),
 	       concluir(RHS, ID, LFactos)),
 	forall(( regra ID se LHS entao RHS,
-		 \+ \+ facto_lido_por_condicao_calculada(Facto, LHS),
+		 \+ \+ facto_lido_por_condicao_calculada(Facto, ID),
 		 verifica_condicoes(LHS, LFactos) ),
 	       concluir(RHS, ID, LFactos)).
+
+% O facto e lido por uma condicao calculada positiva do LHS da regra ID: a base diz, com condicao_le(Condicao, Factos),
+% que factos podem tornar a condicao verdadeira. Sem condicao_le/2 na base (ex.: bases da UC), nunca se verifica.
+facto_lido_por_condicao_calculada(F, ID) :-
+	lidos_pela_regra(ID, Lidos),
+	member(L, Lidos),
+	\+ \+ F = L, !.
+
+% Os factos que as condicoes calculadas positivas da regra ID leem, calculados na primeira vez e guardados
+% (lidos_cache/2, que o carrega_bc limpa), para nao percorrer o SE de cada vez.
+lidos_pela_regra(ID, Lidos) :-
+	lidos_cache(ID, Lidos), !.
+lidos_pela_regra(ID, Lidos) :-
+	(   current_predicate(condicao_le/2), regra ID se LHS entao _
+	->  findall(L, ( condicao_do_lhs(C, LHS), C \= nao(_), calculada(C), condicao_le(C, Ls), member(L, Ls) ), Lidos)
+	;   Lidos = []
+	),
+	assertz(lidos_cache(ID, Lidos)).
 
 
 % O facto aparece numa condicao positiva do LHS (instancia as variaveis da regra)
@@ -177,18 +249,6 @@ facto_esta_numa_condicao(F, [_ e Fs]) :- facto_esta_numa_condicao(F, [Fs]).
 facto_esta_numa_condicao(F, [F]).
 facto_esta_numa_condicao(F, [avalia(F1)]) :- F =.. [H,H1|_], F1 =.. [H,H1|_].
 
-
-% O facto e lido por uma condicao calculada positiva do LHS: a base diz, com condicao_le(Condicao, Factos), que factos
-% podem tornar a condicao verdadeira. Sem condicao_le/2 na base (ex.: bases da UC), nunca se verifica.
-
-facto_lido_por_condicao_calculada(F, LHS) :-
-	current_predicate(condicao_le/2),
-	condicao_do_lhs(C, LHS),
-	C \= nao(_),
-	calculada(C),
-	condicao_le(C, Lidos),
-	member(L, Lidos),
-	\+ \+ F = L, !.
 
 condicao_do_lhs(C, [L]) :- condicao_da_conjuncao(C, L).
 
@@ -217,11 +277,21 @@ verifica_condicao(X, N)                 :- facto(N, X).
 chama_calculada(C) :-
 	catch(call(C), error(instantiation_error, _), fail).
 
-% C e uma condicao calculada (declarada na base com condicao_calculada/1)?
+% C e uma condicao calculada (declarada na base com condicao_calculada/1)? A resposta depende so do nome e da aridade
+% (as declaracoes sao do tipo condicao_calculada(depois(_, _, _))), por isso guarda-se por functor (calculada_cache/3).
 calculada(C) :-
-	current_predicate(condicao_calculada/1),
 	callable(C),
-	\+ \+ condicao_calculada(C).
+	functor(C, F, A),
+	(   calculada_cache(F, A, R)
+	->  R == sim
+	;   functor(C0, F, A),
+	    (   current_predicate(condicao_calculada/1), \+ \+ condicao_calculada(C0)
+	    ->  R = sim
+	    ;   R = nao
+	    ),
+	    assertz(calculada_cache(F, A, R)),
+	    R == sim
+	).
 
 
 avalia(N, P) :-
@@ -254,6 +324,7 @@ cria_facto(F, ID, LFactos) :-
 	retract(ultimo_facto(N1)),
 	N is N1 + 1,
 	assertz(ultimo_facto(N)),
+	regista_functor_novo(F),
 	assertz(justifica(N, ID, LFactos)),
 	assertz(facto(N, F)),
 	anuncia(N, F, ID).
