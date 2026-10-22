@@ -14626,7 +14626,7 @@ const V97_BUSTO_G = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAP8AAACoCAYAA
   const t = document.querySelector('.brand-title');
   if (t) t.innerHTML = '<span class="v97-w"><b>SOC</b>rates</span><span class="v97-tag">Detect · Analyse · Respond</span>';
   const brand = document.querySelector('.brand');
-  if (brand) brand.title = 'SOCrates · sistema pericial SOC · equipa Cyber Rangers (MEIA)';
+  if (brand) { brand.removeAttribute('title'); brand.querySelectorAll('[title]').forEach(e => e.removeAttribute('title')); }
   document.title = 'SOCrates · Sistema Pericial SOC';
   const ov = $('canvasEmptyOverlay');
   if (ov) {
@@ -18208,7 +18208,7 @@ function v144Html() {
       ${V144_M.map(linha).join('')}
       <div class="v144-leg"><span><i class="b"></i>mediana</span><span><i class="w"></i>mín – máx</span><span><i class="p"></i>cada medição</span><span><i class="f"></i>custo fixo (pedido só com a base)</span><span class="v144-esc">escala <button type="button" data-v144="lin" class="${lin ? 'on' : ''}">linear</button><button type="button" data-v144="log" class="${lin ? '' : 'on'}">logarítmica</button></span></div>
     </div>
-    <details class="v144-met"><summary>Como se mede (para o relatório)</summary>
+    <details class="v144-met"><summary>Como se mede</summary>
       <ul>
         <li>Tempo medido no browser com <code>performance.now()</code>, do envio do pedido até a resposta JSON estar lida: inclui HTTP local, validação, motor e serialização. É o tempo que o utilizador sente, igual para os dois motores.</li>
         <li>O servidor não guarda estado: cada pedido corre <b>todos</b> os passos desde o início, por isso cada medição é uma inferência completa.</li>
@@ -18489,6 +18489,25 @@ v110Html = (function(prev) { return function() { let i = 0; return prev.apply(th
     .v112-cd.pl{border-color:#1b3a30 !important;background:#0a1714 !important}
     .v112-cd.pl .v112-r{background:#34d399 !important}`;
   document.head.appendChild(st);
+})();
+
+/* v156: logótipo sem legendas ao passar o rato (tira os title "Opção A/B" e "Início" do v100/v119)
+   e o clique no logótipo faz sempre alguma coisa: nas páginas do sistema volta à Consola (v119);
+   já na Consola, volta ao topo dos painéis e reenquadra o grafo. */
+(function() {
+  const limpa = () => document.querySelectorAll('.head-left .brand, .head-left .brand [title]').forEach(e => e.removeAttribute('title'));
+  limpa();
+  const b = document.querySelector('.head-left .brand');
+  if (b && window.MutationObserver) new MutationObserver(limpa).observe(b, { attributes: true, attributeFilter: ['title'], subtree: true, childList: true });
+  let fora = false;
+  document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.head-left .brand')) fora = v119Fora(); }, true);
+  document.addEventListener('click', e => {
+    if (!e.target.closest || !e.target.closest('.head-left .brand') || fora) return;
+    document.querySelectorAll('.app .panel-body, .app .v89-painel, .app [class*="-scroll"]').forEach(el => { try { el.scrollTo({ top: 0, behavior: 'smooth' }); } catch (er) {} });
+    if (S.v89 && S.v89.modo === 'grafo') {
+      try { if (NODES.length) animateCameraToVisibleGraph(450); else fit(); } catch (er) { try { fit(); } catch (e2) {} }
+    }
+  });
 })();
 
 // Arrancar a verificação inicial após todos os handlers estarem declarados
