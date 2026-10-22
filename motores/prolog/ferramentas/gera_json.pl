@@ -18,7 +18,8 @@
 %   factos        facto(N, F) do soc_factos.txt, por ordem de numero
 %   cenarios      ordem, grupo e dependencias: cenarios/indice.txt; id e descricao: soc_cenarios.pl (cenario/3);
 %                 factos de cada passo: o ficheiro do cenario (linhas novo_facto(F)), pela ordem do ficheiro
-%   sequencias    sequencia_base/1, sequencia_atualizacoes/1 e sequencia_normal/1 do soc_cenarios.pl
+%   sequencias    sequencia_base/1, sequencia_atualizacoes/1, sequencia_normal/1 e sequencia_completa/1 do soc_cenarios.pl
+%                 (a completa e uma regra: corre-se sobre as outras; sem ela, e a base, as atualizacoes e a normal)
 %
 % Dependencias, como o indice as descreve:
 %   telemetria    correm-se pela ordem da lista: cada cenario depende do anterior que nao e alternativa de outro
@@ -222,19 +223,32 @@ termo_var_json(X, X).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CENARIOS
 
-cenarios(Base, Cenarios, json([base=SB, atualizacoes=SA, normal=SN])) :-
+cenarios(Base, Cenarios, json([base=SB, atualizacoes=SA, normal=SN, completa=SC])) :-
 	directory_file_path(Base, 'soc_cenarios.pl', FC),
 	le_termos(FC, TC),
 	findall(c(Id, Desc, Fich), member(cenario(Id, Desc, Fich), TC), Catalogo),
 	( member(sequencia_base(SB), TC) -> true ; SB = [] ),
 	( member(sequencia_atualizacoes(SA), TC) -> true ; SA = [] ),
 	( member(sequencia_normal(SN), TC) -> true ; SN = [] ),
+	sequencia_completa(TC, SB, SA, SN, SC),
 	directory_file_path(Base, 'cenarios/indice.txt', FI),
 	le_linhas(FI, Linhas),
 	entradas_indice(Linhas, Entradas),
 	verifica_indice(Base, Entradas, Catalogo),
 	dependencias(Entradas, Catalogo, ComDeps),
 	findall(J, ( nth1(Ordem, ComDeps, E), cenario_json(Base, Catalogo, Ordem, E, J) ), Cenarios).
+
+% A sequencia completa: a regra sequencia_completa/1 do soc_cenarios.pl, corrida sobre as sequencias lidas; sem a regra,
+% a base, as atualizacoes e a normal, por esta ordem.
+sequencia_completa(TC, SB, SA, SN, SC) :-
+	(   member((sequencia_completa(L) :- Corpo), TC)
+	->  copy_term((L :- Corpo), (SC :- C)),
+	    setup_call_cleanup(
+		( assertz(gj_seq:sequencia_base(SB)), assertz(gj_seq:sequencia_atualizacoes(SA)), assertz(gj_seq:sequencia_normal(SN)) ),
+		( gj_seq:C -> true ; throw(erro_base('a regra sequencia_completa/1 do soc_cenarios.pl falhou')) ),
+		( retractall(gj_seq:sequencia_base(_)), retractall(gj_seq:sequencia_atualizacoes(_)), retractall(gj_seq:sequencia_normal(_)) ))
+	;   append([SB, SA, SN], SC)
+	).
 
 % Le o indice: as seccoes (cabecalho e texto) e as entradas e(Grupo, Ficheiros, Texto, TextoDaSeccao).
 % Um cabecalho de seccao comeca com 3 espacos depois do "%"; uma entrada comeca com 5 espacos e "cenario_".

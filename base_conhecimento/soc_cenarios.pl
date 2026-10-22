@@ -82,3 +82,8 @@ cenario(c36b, 'a politica autoriza o acesso do cenario 36 (em alternativa ao 36a
 sequencia_base([c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c10a,c10b,c11,c11a,c12,c13,c14,c15,c16,c17,c18,c19,c20,c20a,c21,c22,c23,c24,c24a,c25,c25a,c26,c27,c28,c29,c29a,c35,c35a,c35b,c36,c36a,c37,c37a,c38,c38a,c39]).
 sequencia_atualizacoes([c6a,c13a,c21a,c27a]).
 sequencia_normal([c30,c31,c32,c33,c34]).
+
+% Tudo o que chega ao sistema, pela ordem: a telemetria, as atualizacoes do inventario e do catalogo (que nao tem hora
+% e entram depois do cenario 39) e a atividade normal no fim (as horas mais tardias). E o que "injetar todos" corre nas
+% consolas dos dois motores e o que a UI corre na vista global; definido so aqui.
+sequencia_completa(L) :- sequencia_base(B), sequencia_atualizacoes(A), sequencia_normal(N), append([B, A, N], L).

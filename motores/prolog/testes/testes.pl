@@ -384,9 +384,11 @@ test(cenarios_coerentes) :-
 	B = C.sequencias.base,
 	append(B, C.sequencias.atualizacoes, BA),
 	append(B, C.sequencias.normal, BN),
-	forall(member(Seq, [B, BA, BN]), sequencia_valida(C, Seq)).
+	forall(member(Seq, [B, BA, BN, C.sequencias.completa]), sequencia_valida(C, Seq)),
+	append([B, C.sequencias.atualizacoes, C.sequencias.normal], C.sequencias.completa).
 
-% As sequencias como se usam: a base, a base com as atualizacoes, a base com a atividade normal (injeta_todos).
+% As sequencias como se usam: a base, a base com as atualizacoes, a base com a atividade normal, e a completa
+% (injeta_todos e a vista global da UI), que tem de ser a base, as atualizacoes e a normal, por esta ordem.
 sequencia_valida(C, Seq) :-
 	forall(nth1(I, Seq, Id),
 	       (   member(X, C.cenarios), X.id == Id, !,

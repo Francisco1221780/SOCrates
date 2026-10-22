@@ -63,7 +63,7 @@ Cada cenário é a telemetria que chega num momento (alertas, eventos dos hosts,
 | --- | --- |
 | `injeta_cenario(c2).` | Injeta um cenário pelo nome e corre o motor. |
 | `injeta_cenarios([c1,c2,c3]).` | Vários cenários, por ordem, com o motor a correr entre cada um. |
-| `injeta_todos.` | Recomeça do estado inicial (recarrega a base) e injeta os cenários da sequência base (1 a 29a e 35 a 39) e os de atividade normal 30 a 34, por ordem. No fim mostra o estado. |
+| `injeta_todos.` | Recomeça do estado inicial (recarrega a base) e injeta a `sequencia_completa` do `soc_cenarios.pl`, por ordem: a telemetria (1 a 29a e 35 a 39), as atualizações do inventário e do catálogo (06a, 13a, 21a, 27a) e a atividade normal (30 a 34). É o mesmo que a opção 13 da consola Drools e a vista global da UI. No fim mostra o estado. |
 | `injeta_cenario('cenarios/cenario_30.txt').` ou `injeta_ficheiro(...)` | Injeta um ficheiro pelo nome. Um caminho relativo procura-se primeiro na pasta de trabalho e depois na pasta do `soc_factos.txt`. |
 | `lista_cenarios.` | Mostra os nomes dos cenários e o que cada um faz. |
 
@@ -73,7 +73,7 @@ As respostas do analista não são cenários: o motor faz as perguntas (`pergunt
 
 ```prolog
 ?- injeta_todos.
-1250 factos (… concluidos pelo motor) | 61 incidentes | 61 tickets: 41 abertos, 20 fechados | 41 perguntas por responder
+1319 factos (… concluidos pelo motor) | 65 incidentes | 65 tickets: 39 abertos, 26 fechados | 39 perguntas por responder
 ?- introduz_facto(resposta_analista(web_srv_04, ev_e1, shell_servico, nao)), arranca_motor.
 ```
 
@@ -223,7 +223,8 @@ Com a base v6.1:
 | Sequência | Resultado |
 | --- | --- |
 | Estado inicial + sequência base (cenários 1 a 29a e 35 a 39), sem respostas | 1234 factos, 61 incidentes, 61 tickets (41 abertos, 20 fechados), 41 perguntas por responder (uma por ticket aberto) |
-| `injeta_todos` (sequência base + 30 a 34) | 1250 factos, com as mesmas conclusões: os cenários 30 a 34 não acrescentam nenhuma |
+| Sequência base + 30 a 34 | 1250 factos, com as mesmas conclusões: os cenários 30 a 34 não acrescentam nenhuma |
+| `injeta_todos` (`sequencia_completa`: base, atualizações e 30 a 34) | 1319 factos, 65 incidentes, 65 tickets (39 abertos, 26 fechados), 39 perguntas por responder |
 | Sequência base + respostas às perguntas de confirmação dos cenários 3 (sim), 10b (não) e 17 (não sei) | 1261 factos, 63 incidentes, 40 tickets abertos, 23 fechados, e o incidente "propagação" com dois ativos |
 | Sequência base sem o 25a e o 36a + "sim" às perguntas de fecho (`fecho_sim`) | 1325 factos, 66 incidentes, 37 tickets abertos, 29 fechados |
 

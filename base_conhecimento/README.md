@@ -9,7 +9,7 @@ Fonte única da base de conhecimento do analista virtual de SOC (versão 6.1). �
 | `soc_factos.txt` | O estado inicial: os 390 factos fixos da organização (ativos, software, serviços, configuração, vulnerabilidades, rede, políticas, janelas de tempo, tipos de incidente, prioridades e perguntas ao analista). É o ficheiro que se carrega; carrega os dois seguintes. A primeira linha tem a versão da base. |
 | `soc_regras.txt` | As 107 regras (R1 a R107), em 15 grupos (A a O), cada uma com uma explicação em linguagem simples. |
 | `soc_suporte.txt` | O que o motor precisa e não é conhecimento do domínio: o metaconhecimento (`facto_dispara_regras/2`), as condições calculadas, o que cada uma lê (`condicao_le/2`) e a ajuda `novo_facto/1`. |
-| `soc_cenarios.pl` | Liga o nome de cada cenário (`c1`, `c2`, …) ao seu ficheiro e define as sequências (`sequencia_base`, `sequencia_atualizacoes`, `sequencia_normal`). |
+| `soc_cenarios.pl` | Liga o nome de cada cenário (`c1`, `c2`, …) ao seu ficheiro e define as sequências (`sequencia_base`, `sequencia_atualizacoes`, `sequencia_normal` e `sequencia_completa`, que junta as três e é o que "injetar todos" corre nas consolas e na UI). |
 | `cenarios/` | Um ficheiro por cenário (57), com o `indice.txt` (a ordem e o que cada um testa). |
 
 ## Como se usa
@@ -47,11 +47,11 @@ Cada ticket aberto tem uma pergunta, de uma de quatro famílias:
 
 ## Cenários
 
-Os cenários são a telemetria que chega ao sistema (alertas, eventos dos hosts, logins, tráfego) e as atualizações do inventário e do catálogo. Os cenários com letra (`06a`, `10a`, `10b`, `35a`…) continuam o cenário do mesmo número: telemetria que chega depois (o porto de destino, a hora, o processo) ou uma atualização. O 35c e o 36b são alternativas ao 35b e ao 36a. O `cenarios/indice.txt` tem a lista e a ordem.
+Os cenários são a telemetria que chega ao sistema (alertas, eventos dos hosts, logins, tráfego) e as atualizações do inventário e do catálogo. Os cenários com letra (`06a`, `10a`, `10b`, `35a`…) continuam o cenário do mesmo número: telemetria que chega depois (o porto de destino, a hora, o processo) ou uma atualização. O 35c e o 36b são alternativas ao 35b e ao 36a. As atualizações não têm hora: são dados do inventário e do catálogo, não eventos, e entram depois do cenário 39 por convenção. O `cenarios/indice.txt` tem a lista e a ordem.
 
 ## Resultados de referência
 
-Com o estado inicial e a sequência base (`sequencia_base`, sem respostas): 61 incidentes e 61 tickets, 41 abertos, cada um com a sua pergunta (41 perguntas por responder). Os resultados de cada variante estão em `motores/prolog/referencia_prolog/`.
+Com o estado inicial e a sequência base (`sequencia_base`, sem respostas): 61 incidentes e 61 tickets, 41 abertos, cada um com a sua pergunta (41 perguntas por responder). Com a sequência completa (a base, as atualizações do inventário e do catálogo e a atividade normal): 65 incidentes e 65 tickets, 39 abertos, 39 perguntas; as atualizações fecham as dúvidas de versão, de inventário e de catálogo e abrem as explorações possíveis que delas resultam. Os resultados de cada variante estão em `motores/prolog/referencia_prolog/`.
 
 ## Regras de manutenção
 

@@ -214,22 +214,21 @@ class ConsolaDroolsTest {
         assertFalse(s.contains("14."), s);
     }
 
-    /** A opcao 13 da a mesma resposta que o pedido com as sequencias base e normal enviado direto ao motor. */
+    /** A opcao 13 da a mesma resposta que o pedido com a sequencia completa enviado direto ao motor. */
     @Test
     void injetarTodosEOMesmoQueOPedidoDireto() throws Exception {
         String s = consola("13", "0");
         assertTrue(s.contains("=== Cenario c39: maquina recuperada"), s);
         assertTrue(s.contains("=== Cenario c34: "), s);
+        assertTrue(s.contains("=== Cenario c6a: "), s);
         JsonNode c = json.readTree(ConsolaDroolsTest.class.getResourceAsStream("/cenarios.json"));
         ObjectNode pedido = json.createObjectNode().put("versaoKB", MotorDrools.VERSAO_KB);
         var passos = pedido.putArray("passos");
-        for (String seq : new String[] {"base", "normal"}) {
-            c.get("sequencias").get(seq).forEach(id -> c.get("cenarios").forEach(x -> {
-                if (x.get("id").equals(id)) {
-                    passos.add(x.get("passo"));
-                }
-            }));
-        }
+        c.get("sequencias").get("completa").forEach(id -> c.get("cenarios").forEach(x -> {
+            if (x.get("id").equals(id)) {
+                passos.add(x.get("passo"));
+            }
+        }));
         int factos = json.readTree(MOTOR.infere(pedido.toString())).get("factos").size();
         assertTrue(s.contains("\n" + factos + " factos ("), s);
     }

@@ -15,6 +15,6 @@ swipl motores/drools/ferramentas/gera_porque_nao.pl              # escreve porqu
 swipl motores/drools/ferramentas/gera_porque_nao.pl --verificar  # código 1 se estiver desatualizada
 ```
 
-Carrega o `soc_motor.pl` e a base, injeta as sequências `base` e `normal` (como a opção 13 do menu) e escreve, para cada facto, `#### <facto>` e o que o `whynot/1` escreve. O `PorqueNaoTest` compara linha a linha, sem os números dos factos (mudam entre motores).
+Carrega o `soc_motor.pl` e a base, injeta as sequências `base` e `normal` e escreve, para cada facto, `#### <facto>` e o que o `whynot/1` escreve. O `PorqueNaoTest` compara linha a linha, sem os números dos factos (mudam entre motores).
 
 A referência da paridade (`ParidadeTest`) é a do motor Prolog com todas as regras, em `motores/prolog/referencia_prolog/`, gerada pelo `motores/prolog/ferramentas/gera_referencias.pl`. O nível só com os grupos A a G e N (`gera_referencia_agn.pl` e `src/test/resources/referencia_agn/`) saiu na F0008.

@@ -349,14 +349,18 @@ termo_cenario((:- G)) :- !, ( catch(G, E, (print_message(error, E), fail)) -> tr
 termo_cenario(novo_facto(F)) :- !, introduz_facto(F).
 termo_cenario(F) :- introduz_facto(F).
 
-% Injeta de uma so vez todos os cenarios, pela ordem do indice: os de ataque (1 a 29a) e os de atividade normal
-% (30 a 34), com o motor a correr entre cada um. Recomeca do estado inicial (recarrega a base) e mostra o estado no fim.
+% Injeta de uma so vez todos os cenarios, pela sequencia_completa/1 do soc_cenarios.pl: a telemetria (1 a 39), as
+% atualizacoes do inventario e do catalogo e a atividade normal (30 a 34), com o motor a correr entre cada um. Numa base
+% sem essa regra, so a sequencia base e a normal. Recomeca do estado inicial (recarrega a base) e mostra o estado no fim.
 % As respostas do analista nao sao cenarios: entram depois, pela opcao 5 do menu ou com introduz_facto/1.
 injeta_todos :-
 	ficheiro_base(B), !,
 	carrega_bc(B),
 	arranca_motor,
-	sequencia_base(S), sequencia_normal(N), append(S, N, Todos),
+	(   current_predicate(sequencia_completa/1)
+	->  sequencia_completa(Todos)
+	;   sequencia_base(S), sequencia_normal(N), append(S, N, Todos)
+	),
 	injeta_cenarios(Todos),
 	nl, estado.
 injeta_todos :-

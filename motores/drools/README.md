@@ -61,7 +61,7 @@ O menu é o do `soc_motor.pl` (`menu/0`): as mesmas opções e a mesma numeraç�
 | 10 | "Porque não?": porque é que um facto não se concluiu. Para cada regra que o podia concluir, a regra inteira com cada condição marcada (`[ok]` ou `[FALTA]`) e, por baixo, o que falta e porquê, até aos dados de entrada. O facto pode ter variáveis, ex.: `compromisso_confirmado(web_srv_05, Ev)` |
 | 11 | Mostrar factos: `todos`, `concluidos` ou os de um predicado (a consola lista os predicados que há) |
 | 12 | Opções do motor: `mostrar_conclusoes` (escreve cada conclusão nova), `passo_a_passo` (espera por Enter depois de cada uma), `profundidade_whynot` (4) |
-| 13 | Injetar todos os cenários de uma vez: volta a carregar a base e injeta as sequências `base` e `normal` (sem respostas), como o `injeta_todos` |
+| 13 | Injetar todos os cenários de uma vez: volta a carregar a base e injeta a sequência `completa` (telemetria, atualizações do inventário e do catálogo, atividade normal; sem respostas), como o `injeta_todos` e a vista global da UI |
 | 0 | Sair (também com o fim da entrada, Ctrl+D) |
 
 O menu tem as mesmas opções e a mesma numeração (0 a 13) do Prolog. O "porque?" só existe durante as perguntas ao analista (opção 5), onde explica porque se faz a pergunta; não há opção para o pedir sobre um facto qualquer (isso é o "como?"). Diferenças para o menu do Prolog: arranca já com a base carregada (no Prolog é preciso a opção 1, e depois a 2); a dica de profundidade do "porque não?" aponta para a opção 12, em vez do `define_opcao/2`; e as perguntas por responder são as da resposta do motor (sem as já respondidas com "nao sei").
