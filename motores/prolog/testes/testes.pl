@@ -421,14 +421,15 @@ test(referencias_em_dia) :-
 
 :- begin_tests(gera_meta).
 
-% AC13: o metaconhecimento do soc_suporte.txt e o que as regras dao hoje.
+% AC13: o metaconhecimento do soc_suporte.txt e o que as regras dao hoje. O codigo 0 sozinho nao chega (um ficheiro que
+% nao seja o gera_meta.pl, sem main, tambem sai com 0): o script tem de confirmar que esta em dia.
 test(ac13_meta_em_dia) :-
 	current_prolog_flag(executable, Swipl),
 	caminho('motores/prolog/ferramentas/gera_meta.pl', G),
-	process_create(Swipl, [G, '--verificar'], [stdout(null), stderr(pipe(E)), process(Pid)]),
+	process_create(Swipl, [G, '--verificar'], [stdin(null), stdout(null), stderr(pipe(E)), process(Pid)]),
 	read_string(E, _, Msg), close(E),
 	process_wait(Pid, exit(Codigo)),
-	(   Codigo == 0 -> true
+	(   Codigo == 0, sub_string(Msg, _, _, _, "O metaconhecimento esta atualizado.") -> true
 	;   format(user_error, "~s", [Msg]), fail
 	).
 

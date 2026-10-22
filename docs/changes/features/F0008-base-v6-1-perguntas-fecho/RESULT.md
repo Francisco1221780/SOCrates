@@ -24,7 +24,7 @@
 
 ## 2. Pontos que pedem decisão
 
-- **O `--verificar` do `gera_meta.pl` sai com código 0 mesmo com erros de sintaxe no próprio script.** Foi assim que o `ac13_meta_em_dia` e o health do backend não deram pelo `gera_meta.pl` errado (ver §3). Consequência: um `gera_meta.pl` partido passa no CI como se o metaconhecimento estivesse em dia.
+Nenhum em aberto. Os que havia (o teste do `gera_meta.pl` no Windows, o `--verificar` que saía com 0 e o nível A-G+N redundante) foram resolvidos nesta branch (ver §3).
 
 ## 3. Desvios do plano aprovado
 
@@ -38,6 +38,8 @@
 - **Nível A-G+N da paridade retirado** (pedido do utilizador depois da aprovação): saíram o `motores/drools/ferramentas/gera_referencia_agn.pl`, a pasta `src/test/resources/referencia_agn/`, o nível "agn" do `ParidadeTest` e o teste que comparava as duas referências, e o filtro de regras do `MotorDrools` (o construtor com `Predicate`, que só esse nível usava). Ficou um nível, com as 107 regras.
 - **Variantes para as regras que não disparavam** (pedido do utilizador: testar todas as regras): `ataque_intermedio_tardio` (R69) e `c2_antes_do_porto` (R71), com passos de factos que não estão em nenhum cenário.
 - **`.gitkeep` retirados** (pedido do utilizador): os seis que estavam em pastas com outros ficheiros (`base_conhecimento/`, `docs/`, `motores/`, `motores/prolog/`, `backend/.../generated/` e `backend/.../static/`), além do de `base_conhecimento/cenarios/`.
+- **`gera_meta.pl --verificar` passa a falhar quando o script está partido** (pedido do utilizador): o script tem `:- set_prolog_flag(on_error, status).`, e um erro de sintaxe nele dá agora código 1. Um ficheiro trocado por outro programa sem `main` continua a sair com 0, por isso o teste `ac13_meta_em_dia` passou a exigir também a linha "O metaconhecimento esta atualizado.". A mesma exigência no health do backend deixou de ser precisa: o PR #44 da `develop` tirou a verificação do metaconhecimento do health.
+- **Merges da `develop`:** a branch juntou o #41 (UI), o #43 (`/como?regras=true`) e o #44 (health sem metaconhecimento); os conflitos foram nos testes do backend, resolvidos com as chamadas novas da `develop` e a versão lida da base. Saiu a pasta `provas/` (pedidos da v6), a pedido do utilizador, e o timeout do Prolog no `application.yaml` passou para 30 s (a sequência base demora ~9 s num portátil).
 - **`PrologAdapterTest`:** na cópia de trabalho, duas asserções tinham passado a `contains("ferramentas/gera_meta.pl")`, que falhava no Windows (o caminho vem com `\`). A pedido do utilizador, as duas normalizam agora as barras antes de comparar.
 - **`target/` desatualizado:** o `backend/socrates/target/classes/prolog-dist` tinha a base v6 de um build anterior (o Maven não a recopiava) e o `clean` falhou por ficheiros presos no `motores/drools/target`; apagou-se só a `prolog-dist` gerada antes do `verify`.
 
