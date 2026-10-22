@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import socrates.backend.application.BaseCarregada;
 import socrates.backend.config.PrologProperties;
-import socrates.backend.domain.Metaconhecimento;
 import socrates.backend.domain.SaudeMotor;
 import java.io.IOException;
 import java.io.InputStream;
@@ -404,8 +403,7 @@ class PrologAdapterTest {
     }
 
     /**
-     * Verifica que com a base do repositorio o estado e pronto: a base carregou, o wrapper tem a versao da base e o
-     * metaconhecimento esta em dia (AC13).
+     * Verifica que com a base do repositorio o estado e pronto: a base carregou e o wrapper tem a versao da base (AC13).
      */
     @Test
     void estadoProntoComABaseDoRepositorio() {
@@ -414,19 +412,18 @@ class PrologAdapterTest {
         assertTrue(e.pronto(), e.toString());
         assertEquals(VERSAO, e.versaoKB());
         assertTrue(e.baseCarregada(), e.toString());
-        assertEquals(Metaconhecimento.EM_DIA, e.metaconhecimento());
         assertTrue(e.erros().isEmpty(), e.toString());
     }
 
     /**
-     * Verifica que a copia do classpath (o que vai no jar) tambem traz o gera_meta.pl: sem socrates.prolog.home o
-     * metaconhecimento verifica-se na mesma (AC6, AC13).
+     * Verifica que sem socrates.prolog.home o estado se verifica na copia do classpath (o que vai no jar), com a
+     * mesma base (AC6, AC13).
      */
     @Test
     void estadoProntoComACopiaDoClasspath() {
         SaudeMotor e = adapter("swipl", null).estado();
         assertTrue(e.pronto(), e.toString());
-        assertEquals(Metaconhecimento.EM_DIA, e.metaconhecimento());
+        assertEquals(VERSAO, e.versaoKB());
     }
 
     /**
@@ -439,20 +436,16 @@ class PrologAdapterTest {
     }
 
     /**
-     * Copia para a pasta dada o que o motor precisa (wrapper.pl, soc_motor.pl, gera_meta.pl e a base), para os
-     * testes estragarem a copia e nao o repositorio.
+     * Copia para a pasta dada o que o motor precisa (wrapper.pl, soc_motor.pl e a base), para os testes estragarem
+     * a copia e nao o repositorio.
      * @param tmp
-     * @param comGeraMeta
      * @return
      * @throws IOException
      */
-    private static Path copiaDoMotor(Path tmp, boolean comGeraMeta) throws IOException {
-        List<String> ficheiros = new ArrayList<>(List.of("motores/prolog/wrapper.pl", "motores/prolog/soc_motor.pl",
+    private static Path copiaDoMotor(Path tmp) throws IOException {
+        List<String> ficheiros = List.of("motores/prolog/wrapper.pl", "motores/prolog/soc_motor.pl",
                 "base_conhecimento/soc_factos.txt", "base_conhecimento/soc_regras.txt",
-                "base_conhecimento/soc_suporte.txt"));
-        if (comGeraMeta) {
-            ficheiros.add("motores/prolog/ferramentas/gera_meta.pl");
-        }
+                "base_conhecimento/soc_suporte.txt");
         for (String f : ficheiros) {
             Path alvo = tmp.resolve(f);
             Files.createDirectories(alvo.getParent());
@@ -469,7 +462,7 @@ class PrologAdapterTest {
      */
     @Test
     void baseComErroDeSintaxeNaoEstaCarregada(@TempDir Path tmp) throws Exception {
-        Path home = copiaDoMotor(tmp, true);
+        Path home = copiaDoMotor(tmp);
         Files.writeString(home.resolve("base_conhecimento/soc_factos.txt"), "\nisto nao e prolog (\n",
                 StandardOpenOption.APPEND);
         SaudeMotor e = adapter("swipl", home).estado();
@@ -477,48 +470,6 @@ class PrologAdapterTest {
         assertFalse(e.baseCarregada(), e.toString());
         assertTrue(e.erros().stream().anyMatch(l -> l.startsWith("base: ERROR") && l.contains("soc_factos.txt")),
                 e.toString());
-    }
-
-    /**
-     * Verifica que com uma linha do facto_dispara_regras/2 diferente do que as regras dao, o metaconhecimento fica
-     * desatualizado, o motor nao fica pronto e o erro diz que linha e como se corrige (AC13).
-     * @param tmp
-     * @throws Exception
-     */
-    @Test
-    void metaconhecimentoDesatualizadoNaoEstaPronto(@TempDir Path tmp) throws Exception {
-        Path home = copiaDoMotor(tmp, true);
-        Path suporte = home.resolve("base_conhecimento/soc_suporte.txt");
-        String original = Files.readString(suporte);
-        String linha = "facto_dispara_regras(acesso_suspeito(_, _), [46]).";
-        assertTrue(original.contains(linha), "o soc_suporte.txt mudou: escolher outra linha para o teste");
-        Files.writeString(suporte, original.replace(linha, "facto_dispara_regras(acesso_suspeito(_, _), [999])."));
-
-        SaudeMotor e = adapter("swipl", home).estado();
-        assertFalse(e.pronto(), e.toString());
-        assertTrue(e.baseCarregada(), e.toString());
-        assertEquals(VERSAO, e.versaoKB());
-        assertEquals(Metaconhecimento.DESATUALIZADO, e.metaconhecimento());
-        assertTrue(e.erros().stream().anyMatch(l -> l.contains("Desatualizado: acesso_suspeito")), e.toString());
-        // o caminho vem com o separador do sistema (\ no Windows)
-        assertTrue(e.erros().getLast().replace('\\', '/').contains("ferramentas/gera_meta.pl"), e.toString());
-    }
-
-    /**
-     * Verifica que sem o gera_meta.pl o metaconhecimento fica desconhecido e o motor nao fica pronto, mas a base e a
-     * versao continuam verificadas.
-     * @param tmp
-     * @throws Exception
-     */
-    @Test
-    void semGeraMetaOMetaconhecimentoEDesconhecido(@TempDir Path tmp) throws Exception {
-        SaudeMotor e = adapter("swipl", copiaDoMotor(tmp, false)).estado();
-        assertFalse(e.pronto(), e.toString());
-        assertTrue(e.baseCarregada(), e.toString());
-        assertEquals(VERSAO, e.versaoKB());
-        assertEquals(Metaconhecimento.DESCONHECIDO, e.metaconhecimento());
-        // o caminho vem com o separador do sistema (\ no Windows)
-        assertTrue(e.erros().getFirst().replace('\\', '/').contains("ferramentas/gera_meta.pl"), e.toString());
     }
 
     /**

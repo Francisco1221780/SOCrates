@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import socrates.backend.config.PrologProperties;
-import socrates.backend.domain.Metaconhecimento;
 import socrates.backend.domain.Resultado;
 import socrates.backend.domain.SaudeMotor;
 import socrates.backend.domain.SaudeSistema;
@@ -76,7 +75,7 @@ class InferenceServiceTest {
 
         @Override
         public SaudeMotor estado() {
-            return new SaudeMotor(nome, pronto, versaoKB, pronto, Metaconhecimento.EM_DIA, List.of());
+            return new SaudeMotor(nome, pronto, versaoKB, pronto, List.of());
         }
 
         /**

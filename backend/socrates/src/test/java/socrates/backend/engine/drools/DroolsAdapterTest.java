@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import socrates.backend.application.BaseCarregada;
-import socrates.backend.domain.Metaconhecimento;
 import tools.jackson.databind.json.JsonMapper;
 import socrates.backend.domain.SaudeMotor;
 import org.junit.jupiter.api.Test;
@@ -41,7 +40,6 @@ class DroolsAdapterTest {
         assertTrue(e.pronto(), e.toString());
         assertEquals(VERSAO, e.versaoKB());
         assertTrue(e.baseCarregada(), e.toString());
-        assertEquals(Metaconhecimento.NAO_APLICAVEL, e.metaconhecimento());
         assertTrue(e.erros().isEmpty(), e.toString());
     }
 
