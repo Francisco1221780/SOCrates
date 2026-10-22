@@ -18469,8 +18469,25 @@ v110Html = (function(prev) { return function() { let i = 0; return prev.apply(th
     body.v101 .app.view-backend .engine-hero-switcher .eng-btn.active,
     body.v101 .app.view-dossier #v101Seg .svtab.active,
     body.v101 .app.view-backend #v101Seg .svtab.active{background:transparent !important;color:var(--dim) !important;box-shadow:none !important}
-    body.v101 .app.view-dossier .engine-hero-switcher .eng-btn:hover,
-    body.v101 .app.view-backend .engine-hero-switcher .eng-btn:hover{color:var(--txt) !important}`;
+`;
+  document.head.appendChild(st);
+})();
+
+
+/* v152: (1) os botões dos motores e Consola/Grafo voltam a reagir ao rato (o v101 tinha-lhes tirado o hover),
+   em todas as vistas; (2) no Comparador o SWI-Prolog passa a verde, como no resto da app (antes ciano) */
+(function() {
+  const st = document.createElement('style');
+  st.textContent = `
+    body.v101 .engine-hero-switcher .eng-btn:not(.active):hover,body.v101 #v101Seg .svtab:not(.active):not(:disabled):hover,
+    body.v101 .app.view-dossier .engine-hero-switcher .eng-btn:hover,body.v101 .app.view-backend .engine-hero-switcher .eng-btn:hover,
+    body.v101 .app.view-dossier #v101Seg .svtab:not(:disabled):hover,body.v101 .app.view-backend #v101Seg .svtab:not(:disabled):hover{
+      background:rgba(34,211,238,.09) !important;color:#e6fbff !important;box-shadow:inset 0 0 0 1px rgba(34,211,238,.28) !important}
+    body.v101 .engine-hero-switcher .eng-btn,body.v101 #v101Seg .svtab{transition:background .15s,color .15s,box-shadow .15s !important}
+    .v112-n i.pl,.v112-st.pl,b.pl,.v112-cols .pl{color:#34d399 !important}
+    .v112-st.pl{border-color:rgba(16,185,129,.45) !important;background:#08241b !important}
+    .v112-cd.pl{border-color:#1b3a30 !important;background:#0a1714 !important}
+    .v112-cd.pl .v112-r{background:#34d399 !important}`;
   document.head.appendChild(st);
 })();
 
