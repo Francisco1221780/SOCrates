@@ -9188,8 +9188,8 @@ updateTimelineDockUI = function() {
   const tb = $('spdTimeBadge');
   if (!tb || !window.__v62) return;
   const clk = getDynamicScenarioClock();
-  tb.innerHTML = clk.events.length ? `<span class="clk-hms">⏱ ${clk.t0}–${clk.tEnd} s</span>` : '<span class="clk-hms">⏱ —</span>';
-  tb.title = 'Clique para ver de onde vêm estes valores';
+  tb.innerHTML = clk.events.length ? `<span class="clk-hms">⏱ telemetria ${clk.t0}–${clk.tEnd} s</span>` : '<span class="clk-hms">⏱ —</span>';
+  tb.title = 'Intervalo de tempo coberto pela telemetria do pedido (fixo: as etapas são níveis de dedução, não instantes). Clique para ver de onde vêm estes valores';
 };
 
 // 3) Entradas que o motor leu dentro de condições calculadas (ex.: depois(ev_a2, ev_a1, 60)).
@@ -11895,7 +11895,7 @@ function v80BHtml() {
         <h3>1 · Índice de disparo · <code>facto_dispara_regras/2</code></h3>
         <p class="v80b-mu">Gerado a partir das regras por <code>motores/prolog/ferramentas/gera_meta.pl</code> (com <code>findall/3</code>) para o <code>soc_suporte.txt</code>; o CI confirma que está atualizado (<code>--verificar</code>). O motor consulta-o em cada facto novo.</p>
         ${metaApi}
-        <p class="v80b-mu" style="margin-top:10px">O motor Prolog carrega este índice com a base; no CI, o <code>gera_meta.pl --verificar</code> falha se ele não corresponder às regras atuais. Estado dos motores agora: ${(d.health.data?.motores || []).map(m => `<b>${esc(m.motor)}</b> ${m.pronto ? '✓ pronto' : '✕ não pronto'}`).join(' · ') || 'sem resposta do /api/health'}.</p>
+        <p class="v80b-mu" style="margin-top:10px">Estado dos motores agora: ${(d.health.data?.motores || []).map(m => `<b>${esc(m.motor)}</b> ${m.pronto ? '✓ pronto' : '✕ não pronto'}`).join(' · ') || 'sem resposta do /api/health'}.</p>
       </article>
 
       <article class="v80b-card" id="v80b-meta-obs" data-sec="meta-obs">
@@ -14523,7 +14523,7 @@ v94Etapa = function(i) {
   const colConcl = i === 0 ? '<div class="v96-mu">dados de partida</div>' : (concl.map(n => `<div class="v96-row"><span class="v96-tag ${n.t === 'action' ? 'a' : 'd'}">${n.t === 'action' ? '▲' : '◆'}</span><span><b>${esc(nome(n))}</b> <em>${n.count || 0}</em></span></div>`).join('') || '<div class="v96-mu">—</div>');
   const colFalta = falta.length ? falta.slice(0, 6).map(x => `<div class="v96-row"><span class="v96-tag f">…</span><span><b>${esc(x.n.label)}</b><small>${x.miss.length ? `falta ${x.miss.map(m => esc(nome(m))).join(', ')}` : x.r ? `${v96Codigos(x.r.codeFull || x.r.code)} na etapa seguinte` : ''}</small></span></div>`).join('') + (falta.length > 6 ? `<div class="v96-mu">+ ${falta.length - 6} por concluir</div>` : '') : '<div class="v96-ok">✓ inferência completa</div>';
   return `<div class="v96-et">
-    <div class="v96-h"><span class="v96-badge">E${i + 1}<small>/${snaps.length}</small></span><b>${i === 0 ? 'Entradas: telemetria e base de conhecimento' : regras.length ? `${pl(regras.length, 'regra dispara', 'regras disparam')} · ${pl(concl.length, 'conclusão', 'conclusões')}` : `${pl(concl.length, 'conclusão', 'conclusões')}${regrasOrig.length ? ` · ${regrasOrig.length === 1 ? 'da regra' : 'das regras'} ${regrasOrig.map(r => esc(String(r.code || r.label).split(/,\s*/)[0])).join(', ')} (E${regrasOrig.map(r => etapaDe(r.id)).filter(Boolean).join(', E')})` : ''}`}</b>
+    <div class="v96-h"><span class="v96-badge">E${i + 1}<small>/${snaps.length}</small></span><b>${i === 0 ? 'Entradas: telemetria e base de conhecimento' : regras.length ? `${pl(regras.length, 'regra dispara', 'regras disparam')} · ${pl(concl.length, 'conclusão', 'conclusões')}` : `${pl(concl.length, 'conclusão', 'conclusões')}${regrasOrig.length ? ` · ${regrasOrig.length === 1 ? 'da regra' : 'das regras'} ${regrasOrig.map(r => esc(String(r.code || r.label).split(/,\s*/)[0])).join(', ')} (E${[...new Set(regrasOrig.map(r => etapaDe(r.id)).filter(Boolean))].join(', E')})` : ''}`}</b>
       <div class="v96-sts">${stat(ded, 'deduções')}${stat(nReg, 'regras')}${stat(cnt('d_incidente'), 'incidentes')}${stat(cnt('d_ticket'), 'tickets', 'a')}${stat(cnt('d_pergunta_analista'), 'perguntas', 'q')}</div></div>
     <div class="v96-cols">
       <section><h6>${i === 0 ? 'Entraram' : regras.length ? (regras.length === 1 ? 'Como · regra que disparou' : 'Como · regras que dispararam') : (regrasOrig.length === 1 ? 'Como · regra que concluiu (etapa anterior)' : 'Como · regras que concluíram (etapa anterior)')}</h6>${colComo || '<div class="v96-mu">—</div>'}</section>
