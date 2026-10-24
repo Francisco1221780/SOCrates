@@ -189,8 +189,9 @@ Mudam-se com `define_opcao(Nome, Valor).` ou pela opção 12 do menu.
 
 ```
 arranca_motor
-  └─ passagens                  percorre os factos por número, incluindo os que vai criando,
-                                e repete enquanto houver conclusões novas (ponto fixo)
+  └─ passagens                  percorre os factos por número, incluindo os que vai criando, até ao ponto
+                                fixo; os factos de corridas anteriores só tentam as regras que leem um
+                                tipo de facto novo desde a última corrida
        └─ processa_facto(N, F)  o metaconhecimento (facto_dispara_regras/2) diz que regras o facto F pode disparar
             └─ dispara_regra    para cada regra: todas as formas de verificar o SE em que entra o facto N
                  ├─ verifica_condicoes   cada condição do SE é um facto, uma negação (nao X),
@@ -207,7 +208,7 @@ arranca_motor
 | **M1** Condições calculadas | Só factos, negações e `avalia`. | Uma condição `C` com `condicao_calculada(C)` avalia-se com `call(C)`: `depois/3`, `versao_cmp/3`, `anterior/2`, … (definidas em `soc_suporte.txt`). |
 | **M2** Instanciações | Cada regra dispara só com a primeira combinação de factos. | Dispara para todas as combinações em que entra o facto que a acionou (`forall`). |
 | Reavaliação por `condicao_le/2` (v6) | Uma regra só dispara a partir de um facto que seja uma das suas premissas. | Quando chega um facto que uma condição calculada da regra lê (por exemplo o `tempo` de um evento, lido por `depois/3`), a regra avalia-se por inteiro, sem exigir que esse facto seja uma premissa. Sem `condicao_le/2` na base (bases da UC), nada muda. |
-| **M3** Ponto fixo | O `arranca_motor` tinha de ser chamado várias vezes. | Um `arranca_motor` chega: repete as passagens até não haver conclusões novas. |
+| **M3** Ponto fixo | O `arranca_motor` tinha de ser chamado várias vezes. | Um `arranca_motor` chega: percorre os factos, incluindo os que vai criando, até não haver conclusões novas. |
 | **M4** `cria_facto` | Escreve cada conclusão e espera por uma tecla (`get0`). | Não escreve nem espera; as duas coisas são opções, desligadas por omissão. |
 | `como` | Repete as mesmas sub-árvores (as conclusões do fim da cadeia davam centenas de linhas). | Árvore sem repetições, e aceita o facto em vez do número. |
 | `whynot` | Uma condição calculada dava valores inventados a uma premissa que já tinha falhado, e "não está definido na base" nunca aparecia. | Trata as condições calculadas, não repete o que já explicou, distingue dados de entrada, e tem profundidade máxima. |

@@ -26,7 +26,7 @@ A tabela compara os três motores no que cada um faz; as secções seguintes exp
 | Condições calculadas (M1) | Não | Não: são procuradas como factos e falham sempre | Sim: `call(C)` quando `condicao_calculada(C)` |
 | Instanciações por regra e facto (M2) | A primeira | A primeira | Todas |
 | Facto lido por uma condição calculada (v6) | Não dispara a regra | Não dispara a regra | Reavalia a regra por inteiro (`condicao_le/2`) |
-| Factos criados durante a passagem (M3) | Não são vistos: é preciso voltar a chamar o motor | Igual | Vistos na mesma passagem; repete até não haver conclusões novas |
+| Factos criados durante a passagem (M3) | Não são vistos: é preciso voltar a chamar o motor | Igual | Vistos na mesma passagem: uma chamada chega ao ponto fixo. Nas chamadas seguintes, os factos já processados só tentam as regras que leem um tipo de facto novo |
 | `cria_facto` (M4) | Escreve e espera por uma tecla | Igual | Não escreve nem espera; as duas coisas são opções |
 | `como` | Não existe | Por número; repete sub-árvores | Por número ou pelo facto; árvore sem repetições |
 | `whynot` | Não existe | Existe, com dois defeitos (secção Explicações) | Corrigido; trata condições calculadas; profundidade máxima; também devolve a explicação como estrutura (`whynot_linhas/3`) |
@@ -90,7 +90,7 @@ dispara_regra(N, Facto, ID) :-
 		 memberchk(N, LFactos) ),
 	       concluir(RHS, ID, LFactos)),
 	forall(( regra ID se LHS entao RHS,
-		 \+ \+ facto_lido_por_condicao_calculada(Facto, LHS),
+		 \+ \+ facto_lido_por_condicao_calculada(Facto, ID),
 		 verifica_condicoes(LHS, LFactos) ),
 	       concluir(RHS, ID, LFactos)).
 ```
@@ -108,30 +108,39 @@ condicao_le(depois(_, _, _), [tempo(_, _), janela(_, _)]).
 condicao_le(anterior(_, _), [tempo(_, _)]).
 ```
 
-Quando chega um facto que uma condição calculada positiva do SE lê (`facto_lido_por_condicao_calculada/2`), o motor avalia a regra por inteiro, sem exigir que esse facto seja uma das premissas. O `gera_meta.pl` junta estas regras ao `facto_dispara_regras/2`, para o metaconhecimento as deixar passar. Numa base sem `condicao_le/2` (as bases da UC, por exemplo), o segundo `forall` nunca dispara nada e o motor comporta-se como antes.
+Quando chega um facto que uma condição calculada positiva do SE lê (`facto_lido_por_condicao_calculada/2`), o motor avalia a regra por inteiro, sem exigir que esse facto seja uma das premissas. Os factos que cada regra lê assim calculam-se da primeira vez que a regra é tentada e ficam guardados (`lidos_pela_regra/2`), para não se percorrer o SE de cada vez. O `gera_meta.pl` junta estas regras ao `facto_dispara_regras/2`, para o metaconhecimento as deixar passar. Numa base sem `condicao_le/2` (as bases da UC, por exemplo), o segundo `forall` nunca dispara nada e o motor comporta-se como antes.
 
 ### M3: até não haver conclusões novas
 
 O `arranca_motor` do `sp_exp2.pl` percorre os factos por retrocesso, com `facto(N, Facto)`. No SWI-Prolog, uma chamada assim só vê os factos que existiam quando começou (a vista lógica das atualizações), por isso os factos que o motor cria nessa passagem não são processados. Era preciso chamar o `arranca_motor` várias vezes, até não aparecer nada.
 
-O `soc_motor.pl` percorre os factos pelo número, de 1 até ao último, e volta a ler o último número a cada passo. Assim, um facto criado a meio da passagem é processado nessa mesma passagem. No fim, se a passagem criou alguma coisa, repete:
+O `soc_motor.pl` percorre os factos pelo número, de 1 até ao último, e volta a ler o último número a cada passo. Assim, um facto criado a meio da passagem é processado nessa mesma passagem, e uma passagem chega ao ponto fixo:
 
 ```prolog
 passagens :-
-	ultimo_facto(Antes),
-	processa_factos_desde(1),
-	ultimo_facto(Depois),
-	( Depois > Antes -> passagens ; true ).
+	( processado_ate(W) -> true ; W = 0 ),
+	retractall(functor_novo(_, _)),
+	forall(( facto(N, F), N > W ), regista_functor_novo(F)),
+	processa_factos_desde(1, W),
+	ultimo_facto(U),
+	retractall(processado_ate(_)),
+	assertz(processado_ate(U)).
 
-processa_factos_desde(N) :-
-	ultimo_facto(U), N > U, !.
-processa_factos_desde(N) :-
-	( facto(N, Facto) -> processa_facto(N, Facto) ; true ),
-	N1 is N + 1,
-	processa_factos_desde(N1).
+processa_facto(N, Facto, W) :-
+	facto_dispara_regras1(Facto, LRegras),
+	(   N > W
+	->  forall(member(ID, LRegras), dispara_regra(N, Facto, ID))
+	;   forall(( member(ID, LRegras), regra_le_algo_novo(ID) ), dispara_regra(N, Facto, ID))
+	).
 ```
 
-A repetição é precisa por causa das condições calculadas: uma pode passar a ser verdadeira por causa de um facto que não é premissa da regra (por exemplo, o `tempo/2` de um evento), e esse facto não volta a disparar a regra. Com a v6, a reavaliação por `condicao_le/2` já apanha estes casos quando o facto chega; a repetição continua a servir de garantia para as condições que o `condicao_le/2` não declare e para as bases que não o têm.
+Uma condição calculada pode passar a ser verdadeira por causa de um facto que não é premissa da regra (por exemplo, o `tempo/2` de um evento). Esse caso é apanhado pela reavaliação por `condicao_le/2`, quando o facto chega, tal como no Drools. Até à versão anterior do motor, cada passagem era repetida até não criar nada, como garantia extra; essa passagem de confirmação nunca criava nenhum facto e foi retirada.
+
+**Corridas seguintes.** O motor corre outra vez depois de cada cenário ou resposta do analista, e cada corrida percorre de novo todos os factos desde o número 1. Antes, cada facto tentava de novo todas as regras do seu metaconhecimento: na sequência completa, cada facto era processado cerca de 74 vezes, quase sempre só para dar conclusões repetidas. Agora, um facto que já tinha sido processado numa corrida anterior (número até `processado_ate/1`) só tenta as regras que leem algum tipo de facto novo desde essa corrida (`functor_novo/2`): numa condição positiva, numa comparação, ou através do `condicao_le/2` de uma condição calculada. Uma regra sem nenhum desses tipos não pode ter instanciações novas, porque os factos só se acrescentam: uma negação só pode passar de verdadeira a falsa, e uma condição calculada só passa a verdadeira com um facto do `condicao_le/2`. Uma regra com uma condição calculada negada (`nao C`) tenta-se sempre.
+
+Os factos continuam a ser percorridos pela mesma ordem, por isso as conclusões aparecem pela mesma ordem: a numeração, as regras e as premissas de cada facto ficam iguais. Isto importa porque algumas regras da base dependem da ordem (por exemplo, a R93 só pergunta se o incidente ainda está em aberto), e porque o Drools é comparado com o Prolog facto a facto. O motor também guarda, por nome e aridade, se uma condição é calculada (`calculada/1`), em vez de o verificar de cada vez. Os três registos (`calculada_cache/3`, `lidos_cache/2` e `regra_le_cache/2`) e o `processado_ate/1` limpam-se no `carrega_bc`.
+
+Na sequência completa (base 6.1, 55 passos, 1319 factos), o motor passou de cerca de 4,8 s para 1,75 s de CPU, e a sequência base de 3,9 s para 1,1 s.
 
 ### M4: sem pausa nem escrita no `cria_facto`
 
@@ -218,6 +227,7 @@ Tudo o que define a linguagem da base ficou igual, por isso as regras e os facto
 As alterações mudam como o motor percorre as regras, não o que as regras concluem. Durante o desenvolvimento, isso foi confirmado de duas formas:
 
 - **Com a base de exemplo da UC.** Com o `veiculos2.txt`, o `soc_motor.pl` conclui os mesmos factos que o `sp_exp2.pl`.
-- **Com um verificador independente.** Um motor mínimo, sem metaconhecimento, que dispara cada regra sempre que o SE se verifica, até não haver conclusões novas. Com a nossa base e os cenários, os factos finais dos dois motores são exatamente os mesmos.
+- **Com um verificador independente.** Um motor mínimo, sem metaconhecimento, que dispara cada regra sempre que o SE se verifica, até não haver conclusões novas. Com a base v6, os factos finais dos dois motores eram exatamente os mesmos. Com a v6.1, o verificador faz a mais 7 perguntas de fecho (R93) que são logo retiradas (R103): como dispara todas as regras ao mesmo tempo, pergunta antes de saber que o incidente foi superado. Os tickets, os incidentes e as perguntas por responder são os mesmos.
+- **A otimização das corridas seguintes** (secção M3) foi comparada com o motor anterior nas 14 variantes do `gera_referencias.pl` e na sequência completa: a lista de factos, com o número, a regra e as premissas de cada um, é igual, e as explicações também.
 
 Os resultados de cada variante estão em `referencia_prolog/`, como referência para o Drools e o comparador. O teste `referencias_em_dia` (`testes/testes.pl`) confirma que continuam a ser o que o motor dá hoje.
