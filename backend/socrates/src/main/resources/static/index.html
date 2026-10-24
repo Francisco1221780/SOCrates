@@ -9588,12 +9588,9 @@ function v71TabMeta(res) {
     </div>`;
 }
 async function v71CheckMeta() {
+  // v157: a API deixou de expor o metaconhecimento (PR #44); o índice vive no soc_suporte.txt do motor Prolog
   if (S.v71Meta) return;
-  try {
-    const r = await fetch(`${S.apiBaseUrl}/api/metaconhecimento`);
-    S.v71Meta = r.ok ? `<div class="v71-ok">✓ HTTP 200 — GET /api/metaconhecimento</div><pre class="v71-pre">${esc(JSON.stringify(await r.json(), null, 2))}</pre>`
-      : `<span style="color:#fda4af"><b>A API respondeu HTTP ${r.status}</b> a <code>GET /api/metaconhecimento</code>${r.status === 404 ? ': o endpoint não existe no backend (a comunicação funcionou)' : ''}.</span> No motor, o <code>gera_meta.pl</code> gera o <code>facto_dispara_regras/2</code> com <code>findall/3</code> a partir das regras, o CI verifica-o (<code>--verificar</code>) e o motor usa-o para saber que regras reavaliar quando chega um facto.`;
-  } catch (e) { S.v71Meta = `<span style="color:#fda4af"><b>✖ Sem comunicação com a API</b> (${esc(e.message)}): não foi possível verificar se o metaconhecimento está exposto.</span>`; }
+  S.v71Meta = `<span class="v71-dim">O índice <code>facto_dispara_regras/2</code> é gerado pelo <code>gera_meta.pl</code> e carregado pelo motor Prolog com a base; a API não o expõe. A página Conhecimento › Metaconhecimento mostra o índice tal como se observa nas inferências.</span>`;
   if (v71Tab() === 'meta') inspect();
 }
 
@@ -11829,7 +11826,7 @@ buildRealComparisonCard = (function(prev) {
 S.v80B = { sec: 'resumo', filtro: '', porRegra: false };
 
 async function v80BCarregar() {
-  const [health, cat, regras, meta] = await Promise.all([v73Get('/api/health'), v73Get('/api/cenarios'), v73Get('/api/regras'), v73Get('/api/metaconhecimento')]);
+  const [health, cat, regras, meta] = await Promise.all([v73Get('/api/health'), v73Get('/api/cenarios'), v73Get('/api/regras'), Promise.resolve({ ok: false, status: 0 })]);
   const versao = health.data?.versaoKB || cat.data?.versaoKB || S.detectedKbVersion || '';
   const eng = S.engine === 'drools' ? 'drools' : 'prolog';
   const base = await v73Get(`/api/${eng}/infer`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versaoKB: versao, passos: [{ id: 'base', factos: [] }] }) });
@@ -11898,7 +11895,7 @@ function v80BHtml() {
         <h3>1 · Índice de disparo · <code>facto_dispara_regras/2</code></h3>
         <p class="v80b-mu">Gerado a partir das regras por <code>motores/prolog/ferramentas/gera_meta.pl</code> (com <code>findall/3</code>) para o <code>soc_suporte.txt</code>; o CI confirma que está atualizado (<code>--verificar</code>). O motor consulta-o em cada facto novo.</p>
         ${metaApi}
-        <p class="v80b-mu" style="margin-top:10px">O plano de arquitetura (AC13) prevê que, no arranque, cada motor confirme que o metaconhecimento carregado é igual ao que o <code>gera_meta.pl</code> gera das regras atuais e que, se não for, o <code>GET /api/health</code> diga que o motor não está pronto. Estado agora: ${(d.health.data?.motores || []).map(m => `<b>${esc(m.motor)}</b> ${m.pronto ? '✓ pronto' : '✕ não pronto'}`).join(' · ') || 'sem resposta do /api/health'}..</p>
+        <p class="v80b-mu" style="margin-top:10px">O motor Prolog carrega este índice com a base; no CI, o <code>gera_meta.pl --verificar</code> falha se ele não corresponder às regras atuais. Estado dos motores agora: ${(d.health.data?.motores || []).map(m => `<b>${esc(m.motor)}</b> ${m.pronto ? '✓ pronto' : '✕ não pronto'}`).join(' · ') || 'sem resposta do /api/health'}.</p>
       </article>
 
       <article class="v80b-card" id="v80b-meta-obs" data-sec="meta-obs">
@@ -15509,7 +15506,7 @@ const V110_CX = {
             o: 'PrologAdapter: lança o wrapper.pl num processo swipl novo por pedido, com tempo limite e limite de processos. O PrologInstaller copia para uma pasta temporária os ficheiros Prolog que vêm dentro do jar.',
             v: 'Botão "Prolog" no topo. Cada ▶ envia POST /api/prolog/infer com os passos até à etapa atual.' },
   drools: { t: 'motores/drools', k: 'dr', p: 'motores/drools/',
-            o: 'Módulo Maven sem Spring. Uma KieSession nova por pedido: insere os factos iniciais, depois os de cada passo, e corre as regras até não haver conclusões novas. Regras DRL de A_afetado.drl a N_catalogo.drl. Traz as explicações "como", "porque", "porque não" e "porque da pergunta".',
+            o: 'Módulo Maven sem Spring. Uma KieSession nova por pedido: insere os factos iniciais, depois os de cada passo, e corre as regras até não haver conclusões novas. Regras DRL de A_afetado.drl a O_fecho_tickets.drl, uma por grupo da base. Traz as explicações "como", "porque", "porque não" e "porque da pergunta".',
             v: 'Tudo o que aparece com o motor Drools selecionado.' },
   prolog: { t: 'motores/prolog', k: 'pl', p: 'motores/prolog/',
             o: 'O soc_motor.pl faz encadeamento para a frente com metaconhecimento: em cada facto novo só reavalia as regras que ele pode disparar, até ao ponto fixo. O wrapper.pl lê o pedido no stdin e escreve um único JSON no stdout.',
@@ -16370,19 +16367,28 @@ function v120Termo(t) {
 }
 const v120Nome = t => (t && typeof t === 'object' && 'f' in t) ? t.f : '';
 
+// v157: as regras que concluem um predicado vêm de GET /api/regras (nada escrito à mão)
+function v157Sub(pred, ar) {
+  const r = S.v78Regras, lista = r && r.ok && r.data ? (Array.isArray(r.data) ? r.data : (r.data.regras || [])) : [];
+  const ns = lista.filter(x => [].concat(x.entao || []).some(t => t && (t.f === pred || (typeof t === 'string' && t.startsWith(pred + '('))))).map(x => Number(String(x.id ?? x.numero).replace(/^R/i, ''))).filter(n => n > 0).sort((a, b) => a - b);
+  const grupos = [];
+  ns.forEach(n => { const g = grupos[grupos.length - 1]; if (g && n === g[1] + 1) g[1] = n; else grupos.push([n, n]); });
+  const txt = grupos.map(([a, b]) => a === b ? 'R' + a : (b === a + 1 ? `R${a}, R${b}` : `R${a}–R${b}`)).join(', ');
+  return `${pred}/${ar}` + (txt ? ' · ' + txt : '');
+}
 // ---------- perguntas geradas para um ticket ----------
 function v120Perguntas(res, t) {
   const b = res._base || res, inc = t.incidente, tipo = inc && inc.args ? v71T(inc.args[0]) : '', ev = inc && inc.args ? inc.args[1] : null;
   const ativo = t.ativo, out = [];
   const fechado = b.factos.some(f => f.predicado === 'ticket_fechado' && JSON.stringify(f.args[0]) === JSON.stringify(inc));
-  if (!fechado) out.push({ id: 'fechado', titulo: 'Porque é que este ticket não fechou?', sub: 'ticket_fechado/2 · R85, R86', facto: { predicado: 'ticket_fechado', args: [inc, { var: 'Motivo' }] } });
+  if (!fechado) out.push({ id: 'fechado', titulo: 'Porque é que este ticket não fechou?', sub: v157Sub('ticket_fechado', 2), facto: { predicado: 'ticket_fechado', args: [inc, { var: 'Motivo' }] } });
   if (String(v71T(t.prioridade)).toLowerCase() !== 'p1') out.push({ id: 'p1', titulo: 'Porque é que não é P1?', sub: 'prioridade/2', facto: { predicado: 'prioridade', args: [inc, 'p1'] } });
   // tipos mais fortes que este, pela tabela substitui/2 da base
   b.factos.filter(f => f.predicado === 'substitui' && f.origem === 'inicial' && v71T(f.args[1]) === tipo).forEach(f => {
     const forte = v71T(f.args[0]);
     out.push({ id: 'forte-' + forte, titulo: `Porque não passou a ${v80H(forte)}?`, sub: `incidente/4 · substitui(${forte}, ${tipo})`, facto: { predicado: 'incidente', args: [{ f: 'inc', args: [forte, ev] }, forte, ativo, { var: 'Impactados' }] } });
   });
-  if (!fechado && !b.factos.some(f => f.predicado === 'resolvido' && JSON.stringify(f.args[0]) === JSON.stringify(inc))) out.push({ id: 'resolvido', titulo: 'Porque é que o incidente não está resolvido?', sub: 'resolvido/2 · R51, R57–R63, R68, R73', facto: { predicado: 'resolvido', args: [inc, { var: 'Motivo' }] } });
+  if (!fechado && !b.factos.some(f => f.predicado === 'resolvido' && JSON.stringify(f.args[0]) === JSON.stringify(inc))) out.push({ id: 'resolvido', titulo: 'Porque é que o incidente não está resolvido?', sub: v157Sub('resolvido', 2), facto: { predicado: 'resolvido', args: [inc, { var: 'Motivo' }] } });
   return out;
 }
 // facto livre: "predicado(arg, X, ...)" -> {predicado, args} (maiúscula ou _ = variável)
@@ -16895,7 +16901,7 @@ edgePath = function(a, b) {
 
 /* =====================================================================
    v126: texto das regras vem de GET /api/regras (PR #43)
-   - Conhecimento › Regras: as 92 regras em SE … ENTÃO, com filtro e
+   - Conhecimento › Regras: as regras da base em SE … ENTÃO, com filtro e
      indicação das que dispararam no último pedido.
    - "Como?": cada passo tem a regra completa (abre ao clicar).
    - Se o backend ainda não tem o endpoint, volta a tentar mais tarde.
